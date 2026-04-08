@@ -1,18 +1,24 @@
 /** All token names that sh3-style can override. */
 export type ThemeToken =
   | 'shell-bg' | 'shell-bg-elevated' | 'shell-bg-sunken'
+  | 'shell-input-bg'
   | 'shell-border' | 'shell-border-strong'
   | 'shell-fg' | 'shell-fg-muted' | 'shell-fg-subtle'
   | 'shell-accent' | 'shell-accent-muted'
+  | 'shell-error' | 'shell-warning' | 'shell-success'
+  | 'shell-radius-sm' | 'shell-radius' | 'shell-radius-md' | 'shell-radius-lg'
   | 'shell-font-ui' | 'shell-font-mono' | 'shell-font-size' | 'shell-line'
   | 'shell-grad-bg' | 'shell-grad-bg-elevated' | 'shell-grad-bg-sunken';
 
 /** Complete list of valid token names, for import validation. */
 export const THEME_TOKENS: ThemeToken[] = [
   'shell-bg', 'shell-bg-elevated', 'shell-bg-sunken',
+  'shell-input-bg',
   'shell-border', 'shell-border-strong',
   'shell-fg', 'shell-fg-muted', 'shell-fg-subtle',
   'shell-accent', 'shell-accent-muted',
+  'shell-error', 'shell-warning', 'shell-success',
+  'shell-radius-sm', 'shell-radius', 'shell-radius-md', 'shell-radius-lg',
   'shell-font-ui', 'shell-font-mono', 'shell-font-size', 'shell-line',
   'shell-grad-bg', 'shell-grad-bg-elevated', 'shell-grad-bg-sunken',
 ];

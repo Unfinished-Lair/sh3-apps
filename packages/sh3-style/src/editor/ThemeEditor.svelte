@@ -16,6 +16,7 @@
   import ThemeSidebar from './ThemeSidebar.svelte';
   import ColorSection from './ColorSection.svelte';
   import TypographySection from './TypographySection.svelte';
+  import ShapeSection from './ShapeSection.svelte';
   import GradientSection from './GradientSection.svelte';
 
   let {
@@ -165,6 +166,7 @@
       {:else}
         <div class="editor-body">
           <ColorSection theme={selectedTheme} state={themeState} disabled={isBuiltin} />
+          <ShapeSection theme={selectedTheme} state={themeState} disabled={isBuiltin} />
           <TypographySection theme={selectedTheme} state={themeState} disabled={isBuiltin} />
           <GradientSection theme={selectedTheme} state={themeState} disabled={isBuiltin} />
         </div>

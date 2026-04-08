@@ -19,11 +19,15 @@
     { token: 'shell-bg', label: 'Background' },
     { token: 'shell-bg-elevated', label: 'Elevated' },
     { token: 'shell-bg-sunken', label: 'Sunken' },
+    { token: 'shell-input-bg', label: 'Input' },
     { token: 'shell-border', label: 'Border' },
     { token: 'shell-border-strong', label: 'Border Strong' },
     { token: 'shell-fg', label: 'Text' },
     { token: 'shell-fg-muted', label: 'Text Muted' },
     { token: 'shell-fg-subtle', label: 'Text Subtle' },
+    { token: 'shell-error', label: 'Error' },
+    { token: 'shell-warning', label: 'Warning' },
+    { token: 'shell-success', label: 'Success' },
   ];
 
   const resolved = $derived(resolveTokens(theme));

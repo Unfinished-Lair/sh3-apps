@@ -26,9 +26,3 @@ export interface ShardGroup {
   shardLabel: string;
   entries: ZoneEntry[];
 }
-
-/** Storage stats for persistent zones. */
-export interface StorageStats {
-  workspace: number;
-  user: number;
-}

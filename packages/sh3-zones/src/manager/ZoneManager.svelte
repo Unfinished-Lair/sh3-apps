@@ -9,6 +9,7 @@
     clearAllCaches,
     ZONES,
   } from '../zone-service';
+  import type { ZoneName } from 'sh3-core';
   import type { ZoneGroup, ShardGroup } from '../types';
   import TopBar from './TopBar.svelte';
   import ZoneView from './ZoneView.svelte';
@@ -43,24 +44,24 @@
     dialogOpen = true;
   }
 
-  function handleClearEntry(zone: string, shardId: string) {
+  function handleClearEntry(zone: ZoneName, shardId: string) {
     const label = zoneGroups
       .flatMap((g) => g.entries)
       .find((e) => e.zone === zone && e.shardId === shardId)?.shardLabel ?? shardId;
     confirm(
       'Clear entry',
       `Clear ${zone} data for ${label}?`,
-      () => clearEntry(zones, zone as any, shardId),
+      () => clearEntry(zones, zone, shardId),
     );
   }
 
-  function handleClearZone(zone: string) {
+  function handleClearZone(zone: ZoneName) {
     const group = zoneGroups.find((g) => g.zone === zone);
     const count = group?.entries.length ?? 0;
     confirm(
       'Clear zone',
       `Clear all ${zone} data? This affects ${count} shard${count !== 1 ? 's' : ''}.`,
-      () => clearEntireZone(zones, zone as any),
+      () => clearEntireZone(zones, zone),
     );
   }
 

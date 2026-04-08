@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { ZoneName } from 'sh3-core';
   import type { ShardGroup } from '../types';
   import EntryRow from './EntryRow.svelte';
 
@@ -8,7 +9,7 @@
     onclearshard,
   }: {
     groups: ShardGroup[];
-    onclearentry: (zone: string, shardId: string) => void;
+    onclearentry: (zone: ZoneName, shardId: string) => void;
     onclearshard: (shardId: string) => void;
   } = $props();
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { ZoneName } from 'sh3-core';
   import type { ZoneGroup } from '../types';
   import EntryRow from './EntryRow.svelte';
 
@@ -8,8 +9,8 @@
     onclearzone,
   }: {
     groups: ZoneGroup[];
-    onclearentry: (zone: string, shardId: string) => void;
-    onclearzone: (zone: string) => void;
+    onclearentry: (zone: ZoneName, shardId: string) => void;
+    onclearzone: (zone: ZoneName) => void;
   } = $props();
 
   let collapsed = $state<Record<string, boolean>>({});

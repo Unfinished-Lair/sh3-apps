@@ -1,27 +1,28 @@
 <script lang="ts">
   import type { ThemeState } from '../theme-manager';
   import {
-    allThemes,
     createTheme,
     duplicateTheme,
     deleteTheme,
     importTheme,
     exportTheme,
+    DEFAULT_THEME_ID,
   } from '../theme-manager';
   import { BUILTIN_PRESETS } from '../presets';
+  import type { DefaultTheme } from '../types';
 
   let {
     state,
     selectedThemeId,
     activeThemeId,
+    defaultTheme,
     onselect,
-    onactivate,
   }: {
     state: ThemeState;
     selectedThemeId: string;
     activeThemeId: string;
+    defaultTheme: DefaultTheme | null;
     onselect: (id: string) => void;
-    onactivate: (id: string) => void;
   } = $props();
 
   function handleNew() {
@@ -72,11 +73,27 @@
   }
 
   const isSelectedBuiltin = $derived(
-    BUILTIN_PRESETS.some(p => p.id === selectedThemeId)
+    selectedThemeId === DEFAULT_THEME_ID
+    || BUILTIN_PRESETS.some(p => p.id === selectedThemeId),
   );
 </script>
 
 <div class="sidebar">
+  {#if defaultTheme}
+    <div class="section-label">Default</div>
+    <button
+      class="theme-item"
+      class:selected={selectedThemeId === DEFAULT_THEME_ID}
+      class:active={activeThemeId === DEFAULT_THEME_ID}
+      onclick={() => onselect(DEFAULT_THEME_ID)}
+    >
+      <span class="name">{defaultTheme.name}</span>
+      {#if activeThemeId === DEFAULT_THEME_ID}
+        <span class="active-dot"></span>
+      {/if}
+    </button>
+  {/if}
+
   <div class="section-label">Built-in</div>
   {#each BUILTIN_PRESETS as theme}
     <button
@@ -84,7 +101,6 @@
       class:selected={selectedThemeId === theme.id}
       class:active={activeThemeId === theme.id}
       onclick={() => onselect(theme.id)}
-      ondblclick={() => onactivate(theme.id)}
     >
       <span class="lock">🔒</span>
       <span class="name">{theme.name}</span>
@@ -102,7 +118,6 @@
         class:selected={selectedThemeId === theme.id}
         class:active={activeThemeId === theme.id}
         onclick={() => onselect(theme.id)}
-        ondblclick={() => onactivate(theme.id)}
       >
         <span class="name">{theme.name}</span>
         {#if activeThemeId === theme.id}

@@ -1,12 +1,15 @@
 import { setTokenOverrides, clearTokenOverrides, getTokenOverrides } from 'sh3-core';
 import { BUILTIN_PRESETS, DARK } from './presets';
-import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken } from './types';
+import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken, type DefaultTheme } from './types';
 
 export interface ThemeState {
   activeThemeId: string;
   useDefault: boolean;
   userThemes: ThemeDefinition[];
 }
+
+/** Sentinel ID for the admin default pseudo-entry. */
+export const DEFAULT_THEME_ID = 'env-default';
 
 /**
  * Resolve the full token map for a theme. Starts from the Dark preset
@@ -19,21 +22,63 @@ export function resolveTokens(theme: ThemeDefinition): Record<string, string> {
 }
 
 /** Apply a theme by ID. Resolves tokens and calls sh3-core. */
-export function applyTheme(themeId: string, state: ThemeState): void {
-  const theme = findTheme(themeId, state);
+export function applyTheme(
+  themeId: string,
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null = null,
+): void {
+  const theme = findTheme(themeId, state, defaultTheme);
   if (!theme) return;
   setTokenOverrides(resolveTokens(theme));
 }
 
-/** Find a theme by ID across builtins and user themes. */
-export function findTheme(themeId: string, state: ThemeState): ThemeDefinition | undefined {
+/** Find a theme by ID across default, builtins, and user themes. */
+export function findTheme(
+  themeId: string,
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null = null,
+): ThemeDefinition | undefined {
+  if (themeId === DEFAULT_THEME_ID) return buildDefaultPseudoTheme(defaultTheme);
   return BUILTIN_PRESETS.find(t => t.id === themeId)
     ?? state.userThemes.find(t => t.id === themeId);
 }
 
-/** All themes in display order: builtins first, then user themes. */
-export function allThemes(state: ThemeState): ThemeDefinition[] {
-  return [...BUILTIN_PRESETS, ...state.userThemes];
+/** All themes in display order: default (if set), builtins, then user themes. */
+export function allThemes(
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null,
+): ThemeDefinition[] {
+  const def = buildDefaultPseudoTheme(defaultTheme);
+  return [...(def ? [def] : []), ...BUILTIN_PRESETS, ...state.userThemes];
+}
+
+/**
+ * Build a ThemeDefinition from the env-stored default.
+ * Returns undefined if no default is set.
+ */
+export function buildDefaultPseudoTheme(
+  defaultTheme: DefaultTheme | null,
+): ThemeDefinition | undefined {
+  if (!defaultTheme) return undefined;
+  return {
+    id: DEFAULT_THEME_ID,
+    name: defaultTheme.name,
+    builtin: true,
+    base: defaultTheme.base,
+    tokens: { ...defaultTheme.tokens },
+  };
+}
+
+/**
+ * Snapshot a theme for storage in env as the admin default.
+ * Resolves all tokens so the default is self-contained.
+ */
+export function snapshotForDefault(theme: ThemeDefinition): DefaultTheme {
+  return {
+    base: theme.builtin ? theme.id : theme.base,
+    tokens: resolveTokens(theme),
+    name: theme.name,
+  };
 }
 
 /** Create a new empty theme (based on Dark defaults). */
@@ -76,6 +121,14 @@ export function deleteTheme(themeId: string, state: ThemeState): boolean {
   return true;
 }
 
+/** Rename a user theme. Returns false if not found or builtin. */
+export function renameTheme(themeId: string, name: string, state: ThemeState): boolean {
+  const theme = state.userThemes.find(t => t.id === themeId);
+  if (!theme) return false;
+  theme.name = name;
+  return true;
+}
+
 /** Update a token on a user theme and apply live. */
 export function updateToken(
   themeId: string,
@@ -86,9 +139,7 @@ export function updateToken(
   const theme = state.userThemes.find(t => t.id === themeId);
   if (!theme) return;
   theme.tokens[token] = value;
-  if (state.activeThemeId === themeId) {
-    setTokenOverrides(resolveTokens(theme));
-  }
+  setTokenOverrides(resolveTokens(theme));
 }
 
 /** Remove a token override from a user theme (reverts to Dark default). */
@@ -100,9 +151,7 @@ export function clearToken(
   const theme = state.userThemes.find(t => t.id === themeId);
   if (!theme) return;
   delete theme.tokens[token];
-  if (state.activeThemeId === themeId) {
-    setTokenOverrides(resolveTokens(theme));
-  }
+  setTokenOverrides(resolveTokens(theme));
 }
 
 /** Export a theme as a .sh3theme.json object. */

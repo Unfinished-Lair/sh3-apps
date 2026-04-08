@@ -1,6 +1,8 @@
 {
   "name": "sh3-style",
   "version": "0.2.0",
+  "description": "Theme editor shard for SH3",
+  "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

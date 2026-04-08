@@ -2,7 +2,7 @@
   "name": "sh3-zones",
   "version": "0.1.0",
   "description": "Zone cache manager shard for SH3",
-  "author": "Salepate",
+  "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

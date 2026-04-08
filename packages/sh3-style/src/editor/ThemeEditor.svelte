@@ -4,7 +4,6 @@
   import { onDestroy } from 'svelte';
   import type { ThemeState } from '../theme-manager';
   import {
-    allThemes,
     applyTheme,
     findTheme,
     resolveTokens,

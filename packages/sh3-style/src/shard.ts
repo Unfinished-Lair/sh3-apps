@@ -71,11 +71,4 @@ export const shard: Shard = {
       },
     });
   },
-
-  deactivate() {
-    // Revert is handled per-view in ThemeEditor's onDestroy.
-    // The shard-level deactivate is a safety net — if for any reason
-    // the view unmount didn't run, the next shard activation will
-    // re-apply the confirmed theme anyway.
-  },
 };

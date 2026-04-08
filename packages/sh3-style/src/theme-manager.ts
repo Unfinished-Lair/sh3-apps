@@ -1,4 +1,4 @@
-import { setTokenOverrides, clearTokenOverrides, getTokenOverrides } from 'sh3-core';
+import { setTokenOverrides } from 'sh3-core';
 import { BUILTIN_PRESETS, DARK } from './presets';
 import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken, type DefaultTheme } from './types';
 

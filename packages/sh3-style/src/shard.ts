@@ -8,7 +8,7 @@ export const shard: Shard = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    version: '0.1.0',
+    version: '0.2.0',
     views: [{ id: 'sh3-style-editor', label: 'Style Editor' }],
   },
 

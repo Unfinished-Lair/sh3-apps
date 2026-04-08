@@ -35,3 +35,13 @@ export interface ThemeFile {
 
 /** Gradient modes supported by the editor. */
 export type GradientMode = 'vertical' | 'horizontal' | '4-corner';
+
+/** Shape of the admin-published default theme stored in env. */
+export interface DefaultTheme {
+  /** Built-in preset ID used as base, if applicable. */
+  base?: string;
+  /** Full resolved token overrides. */
+  tokens: Partial<Record<ThemeToken, string>>;
+  /** Display name for the default entry in the sidebar. */
+  name: string;
+}

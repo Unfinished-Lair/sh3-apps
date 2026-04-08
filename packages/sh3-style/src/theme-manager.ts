@@ -4,6 +4,7 @@ import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken } f
 
 export interface ThemeState {
   activeThemeId: string;
+  useDefault: boolean;
   userThemes: ThemeDefinition[];
 }
 

@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [svelte(), sh3CssInline(), sh3Artifact()],
   build: {
     lib: {
-      entry: './src/bundle.ts',
+      entry: './src/index.ts',
       formats: ['es'],
       fileName: 'sh3-zones',
     },

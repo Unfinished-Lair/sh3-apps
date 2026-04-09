@@ -2,7 +2,6 @@
   import type { MatchingConfig, ToolbarAction } from '../types';
   import type { RegistryEntry } from '../model/instance-registry';
   import type { ApiInternals } from '../model/api';
-  import { findBracketMatch, findIndentMatch } from '../model/matching';
   import { isModKey, applyIndent } from '../util/keybindings';
   import Toolbar from './Toolbar.svelte';
 
@@ -84,7 +83,7 @@
     }
 
     // Undo
-    if (e.key === 'z' && isModKey(e) && !e.shiftKey) {
+    if (e.key.toLowerCase() === 'z' && isModKey(e) && !e.shiftKey) {
       e.preventDefault();
       const result = entry.history.undo();
       if (result) {
@@ -99,7 +98,7 @@
     }
 
     // Redo
-    if ((e.key === 'y' && isModKey(e)) || (e.key === 'z' && isModKey(e) && e.shiftKey)) {
+    if ((e.key.toLowerCase() === 'y' && isModKey(e)) || (e.key.toLowerCase() === 'z' && isModKey(e) && e.shiftKey)) {
       e.preventDefault();
       const result = entry.history.redo();
       if (result) {
@@ -117,7 +116,7 @@
     if (e.key === 'Tab') {
       e.preventDefault();
       const el = e.currentTarget as HTMLTextAreaElement;
-      const result = applyIndent(local, el.selectionStart, el.selectionEnd, e.shiftKey);
+      const result = applyIndent(local, el.selectionStart, el.selectionEnd, e.shiftKey, matchingConfig?.indentUnit);
       if (result) {
         pushContent(result.content, result.selectionStart, result.selectionEnd);
         setCursor(result.selectionStart, result.selectionEnd);

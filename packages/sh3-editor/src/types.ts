@@ -70,12 +70,6 @@ export interface OpenDocumentOptions {
   fontSize?: number;
 }
 
-/** Full instance data stored in the registry. */
-export interface EditorInstance {
-  document: EditorDocument;
-  options: OpenDocumentOptions;
-}
-
 /** The public API surface exposed to consuming shards. */
 export interface EditorApi {
   getContent(instanceId: string): string | null;

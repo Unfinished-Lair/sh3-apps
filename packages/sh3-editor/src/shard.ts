@@ -64,6 +64,9 @@ export const shard: Shard = {
   },
 
   deactivate() {
+    internalsRef?.contentChange.clear();
+    internalsRef?.dirtyChange.clear();
+    internalsRef?.saveEvent.clear();
     registry?.clear();
     registry = null;
     apiRef = null;

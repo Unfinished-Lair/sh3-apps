@@ -12,8 +12,9 @@ export function applyIndent(
   selectionStart: number,
   selectionEnd: number,
   dedent: boolean,
+  indentUnit: number = 2,
 ): { content: string; selectionStart: number; selectionEnd: number } | null {
-  const indent = '  ';
+  const indent = ' '.repeat(indentUnit);
 
   // Single cursor, inserting indent
   if (selectionStart === selectionEnd && !dedent) {
@@ -32,7 +33,7 @@ export function applyIndent(
 
   const transformed = lines.map((line, i) => {
     if (dedent) {
-      const removed = line.match(/^ {1,2}/)?.[0].length ?? 0;
+      const removed = line.match(new RegExp(`^ {1,${indentUnit}}`))?.[0].length ?? 0;
       if (i === 0) newStart = Math.max(lineStart, selectionStart - removed);
       newEnd -= removed;
       return line.slice(removed);

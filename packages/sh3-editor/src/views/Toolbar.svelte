@@ -9,7 +9,7 @@
   let { actions, filePath = null }: Props = $props();
 
   // Group actions by their group field. Ungrouped actions go into '_default'.
-  let grouped = $derived(() => {
+  let grouped = $derived.by(() => {
     const groups: { key: string; items: ToolbarAction[] }[] = [];
     const map = new Map<string, ToolbarAction[]>();
 
@@ -29,7 +29,7 @@
 
 {#if actions.length > 0 || filePath}
   <div class="toolbar">
-    {#each grouped() as group, gi}
+    {#each grouped as group, gi}
       {#if gi > 0}
         <span class="toolbar-sep"></span>
       {/if}
@@ -48,7 +48,7 @@
 
     {#if filePath}
       <div class="toolbar-spacer"></div>
-      <span class="toolbar-path" title={filePath}>{filePath.split('/').pop()}</span>
+      <span class="toolbar-path" title={filePath}>{filePath.split(/[/\\]/).pop()}</span>
     {/if}
   </div>
 {/if}

@@ -26,15 +26,15 @@
 
 import { mount, unmount } from 'svelte';
 import DiagnosticPanel from './manager/DiagnosticPanel.svelte';
-import DiagnosticRoutes from './DiagnosticRoutes.svelte';
-import DiagnosticPromptModal from './DiagnosticPromptModal.svelte';
-import type { Shard, ViewFactory, ViewHandle, MountContext, LayoutNode } from '../../api';
+import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
+import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
+import type { Shard, ViewFactory, ViewHandle, MountContext, LayoutNode } from 'sh3-core';
 import {
   shell,
   getActiveApp,
   spliceIntoActiveLayout,
   inspectActiveLayout,
-} from '../../api';
+} from 'sh3-core';
 
 type Behavior = 'dock' | 'silent';
 

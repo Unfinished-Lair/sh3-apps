@@ -12,7 +12,7 @@ export const app: App = {
   manifest: {
     id: 'diagnostic-app',
     label: 'Diagnostic',
-    version: '0.2.0',
+    version: '0.2.1',
     requiredShards: ['diagnostic', 'sh3-zones'],
     layoutVersion: 1,
     admin: true,

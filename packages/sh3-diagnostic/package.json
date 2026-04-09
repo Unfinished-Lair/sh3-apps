@@ -1,7 +1,7 @@
 {
   "name": "sh3-zones",
-  "version": "0.1.0",
-  "description": "Zone cache manager shard for SH3",
+  "version": "0.2.1",
+  "description": "Diagnostic tool used to debug/develop sh3 apps",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",

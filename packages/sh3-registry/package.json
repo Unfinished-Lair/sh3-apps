@@ -5,7 +5,7 @@
   "private": true,
   "description": "SH3 registry manager — server shard for hosting and managing a package registry",
   "scripts": {
-    "build": "tsc -p tsconfig.server.json && vite build",
+    "build:artifact": "tsc -p tsconfig.server.json && vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build"
   },

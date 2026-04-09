@@ -5,7 +5,7 @@ export const app: App = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    version: '0.2.1',
+    version: '0.2.2',
     requiredShards: ['sh3-style'],
     layoutVersion: 1,
   },

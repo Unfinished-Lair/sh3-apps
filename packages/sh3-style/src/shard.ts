@@ -18,6 +18,9 @@ interface StyleEnv {
 // Module-level refs so autostart and deactivate can access shard state.
 let stateRef: ThemeState | null = null;
 let envRef: StyleEnv | null = null;
+// True once autostart() has run (env is hydrated). Before this point,
+// applyConfirmed must not permanently mutate useDefault.
+let envHydrated = false;
 
 /**
  * Restore the confirmed theme (undo any in-progress preview).
@@ -33,21 +36,22 @@ function applyConfirmed(state: ThemeState, env: StyleEnv | null): void {
     const pseudo = buildDefaultPseudoTheme(env?.defaultTheme ?? null);
     if (pseudo) {
       setTokenOverrides(resolveTokens(pseudo));
-    } else {
-      // No admin default exists (anymore) — fall back to activeThemeId.
-      state.useDefault = false;
-      applyTheme(state.activeThemeId, state);
+      return;
     }
-  } else {
-    applyTheme(state.activeThemeId, state);
+    // No admin default available. If env is hydrated this is permanent
+    // (admin never set a default); if not, autostart() will retry.
+    if (envHydrated) {
+      state.useDefault = false;
+    }
   }
+  applyTheme(state.activeThemeId, state);
 }
 
 export const shard: Shard = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    version: '0.2.1',
+    version: '0.2.2',
     views: [{ id: 'sh3-style-editor', label: 'Style Editor' }],
   },
 
@@ -97,6 +101,7 @@ export const shard: Shard = {
   // clients, even those that never open the Style app. This hook runs
   // after env hydration, so the admin default is available.
   autostart() {
+    envHydrated = true;
     if (stateRef && envRef) {
       applyConfirmed(stateRef, envRef);
     }
@@ -112,5 +117,6 @@ export const shard: Shard = {
     restoreConfirmedTheme();
     stateRef = null;
     envRef = null;
+    envHydrated = false;
   },
 };

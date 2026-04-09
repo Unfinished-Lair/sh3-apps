@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.2.1
+## 0.2.2
+- Defer `useDefault = false` until after env hydration, preventing `activate()` from permanently discarding the admin default theme before `autostart()` can apply it
 
+## 0.2.1
+- **Default theme not applying to pristine clients** -- added `shard.autostart()` so the theme shard runs at boot for all clients. Changed `useDefault` initial state to `true` so new clients pick up the admin default. The `autostart` hook re-applies the theme after env hydration, when the server-stored default is available.
 ### Bug fixes
 
 - **Preview persists on Home button** -- added `shard.suspend()` hook to restore the confirmed theme when navigating to Home. Also added `app.deactivate()` for the app-switch path.

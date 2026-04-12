@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as publish from './publish.mjs';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -354,5 +354,189 @@ describe('diffPackage', () => {
     const pkg = { id: 'sh3-editor', version: '0.1.1' };
     const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
     assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'bump', oldVersion: '0.1.0' });
+  });
+});
+
+describe('applyPackageUpdate', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+    mkdirSync(join(tmp, 'packages'));
+    mkdirSync(join(tmp, '_pages', 'bundles'), { recursive: true });
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  function makePkg(id, version, { type = 'shard', withServer = false, manifestVersion = null } = {}) {
+    const pkgDir = join(tmp, 'packages', id);
+    const artifactDir = join(pkgDir, 'dist', 'artifact');
+    mkdirSync(artifactDir, { recursive: true });
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: id, version }));
+    const manifest = {
+      id,
+      type,
+      label: id,
+      version: manifestVersion ?? version,
+      description: 'test pkg',
+      author: 'test-author',
+      contractVersion: 1,
+    };
+    writeFileSync(join(artifactDir, 'manifest.json'), JSON.stringify(manifest));
+    writeFileSync(join(artifactDir, 'client.js'), `export const client = '${id}-${version}';`);
+    if (withServer) {
+      writeFileSync(join(artifactDir, 'server.js'), `export const server = '${id}-${version}';`);
+    }
+    return { id, version, dir: pkgDir, artifactDir };
+  }
+
+  it('adds a new package entry for a "new" outcome', () => {
+    setup();
+    try {
+      const pkg = makePkg('sh3-editor', '0.1.0');
+      const reg = { version: 1, packages: [] };
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      assert.equal(reg.packages.length, 1);
+      const entry = reg.packages[0];
+      assert.equal(entry.id, 'sh3-editor');
+      assert.equal(entry.type, 'shard');
+      assert.equal(entry.versions.length, 1);
+      assert.equal(entry.versions[0].version, '0.1.0');
+      assert.equal(entry.versions[0].bundleUrl, 'bundles/sh3-editor-0.1.0.js');
+      assert.match(entry.versions[0].integrity, /^sha384-/);
+      assert.equal(entry.versions[0].serverBundleUrl, undefined);
+
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('includes serverBundleUrl when server.js present', () => {
+    setup();
+    try {
+      const pkg = makePkg('sh3-registry', '0.1.2', { type: 'combo', withServer: true });
+      const reg = { version: 1, packages: [] };
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      const entry = reg.packages[0];
+      assert.equal(entry.type, 'combo');
+      assert.equal(entry.versions[0].serverBundleUrl, 'bundles/sh3-registry-0.1.2-server.js');
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.2-server.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('replaces old bundles on a bump', () => {
+    setup();
+    try {
+      // Seed registry with an "old" version
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js'), 'old-content');
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor',
+            type: 'shard',
+            label: 'Editor',
+            description: 'old',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-old' }],
+          },
+        ],
+      };
+
+      const pkg = makePkg('sh3-editor', '0.2.0');
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      // New bundle exists, old bundle is gone
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.2.0.js')));
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js')));
+
+      // Registry entry shows new version only
+      assert.equal(reg.packages.length, 1);
+      assert.equal(reg.packages[0].versions.length, 1);
+      assert.equal(reg.packages[0].versions[0].version, '0.2.0');
+    } finally {
+      teardown();
+    }
+  });
+
+  it('replaces old server bundle too when previous had one', () => {
+    setup();
+    try {
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.0.js'), 'old-c');
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.0-server.js'), 'old-s');
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-registry',
+            type: 'combo',
+            label: 'Registry',
+            description: 'old',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-registry-0.1.0.js', integrity: 'sha384-old', serverBundleUrl: 'bundles/sh3-registry-0.1.0-server.js' }],
+          },
+        ],
+      };
+
+      const pkg = makePkg('sh3-registry', '0.2.0', { type: 'combo', withServer: true });
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.0.js')));
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.0-server.js')));
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.2.0.js')));
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.2.0-server.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('fails fast when manifest.version disagrees with package.json version', () => {
+    setup();
+    try {
+      const pkg = makePkg('sh3-editor', '0.2.0', { manifestVersion: '0.1.0' });
+      const reg = { version: 1, packages: [] };
+      assert.throws(
+        () => publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg),
+        /version.*mismatch/i,
+      );
+    } finally {
+      teardown();
+    }
+  });
+
+  it('refreshes label/description/author from manifest on bump', () => {
+    setup();
+    try {
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor',
+            type: 'shard',
+            label: 'Old Label',
+            description: 'old desc',
+            author: { name: 'old' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-old' }],
+          },
+        ],
+      };
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js'), 'old');
+
+      const pkg = makePkg('sh3-editor', '0.2.0');
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      // The fixture's manifest has description 'test pkg' and author 'test-author'
+      assert.equal(reg.packages[0].description, 'test pkg');
+      assert.equal(reg.packages[0].author.name, 'test-author');
+    } finally {
+      teardown();
+    }
   });
 });

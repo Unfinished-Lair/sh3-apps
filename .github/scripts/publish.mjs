@@ -117,7 +117,77 @@ export function diffPackage(pkg, liveRegistry) {
 }
 
 export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
-  throw new Error('not implemented');
+  const manifestPath = join(pkg.artifactDir, 'manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+
+  // Guardrail: manifest.json.version must match package.json.version.
+  // This check becomes a no-op after upstream ADR-1 lands.
+  if (manifest.version !== pkg.version) {
+    throw new Error(
+      `Version mismatch for ${pkg.id}: package.json says ${pkg.version}, manifest.json says ${manifest.version}. Bump both together.`,
+    );
+  }
+
+  const bundlesDir = join(pagesDir, 'bundles');
+  mkdirSync(bundlesDir, { recursive: true });
+
+  // ---- Delete old bundles if there was a previous entry ----
+  const existingIdx = liveRegistry.packages.findIndex((p) => p.id === pkg.id);
+  if (existingIdx >= 0) {
+    const oldEntry = liveRegistry.packages[existingIdx];
+    for (const ver of oldEntry.versions) {
+      const oldClient = join(pagesDir, ver.bundleUrl);
+      if (existsSync(oldClient)) unlinkSync(oldClient);
+      if (ver.serverBundleUrl) {
+        const oldServer = join(pagesDir, ver.serverBundleUrl);
+        if (existsSync(oldServer)) unlinkSync(oldServer);
+      }
+    }
+  }
+
+  // ---- Copy new bundles in ----
+  const clientSrc = join(pkg.artifactDir, 'client.js');
+  const clientDst = join(bundlesDir, `${pkg.id}-${pkg.version}.js`);
+  copyFileSync(clientSrc, clientDst);
+  const integrity = computeIntegrity(clientDst);
+
+  let serverBundleUrl;
+  const serverSrc = join(pkg.artifactDir, 'server.js');
+  if (existsSync(serverSrc)) {
+    const serverDst = join(bundlesDir, `${pkg.id}-${pkg.version}-server.js`);
+    copyFileSync(serverSrc, serverDst);
+    serverBundleUrl = `bundles/${pkg.id}-${pkg.version}-server.js`;
+  }
+
+  // ---- Build new entry ----
+  const versionEntry = {
+    version: pkg.version,
+    contractVersion: String(manifest.contractVersion ?? 1),
+    bundleUrl: `bundles/${pkg.id}-${pkg.version}.js`,
+    integrity,
+  };
+  if (serverBundleUrl) versionEntry.serverBundleUrl = serverBundleUrl;
+
+  const authorName = typeof manifest.author === 'string'
+    ? manifest.author
+    : (manifest.author?.name ?? 'Unknown');
+
+  const newEntry = {
+    id: manifest.id,
+    type: manifest.type,
+    label: manifest.label,
+    description: manifest.description ?? '',
+    author: { name: authorName },
+    versions: [versionEntry],
+  };
+
+  if (existingIdx >= 0) {
+    liveRegistry.packages[existingIdx] = newEntry;
+  } else {
+    liveRegistry.packages.push(newEntry);
+  }
+
+  return liveRegistry;
 }
 
 // Entry point

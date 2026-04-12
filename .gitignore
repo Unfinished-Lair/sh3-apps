@@ -3,3 +3,4 @@ dist/
 test-server/
 .claude/settings.local.json
 .worktrees/
+docs/records.zip

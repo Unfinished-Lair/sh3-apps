@@ -52,11 +52,17 @@ export function computeIntegrity(filePath) {
 }
 
 export function loadLiveRegistry(pagesDir) {
-  throw new Error('not implemented');
+  const p = join(pagesDir, 'registry.json');
+  if (!existsSync(p)) return { version: 1, packages: [] };
+  try {
+    return JSON.parse(readFileSync(p, 'utf-8'));
+  } catch {
+    return { version: 1, packages: [] };
+  }
 }
 
 export function saveRegistry(pagesDir, registry) {
-  throw new Error('not implemented');
+  writeFileSync(join(pagesDir, 'registry.json'), JSON.stringify(registry, null, 2));
 }
 
 export function discoverPackages(repoRoot) {

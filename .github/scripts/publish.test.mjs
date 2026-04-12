@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as publish from './publish.mjs';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -153,6 +153,74 @@ describe('computeIntegrity', () => {
       writeFileSync(p1, 'one');
       writeFileSync(p2, 'two');
       assert.notEqual(publish.computeIntegrity(p1), publish.computeIntegrity(p2));
+    } finally {
+      teardown();
+    }
+  });
+});
+
+describe('loadLiveRegistry', () => {
+  let tmp;
+  function setup() { tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-')); }
+  function teardown() { rmSync(tmp, { recursive: true, force: true }); }
+
+  it('returns empty registry if registry.json missing', () => {
+    setup();
+    try {
+      const reg = publish.loadLiveRegistry(tmp);
+      assert.deepEqual(reg, { version: 1, packages: [] });
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns parsed registry.json if present', () => {
+    setup();
+    try {
+      const reg = { version: 1, packages: [{ id: 'sh3-editor', type: 'shard', label: 'Editor', description: '', author: { name: 'x' }, versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-xxx' }] }] };
+      writeFileSync(join(tmp, 'registry.json'), JSON.stringify(reg));
+      assert.deepEqual(publish.loadLiveRegistry(tmp), reg);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns empty registry on malformed JSON', () => {
+    setup();
+    try {
+      writeFileSync(join(tmp, 'registry.json'), 'not json at all');
+      const reg = publish.loadLiveRegistry(tmp);
+      assert.deepEqual(reg, { version: 1, packages: [] });
+    } finally {
+      teardown();
+    }
+  });
+});
+
+describe('saveRegistry', () => {
+  let tmp;
+  function setup() { tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-')); }
+  function teardown() { rmSync(tmp, { recursive: true, force: true }); }
+
+  it('writes registry.json with 2-space indent', () => {
+    setup();
+    try {
+      const reg = { version: 1, packages: [] };
+      publish.saveRegistry(tmp, reg);
+      const content = readFileSync(join(tmp, 'registry.json'), 'utf-8');
+      assert.equal(content, JSON.stringify(reg, null, 2));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('round-trips through load and save', () => {
+    setup();
+    try {
+      const reg = { version: 1, packages: [{ id: 'p', type: 'app', label: 'P', description: 'desc', author: { name: 'a' }, versions: [{ version: '1.0.0', contractVersion: '1', bundleUrl: 'bundles/p-1.0.0.js', integrity: 'sha384-xxx' }] }] };
+      publish.saveRegistry(tmp, reg);
+      const loaded = publish.loadLiveRegistry(tmp);
+      assert.deepEqual(loaded, reg);
     } finally {
       teardown();
     }

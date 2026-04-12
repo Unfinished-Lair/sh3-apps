@@ -1,0 +1,7 @@
+dist/artifact
+src
+*.ts
+!dist/types.d.ts
+vite.config.ts
+vite.artifact.ts
+tsconfig*.json

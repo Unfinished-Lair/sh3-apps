@@ -3,6 +3,7 @@ import { BUILTIN_PRESETS, DARK } from './presets';
 import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken, type DefaultTheme } from './types';
 
 export interface ThemeState {
+  [key: string]: unknown;
   activeThemeId: string;
   useDefault: boolean;
   userThemes: ThemeDefinition[];

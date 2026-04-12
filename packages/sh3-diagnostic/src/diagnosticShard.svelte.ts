@@ -28,7 +28,7 @@ import { mount, unmount } from 'svelte';
 import DiagnosticPanel from './manager/DiagnosticPanel.svelte';
 import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
 import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
-import type { Shard, ViewFactory, ViewHandle, MountContext, LayoutNode } from 'sh3-core';
+import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode } from 'sh3-core';
 import {
   shell,
   getActiveApp,
@@ -38,11 +38,10 @@ import {
 
 type Behavior = 'dock' | 'silent';
 
-export const diagnosticShard: Shard = {
+export const diagnosticShard: SourceShard = {
   manifest: {
     id: 'diagnostic',
     label: 'Diagnostic',
-    version: '0.1.0',
     views: [
       { id: 'diagnostic:panel', label: 'Diagnostic' },
       { id: 'diagnostic:routes', label: 'API Routes' },
@@ -110,7 +109,7 @@ export const diagnosticShard: Shard = {
 
 function tryDock(): void {
   const { root } = inspectActiveLayout();
-  if (!containsTabs(root)) return;
+  if (!containsTabs(root.docked)) return;
   try {
     spliceIntoActiveLayout({
       slotId: 'diagnostic.panel',

@@ -22,13 +22,12 @@
 
 import { mount, unmount } from 'svelte';
 import MockPanel from './MockPanel.svelte';
-import type { Shard, ViewFactory, ViewHandle, MountContext } from 'sh3-core';
+import type { SourceShard, ViewFactory, ViewHandle, MountContext } from 'sh3-core';
 
-export const mockShard: Shard = {
+export const mockShard: SourceShard = {
   manifest: {
     id: 'mock',
     label: 'Mock',
-    version: '0.1.0',
     views: [{ id: 'mock:panel', label: 'Mock Panel' }],
   },
   activate(ctx) {

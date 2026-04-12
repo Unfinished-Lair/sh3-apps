@@ -1,4 +1,4 @@
-import type { Shard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext } from 'sh3-core';
 import { setTokenOverrides } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import type { ThemeState } from './theme-manager';
@@ -12,6 +12,7 @@ import ThemeEditor from './editor/ThemeEditor.svelte';
 
 /** Shape of the env state for sh3-style. */
 interface StyleEnv {
+  [key: string]: unknown;
   defaultTheme: DefaultTheme | null;
 }
 
@@ -47,11 +48,10 @@ function applyConfirmed(state: ThemeState, env: StyleEnv | null): void {
   applyTheme(state.activeThemeId, state);
 }
 
-export const shard: Shard = {
+export const shard: SourceShard = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    version: '0.2.2',
     views: [{ id: 'sh3-style-editor', label: 'Style Editor' }],
   },
 

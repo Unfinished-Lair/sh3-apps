@@ -10,13 +10,12 @@
  * user launches mock app from home.
  */
 
-import type { App } from 'sh3-core';
+import type { SourceApp } from 'sh3-core';
 
-export const mockApp: App = {
+export const mockApp: SourceApp = {
   manifest: {
     id: 'mock-app',
     label: 'Mock App',
-    version: '0.1.0',
     requiredShards: ['mock'],
     layoutVersion: 2,
   },

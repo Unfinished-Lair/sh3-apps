@@ -1,11 +1,10 @@
-import type { App } from 'sh3-core';
+import type { SourceApp } from 'sh3-core';
 import { restoreConfirmedTheme } from './shard';
 
-export const app: App = {
+export const app: SourceApp = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    version: '0.2.2',
     requiredShards: ['sh3-style'],
     layoutVersion: 1,
   },

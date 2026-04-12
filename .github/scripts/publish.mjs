@@ -66,7 +66,41 @@ export function saveRegistry(pagesDir, registry) {
 }
 
 export function discoverPackages(repoRoot) {
-  throw new Error('not implemented');
+  const packagesDir = join(repoRoot, 'packages');
+  if (!existsSync(packagesDir)) return [];
+
+  const entries = readdirSync(packagesDir);
+  const result = [];
+
+  for (const name of entries) {
+    const pkgDir = join(packagesDir, name);
+    if (!statSync(pkgDir).isDirectory()) continue;
+
+    const pkgJsonPath = join(pkgDir, 'package.json');
+    if (!existsSync(pkgJsonPath)) continue;
+
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+    if (!pkgJson.version) {
+      throw new Error(`Package "${name}" is missing version field in package.json`);
+    }
+
+    const artifactDir = join(pkgDir, 'dist', 'artifact');
+    const manifestPath = join(artifactDir, 'manifest.json');
+    if (!existsSync(manifestPath)) {
+      throw new Error(
+        `Package "${name}" has missing artifact at ${manifestPath}. Run 'npm run build:artifact' in the package first.`,
+      );
+    }
+
+    result.push({
+      id: pkgJson.name,
+      version: pkgJson.version,
+      dir: pkgDir,
+      artifactDir,
+    });
+  }
+
+  return result;
 }
 
 export function diffPackage(pkg, liveRegistry) {

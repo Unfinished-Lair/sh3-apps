@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as publish from './publish.mjs';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -221,6 +221,95 @@ describe('saveRegistry', () => {
       publish.saveRegistry(tmp, reg);
       const loaded = publish.loadLiveRegistry(tmp);
       assert.deepEqual(loaded, reg);
+    } finally {
+      teardown();
+    }
+  });
+});
+
+describe('discoverPackages', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+    mkdirSync(join(tmp, 'packages'));
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  function makePkg(name, version, withArtifact = true, artifactSubdir = 'artifact') {
+    const pkgDir = join(tmp, 'packages', name);
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name, version }));
+    if (withArtifact) {
+      const artDir = join(pkgDir, 'dist', artifactSubdir);
+      mkdirSync(artDir, { recursive: true });
+      writeFileSync(
+        join(artDir, 'manifest.json'),
+        JSON.stringify({ id: name, type: 'shard', label: name, version }),
+      );
+      writeFileSync(join(artDir, 'client.js'), 'export const x = 1;');
+    }
+  }
+
+  it('discovers packages with built artifacts', () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0');
+      makePkg('sh3-diagnostic', '0.2.1');
+      const pkgs = publish.discoverPackages(tmp);
+      const ids = pkgs.map((p) => p.id).sort();
+      assert.deepEqual(ids, ['sh3-diagnostic', 'sh3-editor']);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('reports each package with id, version, dir, artifactDir', () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0');
+      const pkgs = publish.discoverPackages(tmp);
+      assert.equal(pkgs.length, 1);
+      const p = pkgs[0];
+      assert.equal(p.id, 'sh3-editor');
+      assert.equal(p.version, '0.1.0');
+      assert.ok(p.dir.endsWith('sh3-editor'));
+      assert.ok(p.artifactDir.endsWith(join('sh3-editor', 'dist', 'artifact')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('throws when a package is missing dist/artifact/manifest.json', () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0', false);
+      assert.throws(() => publish.discoverPackages(tmp), /missing artifact/i);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns empty array when no packages exist', () => {
+    setup();
+    try {
+      const pkgs = publish.discoverPackages(tmp);
+      assert.deepEqual(pkgs, []);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('validates package.json has a version field', () => {
+    setup();
+    try {
+      const pkgDir = join(tmp, 'packages', 'broken');
+      mkdirSync(pkgDir, { recursive: true });
+      writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: 'broken' }));
+      assert.throws(() => publish.discoverPackages(tmp), /missing version/i);
     } finally {
       teardown();
     }

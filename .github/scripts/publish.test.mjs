@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as publish from './publish.mjs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 describe('publish.mjs', () => {
   it('loads without errors', () => {
@@ -102,5 +106,55 @@ describe('isNpmEligible', () => {
   it('major bump eligible', () => {
     assert.equal(publish.isNpmEligible('bump', '0.1.0', '1.0.0'), true);
     assert.equal(publish.isNpmEligible('bump', '1.99.99', '2.0.0'), true);
+  });
+});
+
+describe('computeIntegrity', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  it('produces sha384-<base64> prefix', () => {
+    setup();
+    try {
+      const p = join(tmp, 'bundle.js');
+      writeFileSync(p, 'hello world');
+      const integrity = publish.computeIntegrity(p);
+      assert.match(integrity, /^sha384-[A-Za-z0-9+/]+=*$/);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('matches node:crypto sha384 base64 directly', () => {
+    setup();
+    try {
+      const p = join(tmp, 'bundle.js');
+      const content = 'const x = 42;';
+      writeFileSync(p, content);
+      const expected = 'sha384-' + createHash('sha384').update(content).digest('base64');
+      assert.equal(publish.computeIntegrity(p), expected);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('produces different hashes for different content', () => {
+    setup();
+    try {
+      const p1 = join(tmp, 'a.js');
+      const p2 = join(tmp, 'b.js');
+      writeFileSync(p1, 'one');
+      writeFileSync(p2, 'two');
+      assert.notEqual(publish.computeIntegrity(p1), publish.computeIntegrity(p2));
+    } finally {
+      teardown();
+    }
   });
 });

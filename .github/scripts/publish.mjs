@@ -20,6 +20,10 @@
  * Exit code 0 on success (including "nothing to do"); non-zero on any error.
  */
 
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+
 // Helpers exported for unit tests.
 export function parseVer(v) {
   const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v);
@@ -42,7 +46,9 @@ export function isNpmEligible(outcome, oldVer, newVer) {
 }
 
 export function computeIntegrity(filePath) {
-  throw new Error('not implemented');
+  const bytes = readFileSync(filePath);
+  const hash = createHash('sha384').update(bytes).digest('base64');
+  return `sha384-${hash}`;
 }
 
 export function loadLiveRegistry(pagesDir) {

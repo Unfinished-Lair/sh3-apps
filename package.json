@@ -4,6 +4,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "scripts": {
+    "test:publish": "node --test .github/scripts/publish.test.mjs"
+  },
   "devDependencies": {
     "sh3-core": "^0.5.0"
   }

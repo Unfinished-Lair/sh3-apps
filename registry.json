@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "id": "diagnostic-app",
+      "type": "combo",
+      "label": "Diagnostic",
+      "description": "Diagnostic tool used to debug/develop sh3 apps",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "versions": [
+        {
+          "version": "0.2.2",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/diagnostic-app-0.2.2.js",
+          "integrity": "sha384-BFe6k6DTU1biNS5pnwNynlEjjp5xGeltWtsY4rzp+tcNtzWcnmqI6svtKGCRFd3w"
+        }
+      ]
+    },
+    {
+      "id": "sh3-editor",
+      "type": "shard",
+      "label": "Editor",
+      "description": "Reusable text editor shard for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "versions": [
+        {
+          "version": "0.1.1",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/sh3-editor-0.1.1.js",
+          "integrity": "sha384-iRLtGZGkf63Awosxzvau2XY5tuO4pSVDoVdjbA6k2Ki6AIM7tpH3CP6mYLxTZrSc"
+        }
+      ]
+    },
+    {
+      "id": "mock-app",
+      "type": "combo",
+      "label": "Mock App",
+      "description": "SH3 Mock Application",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "versions": [
+        {
+          "version": "0.1.1",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/mock-app-0.1.1.js",
+          "integrity": "sha384-rfgaRUd+SJqX8FjHzAUV/jsea/k7nGAF9JPWCgAhg5E5eECi3lMQBxOABE5w0a2C"
+        }
+      ]
+    },
+    {
+      "id": "sh3-registry",
+      "type": "combo",
+      "label": "Registry Manager",
+      "description": "Host and manage an SH3 package registry",
+      "author": {
+        "name": "SH3"
+      },
+      "versions": [
+        {
+          "version": "0.1.3",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/sh3-registry-0.1.3.js",
+          "integrity": "sha384-lmsk6XF1JfI5HFnBFQ6CZ0/Rhm9NppK3KvURF+vGEcUhW/+BgGm/6bq2gvi4nHAJ",
+          "serverBundleUrl": "bundles/sh3-registry-0.1.3-server.js"
+        }
+      ]
+    },
+    {
+      "id": "sh3-style",
+      "type": "combo",
+      "label": "Style",
+      "description": "Theme editor shard for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "versions": [
+        {
+          "version": "0.2.3",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/sh3-style-0.2.3.js",
+          "integrity": "sha384-wDSxxamrNX6ZWeo/J2iiztTdoN+JIUapCZPnuURKlX7PzuZghg4CEerV0FkGcvMG"
+        }
+      ]
+    }
+  ]
+}

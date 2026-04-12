@@ -72,3 +72,35 @@ describe('compareVer', () => {
     assert.ok(publish.compareVer(v('1.2.0'), v('1.1.99')) > 0);
   });
 });
+
+describe('isNpmEligible', () => {
+  it('new outcome always eligible (first publish)', () => {
+    assert.equal(publish.isNpmEligible('new', null, '0.1.0'), true);
+    assert.equal(publish.isNpmEligible('new', null, '1.0.0'), true);
+  });
+
+  it('unchanged outcome never eligible', () => {
+    assert.equal(publish.isNpmEligible('unchanged', '0.1.0', '0.1.0'), false);
+  });
+
+  it('regression outcome never eligible', () => {
+    assert.equal(publish.isNpmEligible('regression', '0.2.0', '0.1.9'), false);
+  });
+
+  it('patch bump not eligible', () => {
+    assert.equal(publish.isNpmEligible('bump', '0.1.0', '0.1.1'), false);
+    assert.equal(publish.isNpmEligible('bump', '1.2.3', '1.2.4'), false);
+    assert.equal(publish.isNpmEligible('bump', '10.20.30', '10.20.99'), false);
+  });
+
+  it('minor bump eligible', () => {
+    assert.equal(publish.isNpmEligible('bump', '0.1.0', '0.2.0'), true);
+    assert.equal(publish.isNpmEligible('bump', '0.1.5', '0.2.0'), true);
+    assert.equal(publish.isNpmEligible('bump', '1.2.3', '1.3.0'), true);
+  });
+
+  it('major bump eligible', () => {
+    assert.equal(publish.isNpmEligible('bump', '0.1.0', '1.0.0'), true);
+    assert.equal(publish.isNpmEligible('bump', '1.99.99', '2.0.0'), true);
+  });
+});

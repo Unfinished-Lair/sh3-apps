@@ -34,7 +34,11 @@ export function compareVer(a, b) {
 }
 
 export function isNpmEligible(outcome, oldVer, newVer) {
-  throw new Error('not implemented');
+  if (outcome === 'new') return true;
+  if (outcome !== 'bump') return false;
+  const o = parseVer(oldVer);
+  const n = parseVer(newVer);
+  return n.major > o.major || (n.major === o.major && n.minor > o.minor);
 }
 
 export function computeIntegrity(filePath) {

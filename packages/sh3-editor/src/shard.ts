@@ -54,6 +54,7 @@ export const shard: SourceShard = {
         });
 
         return {
+          closable: true,
           unmount() {
             unmount(component);
           },

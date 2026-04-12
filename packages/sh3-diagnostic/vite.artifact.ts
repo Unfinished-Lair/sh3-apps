@@ -8,7 +8,7 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       formats: ['es'],
-      fileName: 'sh3-zones',
+      fileName: 'sh3-diagnostic',
     },
     outDir: 'dist/artifact',
     rollupOptions: {

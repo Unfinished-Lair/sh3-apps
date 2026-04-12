@@ -1,5 +1,5 @@
 {
-  "name": "sh3-zones",
+  "name": "sh3-diagnostic",
   "version": "0.2.1",
   "description": "Diagnostic tool used to debug/develop sh3 apps",
   "author": "@unfinished-lair",

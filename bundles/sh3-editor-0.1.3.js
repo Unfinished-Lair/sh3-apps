@@ -382,6 +382,7 @@ const U = {
           }
         });
         return {
+          closable: !0,
           unmount() {
             Y(u);
           }

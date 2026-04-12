@@ -541,10 +541,11 @@ describe('main()', () => {
   }
 
   function makePkg(id, version, opts = {}) {
+    const npmName = opts.npmName ?? id;
     const pkgDir = join(tmp, 'packages', id);
     const artifactDir = join(pkgDir, 'dist', 'artifact');
     mkdirSync(artifactDir, { recursive: true });
-    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: id, version }));
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: npmName, version }));
     const manifest = {
       id,
       type: opts.type ?? 'shard',
@@ -568,14 +569,14 @@ describe('main()', () => {
   it('publishes all packages on first run (empty registry)', async () => {
     setup();
     try {
-      makePkg('sh3-editor', '0.1.0');
+      makePkg('sh3-editor', '0.1.0', { npmName: '@unfinished-lair/sh3-editor' });
       makePkg('sh3-diagnostic', '0.2.1', { type: 'combo', withServer: true });
 
       const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
 
       assert.deepEqual([...result.registryPublished].sort(), ['sh3-diagnostic', 'sh3-editor']);
       // sh3-editor is in npm_eligible because new publishes always are
-      assert.deepEqual([...result.npmEligible].sort(), ['sh3-editor']);
+      assert.deepEqual([...result.npmEligible].sort(), ['@unfinished-lair/sh3-editor']);
 
       const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
       assert.equal(reg.packages.length, 2);
@@ -587,7 +588,7 @@ describe('main()', () => {
   it('registry-only on a patch bump of sh3-editor', async () => {
     setup();
     try {
-      makePkg('sh3-editor', '0.1.1');
+      makePkg('sh3-editor', '0.1.1', { npmName: '@unfinished-lair/sh3-editor' });
       seedRegistry({
         version: 1,
         packages: [
@@ -612,7 +613,7 @@ describe('main()', () => {
   it('registry + npm on a minor bump of sh3-editor', async () => {
     setup();
     try {
-      makePkg('sh3-editor', '0.2.0');
+      makePkg('sh3-editor', '0.2.0', { npmName: '@unfinished-lair/sh3-editor' });
       seedRegistry({
         version: 1,
         packages: [
@@ -628,7 +629,7 @@ describe('main()', () => {
       const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
 
       assert.deepEqual(result.registryPublished, ['sh3-editor']);
-      assert.deepEqual(result.npmEligible, ['sh3-editor']);
+      assert.deepEqual(result.npmEligible, ['@unfinished-lair/sh3-editor']);
     } finally {
       teardown();
     }
@@ -637,7 +638,7 @@ describe('main()', () => {
   it('no-op when nothing changed', async () => {
     setup();
     try {
-      makePkg('sh3-editor', '0.1.0');
+      makePkg('sh3-editor', '0.1.0', { npmName: '@unfinished-lair/sh3-editor' });
       seedRegistry({
         version: 1,
         packages: [
@@ -661,7 +662,7 @@ describe('main()', () => {
   it('fails fast on regression', async () => {
     setup();
     try {
-      makePkg('sh3-editor', '0.1.0');
+      makePkg('sh3-editor', '0.1.0', { npmName: '@unfinished-lair/sh3-editor' });
       seedRegistry({
         version: 1,
         packages: [

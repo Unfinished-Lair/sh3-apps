@@ -92,8 +92,10 @@ export function discoverPackages(repoRoot) {
       );
     }
 
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
     result.push({
-      id: pkgJson.name,
+      id: manifest.id,
+      npmName: pkgJson.name,
       version: pkgJson.version,
       dir: pkgDir,
       artifactDir,
@@ -182,7 +184,7 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
   return liveRegistry;
 }
 
-const NPM_ELIGIBLE_PACKAGES = new Set(['sh3-editor']);
+const NPM_ELIGIBLE_PACKAGES = new Set(['@unfinished-lair/sh3-editor']);
 
 export async function main({ repoRoot, pagesDir }) {
   // 1. Ensure pagesDir exists with an empty registry if missing
@@ -214,9 +216,9 @@ export async function main({ repoRoot, pagesDir }) {
     if (c.outcome === 'new' || c.outcome === 'bump') {
       applyPackageUpdate(c.pkg, pagesDir, registry);
       registryPublished.push(c.pkg.id);
-      if (NPM_ELIGIBLE_PACKAGES.has(c.pkg.id)
+      if (NPM_ELIGIBLE_PACKAGES.has(c.pkg.npmName)
           && isNpmEligible(c.outcome, c.oldVersion, c.pkg.version)) {
-        npmEligible.push(c.pkg.id);
+        npmEligible.push(c.pkg.npmName);
       }
     }
   }

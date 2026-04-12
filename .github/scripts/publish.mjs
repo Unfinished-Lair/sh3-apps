@@ -190,9 +190,79 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
   return liveRegistry;
 }
 
-// Entry point
+const NPM_ELIGIBLE_PACKAGES = new Set(['sh3-editor']);
+
 export async function main({ repoRoot, pagesDir }) {
-  throw new Error('not implemented');
+  // 1. Ensure pagesDir exists with an empty registry if missing
+  mkdirSync(join(pagesDir, 'bundles'), { recursive: true });
+
+  // 2. Load live registry and discover workspace packages
+  const registry = loadLiveRegistry(pagesDir);
+  const packages = discoverPackages(repoRoot);
+
+  // 3. Classify each package
+  const classified = packages.map((pkg) => ({
+    pkg,
+    ...diffPackage(pkg, registry),
+  }));
+
+  // 4. Fail fast on any regression
+  const regressions = classified.filter((c) => c.outcome === 'regression');
+  if (regressions.length > 0) {
+    const msg = regressions
+      .map((c) => `  - ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.version}`)
+      .join('\n');
+    throw new Error(`Version regression detected (new < old):\n${msg}`);
+  }
+
+  // 5. Apply updates for new and bump outcomes
+  const registryPublished = [];
+  const npmEligible = [];
+  for (const c of classified) {
+    if (c.outcome === 'new' || c.outcome === 'bump') {
+      applyPackageUpdate(c.pkg, pagesDir, registry);
+      registryPublished.push(c.pkg.id);
+      if (NPM_ELIGIBLE_PACKAGES.has(c.pkg.id)
+          && isNpmEligible(c.outcome, c.oldVersion, c.pkg.version)) {
+        npmEligible.push(c.pkg.id);
+      }
+    }
+  }
+
+  // 6. Save registry
+  saveRegistry(pagesDir, registry);
+
+  // 7. Emit JSON line + markdown summary
+  const result = { registryPublished, npmEligible };
+  process.stdout.write(JSON.stringify(result) + '\n');
+  process.stdout.write(renderSummary(classified, result));
+
+  return result;
+}
+
+function renderSummary(classified, result) {
+  const lines = ['## Publish Summary', ''];
+  lines.push('### Registry (gh-pages)');
+  for (const c of classified) {
+    if (c.outcome === 'new') {
+      lines.push(`- ✓ ${c.pkg.id}: new → ${c.pkg.version}`);
+    } else if (c.outcome === 'bump') {
+      lines.push(`- ✓ ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.version}`);
+    } else if (c.outcome === 'unchanged') {
+      lines.push(`- · ${c.pkg.id}: ${c.pkg.version} (unchanged)`);
+    }
+  }
+  lines.push('');
+  lines.push('### npm');
+  if (result.npmEligible.length === 0) {
+    lines.push('- (no packages eligible)');
+  } else {
+    for (const id of result.npmEligible) {
+      lines.push(`- ✓ ${id} (minor+ bump or first publish)`);
+    }
+  }
+  lines.push('');
+  return lines.join('\n');
 }
 
 // CLI invocation

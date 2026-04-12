@@ -540,3 +540,172 @@ describe('applyPackageUpdate', () => {
     }
   });
 });
+
+describe('main()', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+    mkdirSync(join(tmp, 'packages'));
+    mkdirSync(join(tmp, '_pages', 'bundles'), { recursive: true });
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  function makePkg(id, version, opts = {}) {
+    const pkgDir = join(tmp, 'packages', id);
+    const artifactDir = join(pkgDir, 'dist', 'artifact');
+    mkdirSync(artifactDir, { recursive: true });
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: id, version }));
+    const manifest = {
+      id,
+      type: opts.type ?? 'shard',
+      label: id,
+      version,
+      description: 'test',
+      author: 'tester',
+      contractVersion: 1,
+    };
+    writeFileSync(join(artifactDir, 'manifest.json'), JSON.stringify(manifest));
+    writeFileSync(join(artifactDir, 'client.js'), `export const x = '${id}-${version}';`);
+    if (opts.withServer) {
+      writeFileSync(join(artifactDir, 'server.js'), `export const s = '${id}-${version}';`);
+    }
+  }
+
+  function seedRegistry(reg) {
+    writeFileSync(join(tmp, '_pages', 'registry.json'), JSON.stringify(reg));
+  }
+
+  it('publishes all packages on first run (empty registry)', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0');
+      makePkg('sh3-diagnostic', '0.2.1', { type: 'combo', withServer: true });
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual([...result.registryPublished].sort(), ['sh3-diagnostic', 'sh3-editor']);
+      // sh3-editor is in npm_eligible because new publishes always are
+      assert.deepEqual([...result.npmEligible].sort(), ['sh3-editor']);
+
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      assert.equal(reg.packages.length, 2);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('registry-only on a patch bump of sh3-editor', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.1');
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js'), 'old');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, ['sh3-editor']);
+      assert.deepEqual(result.npmEligible, []); // patch does not publish to npm
+    } finally {
+      teardown();
+    }
+  });
+
+  it('registry + npm on a minor bump of sh3-editor', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.2.0');
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js'), 'old');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, ['sh3-editor']);
+      assert.deepEqual(result.npmEligible, ['sh3-editor']);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('no-op when nothing changed', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0');
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      });
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, []);
+      assert.deepEqual(result.npmEligible, []);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('fails fast on regression', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0');
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.2.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.2.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      });
+
+      await assert.rejects(
+        publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') }),
+        /regression/i,
+      );
+    } finally {
+      teardown();
+    }
+  });
+
+  it('non-editor package never eligible for npm', async () => {
+    setup();
+    try {
+      makePkg('sh3-diagnostic', '1.0.0'); // first publish, major version — but not sh3-editor
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, ['sh3-diagnostic']);
+      assert.deepEqual(result.npmEligible, []); // only sh3-editor can be eligible
+    } finally {
+      teardown();
+    }
+  });
+});

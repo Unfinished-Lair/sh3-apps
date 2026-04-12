@@ -22,7 +22,9 @@
 
 // Helpers exported for unit tests.
 export function parseVer(v) {
-  throw new Error('not implemented');
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v);
+  if (!m) throw new Error(`Non-strict semver rejected: ${JSON.stringify(v)}`);
+  return { major: +m[1], minor: +m[2], patch: +m[3] };
 }
 
 export function compareVer(a, b) {

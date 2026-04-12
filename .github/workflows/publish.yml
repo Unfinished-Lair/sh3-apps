@@ -1,0 +1,110 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run the script but do not push or publish'
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout gh-pages into _pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: _pages
+        continue-on-error: true
+
+      - name: Bootstrap gh-pages if missing
+        run: |
+          if [ ! -d _pages/.git ]; then
+            echo "gh-pages branch does not exist. Bootstrapping..."
+            mkdir -p _pages/bundles
+            echo '{ "version": 1, "packages": [] }' > _pages/registry.json
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests for publish script
+        run: npm run test:publish
+
+      - name: Build all package artifacts
+        run: |
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              name=$(basename "$pkg")
+              echo "::group::Build $name"
+              npm run build:artifact -w "$name" || { echo "::error::Build failed for $name"; exit 1; }
+              echo "::endgroup::"
+            fi
+          done
+
+      - name: Run publish script
+        id: publish
+        run: |
+          node .github/scripts/publish.mjs > publish-output.txt
+          head -1 publish-output.txt > publish-result.json
+          tail -n +2 publish-output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "result<<EOF" >> "$GITHUB_OUTPUT"
+          cat publish-result.json >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        env:
+          SH3_PAGES_DIR: ${{ github.workspace }}/_pages
+
+      - name: Parse publish result
+        id: parse
+        run: |
+          REGISTRY_PUBLISHED=$(jq -r '.registryPublished | join(",")' publish-result.json)
+          NPM_ELIGIBLE=$(jq -r '.npmEligible | join(",")' publish-result.json)
+          echo "registry_published=$REGISTRY_PUBLISHED" >> "$GITHUB_OUTPUT"
+          echo "npm_eligible=$NPM_ELIGIBLE" >> "$GITHUB_OUTPUT"
+          if [ -z "$REGISTRY_PUBLISHED" ]; then
+            echo "has_registry_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_registry_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push gh-pages
+        if: steps.parse.outputs.has_registry_changes == 'true' && inputs.dry_run != true
+        run: |
+          cd _pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "publish: ${{ steps.parse.outputs.registry_published }}"
+          git push origin HEAD:gh-pages
+
+      - name: Build sh3-editor types tarball
+        if: contains(steps.parse.outputs.npm_eligible, 'sh3-editor') && inputs.dry_run != true
+        run: npm run build -w sh3-editor
+
+      - name: Publish sh3-editor to npm
+        if: contains(steps.parse.outputs.npm_eligible, 'sh3-editor') && inputs.dry_run != true
+        run: npm publish -w sh3-editor --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

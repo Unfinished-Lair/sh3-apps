@@ -28,9 +28,9 @@
       },
       "versions": [
         {
-          "version": "0.1.1",
+          "version": "0.1.2",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-editor-0.1.1.js",
+          "bundleUrl": "bundles/sh3-editor-0.1.2.js",
           "integrity": "sha384-iRLtGZGkf63Awosxzvau2XY5tuO4pSVDoVdjbA6k2Ki6AIM7tpH3CP6mYLxTZrSc"
         }
       ]

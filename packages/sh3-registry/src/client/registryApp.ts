@@ -5,13 +5,12 @@
  * Standalone package: installed from a registry or pre-included.
  */
 
-import type { App } from 'sh3-core';
+import type { SourceApp } from 'sh3-core';
 
-export const registryApp: App = {
+export const registryApp: SourceApp = {
   manifest: {
     id: 'sh3-registry',
     label: 'Registry Manager',
-    version: '0.1.2',
     requiredShards: ['sh3-registry'],
     layoutVersion: 1,
     admin: true,

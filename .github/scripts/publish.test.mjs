@@ -497,20 +497,6 @@ describe('applyPackageUpdate', () => {
     }
   });
 
-  it('fails fast when manifest.version disagrees with package.json version', () => {
-    setup();
-    try {
-      const pkg = makePkg('sh3-editor', '0.2.0', { manifestVersion: '0.1.0' });
-      const reg = { version: 1, packages: [] };
-      assert.throws(
-        () => publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg),
-        /version.*mismatch/i,
-      );
-    } finally {
-      teardown();
-    }
-  });
-
   it('refreshes label/description/author from manifest on bump', () => {
     setup();
     try {

@@ -120,14 +120,6 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
   const manifestPath = join(pkg.artifactDir, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
 
-  // Guardrail: manifest.json.version must match package.json.version.
-  // This check becomes a no-op after upstream ADR-1 lands.
-  if (manifest.version !== pkg.version) {
-    throw new Error(
-      `Version mismatch for ${pkg.id}: package.json says ${pkg.version}, manifest.json says ${manifest.version}. Bump both together.`,
-    );
-  }
-
   const bundlesDir = join(pagesDir, 'bundles');
   mkdirSync(bundlesDir, { recursive: true });
 

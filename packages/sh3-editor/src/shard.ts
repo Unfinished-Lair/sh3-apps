@@ -1,4 +1,4 @@
-import type { Shard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry';
 import { createApi } from './model/api';
@@ -15,11 +15,10 @@ export function getApi(): EditorApi | null {
   return apiRef;
 }
 
-export const shard: Shard = {
+export const shard: SourceShard = {
   manifest: {
     id: 'sh3-editor',
     label: 'Editor',
-    version: '0.1.0',
     views: [{ id: 'sh3-editor:editor', label: 'Editor' }],
   },
 

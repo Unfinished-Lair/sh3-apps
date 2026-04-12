@@ -1,6 +1,6 @@
 {
   "name": "sh3-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reusable text editor shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",

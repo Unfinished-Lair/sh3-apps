@@ -1,6 +1,6 @@
 {
   "name": "sh3-diagnostic",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Diagnostic tool used to debug/develop sh3 apps",
   "author": "@unfinished-lair",
   "type": "module",

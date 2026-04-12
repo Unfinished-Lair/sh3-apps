@@ -1,4 +1,4 @@
-import type { App } from 'sh3-core';
+import type { SourceApp } from 'sh3-core';
 
 /*
  * Diagnostic app 
@@ -8,11 +8,10 @@ import type { App } from 'sh3-core';
  * gives the diagnostic view its own dedicated workspace.
  */
 
-export const app: App = {
+export const app: SourceApp = {
   manifest: {
     id: 'diagnostic-app',
     label: 'Diagnostic',
-    version: '0.2.1',
     requiredShards: ['diagnostic', 'sh3-zones'],
     layoutVersion: 1,
     admin: true,

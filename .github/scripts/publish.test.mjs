@@ -44,3 +44,31 @@ describe('parseVer', () => {
     assert.throws(() => publish.parseVer(''), /Non-strict semver/);
   });
 });
+
+describe('compareVer', () => {
+  const v = (s) => publish.parseVer(s);
+
+  it('returns 0 for equal versions', () => {
+    assert.equal(publish.compareVer(v('1.2.3'), v('1.2.3')), 0);
+  });
+
+  it('returns negative when a < b', () => {
+    assert.ok(publish.compareVer(v('1.2.3'), v('1.2.4')) < 0);
+    assert.ok(publish.compareVer(v('1.2.3'), v('1.3.0')) < 0);
+    assert.ok(publish.compareVer(v('1.2.3'), v('2.0.0')) < 0);
+    assert.ok(publish.compareVer(v('0.9.9'), v('1.0.0')) < 0);
+  });
+
+  it('returns positive when a > b', () => {
+    assert.ok(publish.compareVer(v('1.2.4'), v('1.2.3')) > 0);
+    assert.ok(publish.compareVer(v('1.3.0'), v('1.2.99')) > 0);
+    assert.ok(publish.compareVer(v('2.0.0'), v('1.99.99')) > 0);
+  });
+
+  it('compares major first, then minor, then patch', () => {
+    // Major differences dominate
+    assert.ok(publish.compareVer(v('2.0.0'), v('1.99.99')) > 0);
+    // Minor differences dominate over patch
+    assert.ok(publish.compareVer(v('1.2.0'), v('1.1.99')) > 0);
+  });
+});

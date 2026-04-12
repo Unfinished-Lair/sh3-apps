@@ -28,7 +28,9 @@ export function parseVer(v) {
 }
 
 export function compareVer(a, b) {
-  throw new Error('not implemented');
+  if (a.major !== b.major) return a.major - b.major;
+  if (a.minor !== b.minor) return a.minor - b.minor;
+  return a.patch - b.patch;
 }
 
 export function isNpmEligible(outcome, oldVer, newVer) {

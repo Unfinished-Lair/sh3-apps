@@ -4,11 +4,15 @@
   "description": "Reusable text editor shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "types": "dist/types.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.ts"
+    }
+  },
+  "files": ["dist/types.d.ts"],
   "scripts": {
-    "build": "vite build",
+    "build": "tsc -p tsconfig.types.json",
     "build:artifact": "vite build --config vite.artifact.ts",
     "dev": "vite build --watch"
   },

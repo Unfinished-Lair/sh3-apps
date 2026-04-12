@@ -315,3 +315,44 @@ describe('discoverPackages', () => {
     }
   });
 });
+
+describe('diffPackage', () => {
+  const makeEntry = (id, version) => ({
+    id,
+    type: 'shard',
+    label: id,
+    description: '',
+    author: { name: 'x' },
+    versions: [{ version, contractVersion: '1', bundleUrl: `bundles/${id}-${version}.js`, integrity: 'sha384-xxx' }],
+  });
+
+  it('reports new when package is not in registry', () => {
+    const pkg = { id: 'sh3-new', version: '0.1.0' };
+    const reg = { version: 1, packages: [] };
+    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'new', oldVersion: null });
+  });
+
+  it('reports unchanged when version matches live registry', () => {
+    const pkg = { id: 'sh3-editor', version: '0.1.0' };
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
+    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'unchanged', oldVersion: '0.1.0' });
+  });
+
+  it('reports bump when new version > old version', () => {
+    const pkg = { id: 'sh3-editor', version: '0.2.0' };
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
+    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'bump', oldVersion: '0.1.0' });
+  });
+
+  it('reports regression when new version < old version', () => {
+    const pkg = { id: 'sh3-editor', version: '0.1.0' };
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.2.0')] };
+    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'regression', oldVersion: '0.2.0' });
+  });
+
+  it('patch bumps classified as bump', () => {
+    const pkg = { id: 'sh3-editor', version: '0.1.1' };
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
+    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'bump', oldVersion: '0.1.0' });
+  });
+});

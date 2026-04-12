@@ -104,7 +104,16 @@ export function discoverPackages(repoRoot) {
 }
 
 export function diffPackage(pkg, liveRegistry) {
-  throw new Error('not implemented');
+  const entry = liveRegistry.packages.find((p) => p.id === pkg.id);
+  if (!entry) return { outcome: 'new', oldVersion: null };
+
+  const oldVersion = entry.versions[0]?.version;
+  if (!oldVersion) return { outcome: 'new', oldVersion: null };
+
+  const cmp = compareVer(parseVer(pkg.version), parseVer(oldVersion));
+  if (cmp === 0) return { outcome: 'unchanged', oldVersion };
+  if (cmp > 0) return { outcome: 'bump', oldVersion };
+  return { outcome: 'regression', oldVersion };
 }
 
 export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {

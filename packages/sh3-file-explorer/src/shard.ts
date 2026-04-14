@@ -1,10 +1,10 @@
-import type { Shard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { createExplorerStore } from './explorerShard.svelte';
 import BrowserView from './browser/BrowserView.svelte';
 import ConnectorsView from './connectors/ConnectorsView.svelte';
 
-export const shard: Shard = {
+export const shard: SourceShard = {
   manifest: {
     id: 'sh3-file-explorer',
     label: 'File Explorer',

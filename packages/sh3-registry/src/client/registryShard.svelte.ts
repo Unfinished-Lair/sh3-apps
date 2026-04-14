@@ -14,22 +14,9 @@ import { mount, unmount } from 'svelte';
 import RegistryView from './RegistryView.svelte';
 import { getAuthHeader } from 'sh3-core';
 import type { SourceShard, ViewFactory, ViewHandle, MountContext, ShardContext } from 'sh3-core';
-import type { StateZones } from 'sh3-core';
+import type { StateZones, PackageEntry } from 'sh3-core';
 
-/** Registry package shape from the server's registry.json. */
-export interface RegistryPackage {
-  id: string;
-  type: 'shard' | 'app';
-  label: string;
-  description: string;
-  author: { name: string };
-  versions: Array<{
-    version: string;
-    contractVersion: string;
-    bundleUrl: string;
-    integrity: string;
-  }>;
-}
+export type RegistryPackage = PackageEntry;
 
 /** Schema shape for state zone typing. */
 interface RegistryZoneSchema {

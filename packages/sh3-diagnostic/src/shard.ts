@@ -6,7 +6,6 @@ export const shard: Shard = {
   manifest: {
     id: 'sh3-zones',
     label: 'Zones',
-    version: '0.1.0',
     views: [{ id: 'sh3-zones-manager', label: 'Zone Manager' }],
     permissions: ['state:manage'],
   },

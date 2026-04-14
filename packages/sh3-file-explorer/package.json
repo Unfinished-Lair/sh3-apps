@@ -1,6 +1,6 @@
 {
   "name": "sh3-file-explorer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official SH3 file explorer — browse documents and manage sync grants",
   "author": "@unfinished-lair",
   "type": "module",

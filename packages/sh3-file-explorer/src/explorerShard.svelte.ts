@@ -6,7 +6,6 @@ import type {
   DocumentMeta,
   DocumentChange,
 } from 'sh3-core';
-import { SvelteSet } from 'svelte/reactivity';
 
 export type Selection = { shardId: string; path: string } | null;
 export type BrowseEntry = DocumentMeta & { shardId: string };
@@ -51,7 +50,7 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   const registry = ctx.syncRegistry();
 
   let selection = $state<Selection>(null);
-  const expanded = new SvelteSet<string>();
+  const expanded = $state<Record<string, true>>({});
   let documents = $state<BrowseEntry[]>([]);
   let grants = $state<GrantRecord[]>([]);
   let connectorIds = $state<string[]>([]);
@@ -59,11 +58,11 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   function setSelection(next: Selection) { selection = next; }
 
   function toggleExpanded(key: string) {
-    if (expanded.has(key)) expanded.delete(key);
-    else expanded.add(key);
+    if (expanded[key]) delete expanded[key];
+    else expanded[key] = true;
   }
 
-  function isExpanded(key: string) { return expanded.has(key); }
+  function isExpanded(key: string) { return expanded[key] === true; }
 
   async function refreshDocuments() {
     documents = await browse.listDocuments();

@@ -9,7 +9,7 @@ export const shard: SourceShard = {
     id: 'sh3-file-explorer',
     label: 'File Explorer',
     views: [
-      { id: 'sh3-file-explorer-browser', label: 'Files' },
+      { id: 'sh3-file-explorer-browser', label: 'Files', standalone: true },
       { id: 'sh3-file-explorer-connectors', label: 'Connectors' },
     ],
     permissions: ['documents:browse'],

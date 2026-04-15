@@ -43,8 +43,8 @@ export const diagnosticShard: SourceShard = {
     id: 'diagnostic',
     label: 'Diagnostic',
     views: [
-      { id: 'diagnostic:panel', label: 'Diagnostic' },
-      { id: 'diagnostic:routes', label: 'API Routes' },
+      { id: 'diagnostic:panel', label: 'Diagnostic', standalone: true },
+      { id: 'diagnostic:routes', label: 'API Routes', standalone: true },
     ],
   },
   activate(ctx) {

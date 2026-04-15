@@ -403,7 +403,6 @@ const Ne = {
   manifest: {
     id: "sh3-zones",
     label: "Zones",
-    version: "0.1.0",
     views: [{ id: "sh3-zones-manager", label: "Zone Manager" }],
     permissions: ["state:manage"]
   },
@@ -547,8 +546,16 @@ const Ye = {
     id: "diagnostic",
     label: "Diagnostic",
     views: [
-      { id: "diagnostic:panel", label: "Diagnostic" },
-      { id: "diagnostic:routes", label: "API Routes" }
+      {
+        id: "diagnostic:panel",
+        label: "Diagnostic",
+        standalone: !0
+      },
+      {
+        id: "diagnostic:routes",
+        label: "API Routes",
+        standalone: !0
+      }
     ]
   },
   activate(s) {

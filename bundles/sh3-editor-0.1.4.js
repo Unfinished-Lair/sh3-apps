@@ -359,7 +359,7 @@ const U = {
   manifest: {
     id: "sh3-editor",
     label: "Editor",
-    views: [{ id: "sh3-editor:editor", label: "Editor" }]
+    views: [{ id: "sh3-editor:editor", label: "Editor", standalone: !0 }]
   },
   activate(l) {
     A = new W();

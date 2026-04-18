@@ -26,12 +26,27 @@ export interface HistoryResult {
   cursor: number;
 }
 
+/** Which kind of auto-indent the editor applies on Enter. */
+export type EditorIndentType = 'none' | 'brace' | 'indent';
+
+/** Brace style used when `indentType === 'brace'`. */
+export type BraceStyle = 'inline' | 'allman';
+
 /** Configuration for bracket and indent matching. */
 export interface MatchingConfig {
   brackets?: [string, string][];
-  indentBased?: boolean;
+  /** Kind of auto-indent on Enter. Default 'none'. */
+  indentType?: EditorIndentType;
+  /** Number of spaces used for one indent level. Default 2. */
   indentUnit?: number;
+  /** Brace style when indentType === 'brace'. Default 'inline'. */
+  braceStyle?: BraceStyle;
+  /** @deprecated Use indentType. When indentType is undefined and this is true, treated as 'indent'. */
+  indentBased?: boolean;
 }
+
+/** Subset of MatchingConfig that is user-editable at runtime via the settings popover. */
+export type UserPrefs = Pick<MatchingConfig, 'indentUnit' | 'braceStyle'>;
 
 /** Result of a bracket match query. */
 export interface BracketMatch {
@@ -68,6 +83,10 @@ export interface OpenDocumentOptions {
   matchingConfig?: MatchingConfig;
   toolbarActions?: ToolbarAction[];
   fontSize?: number;
+  /** User-owned prefs from a prior session. Shallow-merged over matchingConfig. */
+  prefs?: UserPrefs;
+  /** When false, hides the built-in settings gear even if sub-options exist. Default auto. */
+  showSettings?: boolean;
 }
 
 /** The public API surface exposed to consuming shards. */
@@ -83,4 +102,5 @@ export interface EditorApi {
   onContentChange(callback: (id: string, content: string) => void): () => void;
   onDirtyChange(callback: (id: string, dirty: boolean) => void): () => void;
   onSave(callback: (id: string) => void): () => void;
+  onPrefsChange(callback: (id: string, prefs: UserPrefs) => void): () => void;
 }

@@ -49,6 +49,7 @@ export const shard: SourceShard = {
             matchingConfig: opts.matchingConfig,
             fontSize: opts.fontSize,
             toolbarActions: opts.toolbarActions,
+            showSettings: opts.showSettings,
           },
         });
 

@@ -3,7 +3,7 @@ import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry';
 import { createApi } from './model/api';
 import type { ApiInternals } from './model/api';
-import type { EditorApi } from './types';
+import type { EditorApi, OpenDocumentOptions } from './types';
 import Editor from './views/Editor.svelte';
 
 let registry: InstanceRegistry | null = null;
@@ -31,16 +31,15 @@ export const shard: SourceShard = {
     // Expose the API on the shard for external access.
     (shard as any).api = api;
 
+    const defaultOptions: OpenDocumentOptions =  {
+      content: "Hello, World"
+    };
+
     ctx.registerView('sh3-editor:editor', {
       mount(container, context) {
         const instanceId = context.slotId;
         const entry = registry!.get(instanceId);
-        if (!entry) {
-          container.textContent = `Editor: no document for "${instanceId}"`;
-          return { unmount() {} };
-        }
-
-        const opts = entry.options;
+        const opts = entry?.options || defaultOptions;
         const component = mount(Editor, {
           target: container,
           props: {
@@ -67,6 +66,7 @@ export const shard: SourceShard = {
     internalsRef?.contentChange.clear();
     internalsRef?.dirtyChange.clear();
     internalsRef?.saveEvent.clear();
+    internalsRef?.prefsChange.clear();
     registry?.clear();
     registry = null;
     apiRef = null;

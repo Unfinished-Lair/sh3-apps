@@ -1,4 +1,4 @@
-import type { EditorApi, EditorDocument, OpenDocumentOptions } from '../types';
+import type { EditorApi, EditorDocument, OpenDocumentOptions, UserPrefs } from '../types';
 import { InstanceRegistry } from './instance-registry';
 
 type Callback<T extends unknown[]> = (...args: T) => void;
@@ -25,12 +25,14 @@ export interface ApiInternals {
   contentChange: EventBus<[string, string]>;
   dirtyChange: EventBus<[string, boolean]>;
   saveEvent: EventBus<[string]>;
+  prefsChange: EventBus<[string, UserPrefs]>;
 }
 
 export function createApi(registry: InstanceRegistry): { api: EditorApi; internals: ApiInternals } {
   const contentChange = new EventBus<[string, string]>();
   const dirtyChange = new EventBus<[string, boolean]>();
   const saveEvent = new EventBus<[string]>();
+  const prefsChange = new EventBus<[string, UserPrefs]>();
 
   const api: EditorApi = {
     getContent(instanceId: string): string | null {
@@ -99,6 +101,10 @@ export function createApi(registry: InstanceRegistry): { api: EditorApi; interna
     onSave(callback: (id: string) => void): () => void {
       return saveEvent.on(callback);
     },
+
+    onPrefsChange(callback: (id: string, prefs: UserPrefs) => void): () => void {
+      return prefsChange.on(callback);
+    },
   };
 
   const internals: ApiInternals = {
@@ -108,6 +114,7 @@ export function createApi(registry: InstanceRegistry): { api: EditorApi; interna
     contentChange,
     dirtyChange,
     saveEvent,
+    prefsChange,
   };
 
   return { api, internals };

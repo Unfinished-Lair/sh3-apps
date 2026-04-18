@@ -1,3 +1,5 @@
+import type { EditorIndentType, BraceStyle } from '../types';
+
 /** Check if Ctrl (Windows/Linux) or Cmd (Mac) is held. */
 export function isModKey(e: KeyboardEvent): boolean {
   return e.ctrlKey || e.metaKey;
@@ -50,4 +52,78 @@ export function applyIndent(
     content.slice(lineStart + lines.join('\n').length);
 
   return { content: newContent, selectionStart: newStart, selectionEnd: newEnd };
+}
+
+export interface EnterResult {
+  content: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+/**
+ * Compute the result of pressing Enter given the current content, cursor, and
+ * active indent config. Returns null when the default newline behavior is desired.
+ */
+export function applyEnter(
+  content: string,
+  selectionStart: number,
+  selectionEnd: number,
+  indentType: EditorIndentType,
+  indentUnit: number = 2,
+  braceStyle: BraceStyle = 'inline',
+): EnterResult | null {
+  if (indentType === 'none') return null;
+
+  const lineStart = content.lastIndexOf('\n', selectionStart - 1) + 1;
+  const currentLine = content.slice(lineStart, selectionStart);
+  const leading = currentLine.match(/^[ \t]*/)![0];
+  const unit = ' '.repeat(indentUnit);
+
+  if (indentType === 'indent') {
+    const insert = '\n' + leading;
+    return {
+      content: content.slice(0, selectionStart) + insert + content.slice(selectionEnd),
+      selectionStart: selectionStart + insert.length,
+      selectionEnd: selectionStart + insert.length,
+    };
+  }
+
+  const charBefore = selectionStart > 0 ? content[selectionStart - 1] : '';
+  const charAfter = selectionEnd < content.length ? content[selectionEnd] : '';
+  const openedBrace = charBefore === '{';
+  const splitBraces = openedBrace && charAfter === '}';
+
+  if (splitBraces) {
+    if (braceStyle === 'inline') {
+      const insert = '\n' + leading + unit + '\n' + leading;
+      const caret = selectionStart + 1 + leading.length + unit.length;
+      return {
+        content: content.slice(0, selectionStart) + insert + content.slice(selectionEnd),
+        selectionStart: caret,
+        selectionEnd: caret,
+      };
+    }
+    const preBrace = content.slice(0, selectionStart - 1);
+    const trailing = content.slice(selectionEnd);
+    const insert = '\n' + leading + '{\n' + leading + unit + '\n' + leading;
+    const newContent = preBrace + insert + trailing;
+    const caret = preBrace.length + ('\n' + leading + '{\n' + leading + unit).length;
+    return { content: newContent, selectionStart: caret, selectionEnd: caret };
+  }
+
+  if (openedBrace) {
+    const insert = '\n' + leading + unit;
+    return {
+      content: content.slice(0, selectionStart) + insert + content.slice(selectionEnd),
+      selectionStart: selectionStart + insert.length,
+      selectionEnd: selectionStart + insert.length,
+    };
+  }
+
+  const insert = '\n' + leading;
+  return {
+    content: content.slice(0, selectionStart) + insert + content.slice(selectionEnd),
+    selectionStart: selectionStart + insert.length,
+    selectionEnd: selectionStart + insert.length,
+  };
 }

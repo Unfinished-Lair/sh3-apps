@@ -1,10 +1,23 @@
-import type { EditorDocument, OpenDocumentOptions } from '../types';
+import type { EditorDocument, OpenDocumentOptions, UserPrefs, MatchingConfig } from '../types';
 import { HistoryEngine } from './history';
 
 export interface RegistryEntry {
   document: EditorDocument;
   history: HistoryEngine;
   options: OpenDocumentOptions;
+  /** Mutable runtime prefs — initialized from matchingConfig, overridden by opts.prefs,
+   *  and updated by the settings popover. */
+  prefs: Required<UserPrefs>;
+}
+
+const DEFAULT_INDENT_UNIT = 2;
+const DEFAULT_BRACE_STYLE = 'inline' as const;
+
+function resolvePrefs(mc: MatchingConfig | undefined, overrides: UserPrefs | undefined): Required<UserPrefs> {
+  return {
+    indentUnit: overrides?.indentUnit ?? mc?.indentUnit ?? DEFAULT_INDENT_UNIT,
+    braceStyle: overrides?.braceStyle ?? mc?.braceStyle ?? DEFAULT_BRACE_STYLE,
+  };
 }
 
 export class InstanceRegistry {
@@ -31,6 +44,7 @@ export class InstanceRegistry {
       document,
       history: new HistoryEngine(),
       options: opts,
+      prefs: resolvePrefs(opts.matchingConfig, opts.prefs),
     };
 
     this.entries.set(id, entry);

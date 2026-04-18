@@ -5,92 +5,96 @@
     indentType: EditorIndentType;
     prefs: UserPrefs;
     onChange: (next: UserPrefs) => void;
-    onClose: () => void;
+    close: () => void;
   }
 
-  let { indentType, prefs, onChange, onClose }: Props = $props();
+  let { indentType, prefs, onChange, close }: Props = $props();
 
-  let panelEl: HTMLDivElement | undefined = $state();
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    }
-  }
-
-  function handleOutsideClick(e: MouseEvent) {
-    if (panelEl && !panelEl.contains(e.target as Node)) onClose();
-  }
-
-  $effect(() => {
-    window.addEventListener('mousedown', handleOutsideClick, true);
-    window.addEventListener('keydown', handleKeydown, true);
-    return () => {
-      window.removeEventListener('mousedown', handleOutsideClick, true);
-      window.removeEventListener('keydown', handleKeydown, true);
-    };
-  });
+  let current = $state<UserPrefs>({ ...prefs });
 
   function setIndentUnit(v: number) {
-    onChange({ ...prefs, indentUnit: v });
+    current.indentUnit = v;
+    onChange({ ...current });
   }
 
   function setBraceStyle(v: 'inline' | 'allman') {
-    onChange({ ...prefs, braceStyle: v });
+    current.braceStyle = v;
+    onChange({ ...current });
   }
 </script>
 
-<div class="settings-panel" bind:this={panelEl} role="dialog" aria-label="Editor settings">
-  <div class="row">
-    <span class="label">Indent unit</span>
-    <div class="seg">
-      <button class:active={(prefs.indentUnit ?? 2) === 2} onclick={() => setIndentUnit(2)}>2</button>
-      <button class:active={(prefs.indentUnit ?? 2) === 4} onclick={() => setIndentUnit(4)}>4</button>
-    </div>
-  </div>
+<div class="body">
+  <h2>Editor settings</h2>
 
-  {#if indentType === 'brace'}
+  <div class="rows">
     <div class="row">
-      <span class="label">Brace style</span>
+      <span class="label">Indent unit</span>
       <div class="seg">
         <button
-          class:active={(prefs.braceStyle ?? 'inline') === 'inline'}
-          onclick={() => setBraceStyle('inline')}
-        >Inline</button>
+          type="button"
+          class:active={(current.indentUnit ?? 2) === 2}
+          onclick={() => setIndentUnit(2)}
+        >2</button>
         <button
-          class:active={(prefs.braceStyle ?? 'inline') === 'allman'}
-          onclick={() => setBraceStyle('allman')}
-        >Allman</button>
+          type="button"
+          class:active={(current.indentUnit ?? 2) === 4}
+          onclick={() => setIndentUnit(4)}
+        >4</button>
       </div>
     </div>
-  {/if}
+
+    {#if indentType === 'brace'}
+      <div class="row">
+        <span class="label">Brace style</span>
+        <div class="seg">
+          <button
+            type="button"
+            class:active={(current.braceStyle ?? 'inline') === 'inline'}
+            onclick={() => setBraceStyle('inline')}
+          >Inline</button>
+          <button
+            type="button"
+            class:active={(current.braceStyle ?? 'inline') === 'allman'}
+            onclick={() => setBraceStyle('allman')}
+          >Allman</button>
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <div class="actions">
+    <button type="button" class="secondary" onclick={close}>Close</button>
+  </div>
 </div>
 
 <style>
-  .settings-panel {
-    position: absolute;
-    top: 32px;
-    right: 8px;
-    z-index: 10;
-    background: var(--shell-bg-raised);
-    border: 1px solid var(--shell-border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    min-width: 200px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    font-family: var(--shell-font-ui);
-    font-size: 12px;
+  .body {
+    padding: var(--shell-pad-lg);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--shell-pad-md);
+    min-width: 320px;
+    font-family: var(--shell-font-ui);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--shell-fg);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--shell-pad-sm);
   }
 
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--shell-pad-md);
+    font-size: 13px;
   }
 
   .label {
@@ -100,16 +104,18 @@
   .seg {
     display: inline-flex;
     border: 1px solid var(--shell-border);
-    border-radius: 3px;
+    border-radius: var(--shell-radius-sm);
     overflow: hidden;
   }
 
   .seg button {
-    padding: 2px 8px;
+    appearance: none;
+    font: inherit;
+    padding: 4px 10px;
     background: var(--shell-bg);
     color: var(--shell-fg);
     border: none;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
   }
 
@@ -123,6 +129,36 @@
   }
 
   .seg button:hover:not(.active) {
+    background: var(--shell-bg-sunken);
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--shell-pad-sm);
+  }
+
+  .actions button {
+    appearance: none;
+    font: inherit;
+    font-size: 12px;
+    padding: var(--shell-pad-sm) var(--shell-pad-md);
+    background: var(--shell-accent-muted);
+    color: var(--shell-fg);
+    border: 1px solid var(--shell-border-strong);
+    border-radius: var(--shell-radius-sm);
+    cursor: pointer;
+  }
+
+  .actions button:hover {
+    background: var(--shell-accent);
+  }
+
+  .actions button.secondary {
+    background: transparent;
+  }
+
+  .actions button.secondary:hover {
     background: var(--shell-bg-sunken);
   }
 </style>

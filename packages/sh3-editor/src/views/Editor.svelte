@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shell } from 'sh3-core';
   import type { MatchingConfig, ToolbarAction, UserPrefs } from '../types';
   import type { RegistryEntry } from '../model/instance-registry';
   import type { ApiInternals } from '../model/api';
@@ -33,8 +34,6 @@
     matchingConfig?.indentType ?? (matchingConfig?.indentBased ? 'indent' : 'none'),
   );
 
-  let settingsOpen = $state(false);
-
   let userOptionCount = $derived(
     indentType === 'none' ? 0 : indentType === 'brace' ? 2 : 1,
   );
@@ -43,13 +42,21 @@
     (showSettings ?? true) && userOptionCount > 0,
   );
 
+  function openSettingsModal() {
+    shell.modal.open(EditorSettings, {
+      indentType,
+      prefs: entry.prefs,
+      onChange: handlePrefsChange,
+    });
+  }
+
   let mergedToolbarActions = $derived.by(() => {
     if (!gearVisible) return toolbarActions;
     const gear: ToolbarAction = {
       id: 'sh3-editor:settings',
       label: 'Settings',
       icon: '⚙',
-      onAction: () => { settingsOpen = !settingsOpen; },
+      onAction: openSettingsModal,
       group: '_editor_builtin',
     };
     return [...toolbarActions, gear];
@@ -217,15 +224,6 @@
 
 <div class="editor-container">
   <Toolbar actions={mergedToolbarActions} filePath={doc.filePath} />
-
-  {#if settingsOpen}
-    <EditorSettings
-      indentType={indentType}
-      prefs={entry.prefs}
-      onChange={handlePrefsChange}
-      onClose={() => { settingsOpen = false; }}
-    />
-  {/if}
 
   <div class="editor-wrap" style:--editor-font-size="{fontSize}px">
     <div class="gutter">

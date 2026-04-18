@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { MatchingConfig, ToolbarAction } from '../types';
+  import type { MatchingConfig, ToolbarAction, UserPrefs } from '../types';
   import type { RegistryEntry } from '../model/instance-registry';
   import type { ApiInternals } from '../model/api';
-  import { isModKey, applyIndent } from '../util/keybindings';
+  import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
   import Toolbar from './Toolbar.svelte';
 
   interface Props {
@@ -25,6 +25,10 @@
 
   let doc = $derived(entry.document);
   let local = $state(doc.content);
+
+  let indentType = $derived(
+    matchingConfig?.indentType ?? (matchingConfig?.indentBased ? 'indent' : 'none'),
+  );
 
   // Sync from document when content changes externally
   $effect(() => {
@@ -110,6 +114,43 @@
         setCursor(result.cursor, result.cursor);
       }
       return;
+    }
+
+    // Enter: optional auto-indent based on indentType.
+    if (e.key === 'Enter' && !e.shiftKey && !isModKey(e) && !e.altKey) {
+      if (indentType === 'none') return;
+      const el = e.currentTarget as HTMLTextAreaElement;
+      const result = applyEnter(
+        local,
+        el.selectionStart,
+        el.selectionEnd,
+        indentType,
+        entry.prefs.indentUnit,
+        entry.prefs.braceStyle,
+      );
+      if (result) {
+        e.preventDefault();
+        pushContent(result.content, result.selectionStart, result.selectionEnd);
+        setCursor(result.selectionStart, result.selectionEnd);
+      }
+      return;
+    }
+
+    // `}` on whitespace-only line: dedent to enclosing `{`'s indent (brace mode only).
+    if (e.key === '}' && indentType === 'brace' && !isModKey(e) && !e.altKey) {
+      const el = e.currentTarget as HTMLTextAreaElement;
+      const result = applyClosingBrace(
+        local,
+        el.selectionStart,
+        el.selectionEnd,
+        entry.prefs.indentUnit,
+      );
+      if (result) {
+        e.preventDefault();
+        pushContent(result.content, result.selectionStart, result.selectionEnd);
+        setCursor(result.selectionStart, result.selectionEnd);
+        return;
+      }
     }
 
     // Tab / Shift+Tab

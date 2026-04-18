@@ -4,6 +4,7 @@
   import type { ApiInternals } from '../model/api';
   import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
   import Toolbar from './Toolbar.svelte';
+  import EditorSettings from './EditorSettings.svelte';
 
   interface Props {
     entry: RegistryEntry;
@@ -12,6 +13,7 @@
     matchingConfig?: MatchingConfig;
     fontSize?: number;
     toolbarActions?: ToolbarAction[];
+    showSettings?: boolean;
   }
 
   let {
@@ -21,6 +23,7 @@
     matchingConfig,
     fontSize = 13,
     toolbarActions = [],
+    showSettings,
   }: Props = $props();
 
   let doc = $derived(entry.document);
@@ -29,6 +32,33 @@
   let indentType = $derived(
     matchingConfig?.indentType ?? (matchingConfig?.indentBased ? 'indent' : 'none'),
   );
+
+  let settingsOpen = $state(false);
+
+  let userOptionCount = $derived(
+    indentType === 'none' ? 0 : indentType === 'brace' ? 2 : 1,
+  );
+
+  let gearVisible = $derived(
+    (showSettings ?? true) && userOptionCount > 0,
+  );
+
+  let mergedToolbarActions = $derived.by(() => {
+    if (!gearVisible) return toolbarActions;
+    const gear: ToolbarAction = {
+      id: 'sh3-editor:settings',
+      label: 'Settings',
+      icon: '⚙',
+      onAction: () => { settingsOpen = !settingsOpen; },
+      group: '_editor_builtin',
+    };
+    return [...toolbarActions, gear];
+  });
+
+  function handlePrefsChange(next: UserPrefs) {
+    entry.prefs = { ...entry.prefs, ...next } as typeof entry.prefs;
+    internals.prefsChange.emit(entry.document.id, { ...entry.prefs });
+  }
 
   // Sync from document when content changes externally
   $effect(() => {
@@ -186,7 +216,16 @@
 </script>
 
 <div class="editor-container">
-  <Toolbar actions={toolbarActions} filePath={doc.filePath} />
+  <Toolbar actions={mergedToolbarActions} filePath={doc.filePath} />
+
+  {#if settingsOpen}
+    <EditorSettings
+      indentType={indentType}
+      prefs={entry.prefs}
+      onChange={handlePrefsChange}
+      onClose={() => { settingsOpen = false; }}
+    />
+  {/if}
 
   <div class="editor-wrap" style:--editor-font-size="{fontSize}px">
     <div class="gutter">
@@ -225,6 +264,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    position: relative;
   }
 
   .editor-wrap {

@@ -127,3 +127,57 @@ export function applyEnter(
     selectionEnd: selectionStart + insert.length,
   };
 }
+
+export interface ClosingBraceResult {
+  content: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+/**
+ * When the user types `}` on a line whose content so far is only whitespace,
+ * dedent the line by one indentUnit before inserting the `}`, aligning with
+ * the enclosing `{`'s indent when findable. Returns null when no change is warranted.
+ */
+export function applyClosingBrace(
+  content: string,
+  selectionStart: number,
+  selectionEnd: number,
+  indentUnit: number = 2,
+): ClosingBraceResult | null {
+  if (selectionStart !== selectionEnd) return null;
+
+  const lineStart = content.lastIndexOf('\n', selectionStart - 1) + 1;
+  const currentLine = content.slice(lineStart, selectionStart);
+  if (!/^[ \t]*$/.test(currentLine)) return null;
+
+  let depth = 0;
+  let matchIdx = -1;
+  for (let i = lineStart - 1; i >= 0; i--) {
+    const ch = content[i];
+    if (ch === '}') depth++;
+    else if (ch === '{') {
+      if (depth === 0) { matchIdx = i; break; }
+      depth--;
+    }
+  }
+
+  let targetIndent: string;
+  if (matchIdx === -1) {
+    const trimmed = Math.max(0, currentLine.length - indentUnit);
+    targetIndent = currentLine.slice(0, trimmed);
+  } else {
+    const matchLineStart = content.lastIndexOf('\n', matchIdx - 1) + 1;
+    targetIndent = content.slice(matchLineStart, matchIdx).match(/^[ \t]*/)![0];
+  }
+
+  if (targetIndent.length >= currentLine.length) return null;
+
+  const replaced =
+    content.slice(0, lineStart) +
+    targetIndent + '}' +
+    content.slice(selectionEnd);
+  const caret = lineStart + targetIndent.length + 1;
+
+  return { content: replaced, selectionStart: caret, selectionEnd: caret };
+}

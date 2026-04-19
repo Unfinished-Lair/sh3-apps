@@ -2,7 +2,6 @@ import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { createExplorerStore } from './explorerShard.svelte';
 import BrowserView from './browser/BrowserView.svelte';
-import ConnectorsView from './connectors/ConnectorsView.svelte';
 
 export const shard: SourceShard = {
   manifest: {
@@ -10,7 +9,6 @@ export const shard: SourceShard = {
     label: 'File Explorer',
     views: [
       { id: 'sh3-file-explorer-browser', label: 'Files', standalone: true },
-      { id: 'sh3-file-explorer-connectors', label: 'Connectors' },
     ],
     permissions: ['documents:browse'],
   },
@@ -21,7 +19,6 @@ export const shard: SourceShard = {
     let stopWatch: (() => void) | null = null;
     if (store.ready) {
       store.refreshDocuments();
-      store.refreshGrants();
       stopWatch = store.startWatch();
     }
     void stopWatch;
@@ -29,13 +26,6 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-file-explorer-browser', {
       mount(container) {
         const component = mount(BrowserView, { target: container, props: { store } });
-        return { unmount() { unmount(component); } };
-      },
-    });
-
-    ctx.registerView('sh3-file-explorer-connectors', {
-      mount(container) {
-        const component = mount(ConnectorsView, { target: container, props: { store } });
         return { unmount() { unmount(component); } };
       },
     });

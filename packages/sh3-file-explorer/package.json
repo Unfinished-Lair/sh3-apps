@@ -1,7 +1,7 @@
 {
   "name": "sh3-file-explorer",
-  "version": "0.1.3",
-  "description": "Official SH3 file explorer — browse documents and manage sync grants",
+  "version": "0.2.0",
+  "description": "Official SH3 file explorer — browse tenant documents",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
@@ -13,10 +13,10 @@
     "dev": "vite build --watch"
   },
   "peerDependencies": {
-    "sh3-core": "^0.8.1"
+    "sh3-core": "^0.9.0"
   },
   "devDependencies": {
-    "sh3-core": "^0.8.1",
+    "sh3-core": "^0.9.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",
     "vite": "^6.0.0",

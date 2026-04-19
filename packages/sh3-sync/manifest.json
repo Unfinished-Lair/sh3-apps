@@ -1,8 +1,10 @@
 {
   "id": "sh3-sync",
+  "type": "shard",
   "label": "Document sync",
   "description": "Hub-and-spoke document sync between SH3 servers",
   "author": "@unfinished-lair",
+  "contractVersion": 1,
   "permissions": ["sync:peer"],
   "contracts": { "serverShard": true },
   "views": []

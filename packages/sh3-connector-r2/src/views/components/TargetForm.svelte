@@ -71,7 +71,6 @@
 <style>
   .r2-form { display: flex; flex-direction: column; gap: 8px; max-width: 480px; padding: 12px; }
   .r2-form label { display: flex; flex-direction: column; gap: 2px; font-size: 0.9em; }
-  .r2-form input { padding: 4px 6px; background: var(--sh3-surface, #1a1a1a); color: inherit; border: 1px solid var(--sh3-border, #2a2a2a); }
   .r2-form__error { color: #e66; margin: 0; }
   .r2-form__hint {
     align-self: flex-start;

@@ -134,6 +134,22 @@
 <style>
   .r2-backup { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
   label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; }
+  select {
+    padding: var(--shell-pad-md) var(--shell-pad-lg);
+    background: var(--shell-input-bg);
+    color: var(--shell-fg);
+    border: 1px solid var(--shell-border);
+    border-radius: var(--shell-radius);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: var(--shell-line);
+  }
+  select:focus-visible {
+    border-color: var(--shell-input-border-focus);
+    box-shadow: var(--shell-focus-ring);
+    outline: none;
+  }
+  select:disabled { opacity: 0.55; cursor: not-allowed; }
   .r2-log { list-style: none; padding: 0; font-size: 0.85em; }
   .r2-log li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; padding: 2px 0; }
   .r2-log .status-failed { color: #e66; }

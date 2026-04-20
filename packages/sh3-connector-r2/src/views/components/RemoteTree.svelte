@@ -13,7 +13,7 @@
   <tbody>
     {#each nodes as n (n.path)}
       <tr class={n.existsLocal ? 'exists' : ''}>
-        <td><input type="checkbox" checked={selected.has(n.path)} onchange={() => onToggle(n.path)} /></td>
+        <td><input type="checkbox" class="shell-base-check" checked={selected.has(n.path)} onchange={() => onToggle(n.path)} /></td>
         <td>
           {n.path}
           {#if n.existsLocal}<span class="badge" title="Already exists locally — unchecked by default to protect local copy">local</span>{/if}

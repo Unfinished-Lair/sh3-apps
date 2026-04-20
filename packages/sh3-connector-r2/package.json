@@ -1,6 +1,6 @@
 {
   "name": "sh3-connector-r2",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Cloudflare R2 backup connector for SH3",
   "author": "@unfinished-lair",
   "type": "module",

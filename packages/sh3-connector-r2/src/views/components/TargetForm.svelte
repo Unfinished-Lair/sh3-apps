@@ -7,8 +7,9 @@
     initial?: BackupTarget;
     onSave: (tgt: BackupTarget) => void | Promise<void>;
     onCancel: () => void;
+    onShowGuide?: () => void;
   };
-  let { initial, onSave, onCancel }: Props = $props();
+  let { initial, onSave, onCancel, onShowGuide }: Props = $props();
 
   let label = $state(initial?.label ?? '');
   let accountId = $state(initial?.accountId ?? '');
@@ -55,15 +56,11 @@
 
   {#if error}<p class="r2-form__error">{error}</p>{/if}
 
-  <details>
-    <summary>Having trouble? Check bucket CORS</summary>
-    <pre>{`{
-  "AllowedOrigins": ["${typeof location !== 'undefined' ? location.origin : '<SH3 origin>'}"],
-  "AllowedMethods": ["PUT", "GET", "HEAD"],
-  "AllowedHeaders": ["*"],
-  "ExposeHeaders": ["ETag"]
-}`}</pre>
-  </details>
+  {#if onShowGuide}
+    <button type="button" class="r2-form__hint" onclick={onShowGuide}>
+      New to Cloudflare R2? Open the setup guide →
+    </button>
+  {/if}
 
   <div class="r2-form__actions">
     <button type="button" onclick={onCancel} disabled={busy}>Cancel</button>
@@ -76,6 +73,16 @@
   .r2-form label { display: flex; flex-direction: column; gap: 2px; font-size: 0.9em; }
   .r2-form input { padding: 4px 6px; background: var(--sh3-surface, #1a1a1a); color: inherit; border: 1px solid var(--sh3-border, #2a2a2a); }
   .r2-form__error { color: #e66; margin: 0; }
+  .r2-form__hint {
+    align-self: flex-start;
+    background: transparent;
+    border: none;
+    color: var(--sh3-accent, #4a9eff);
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
   .r2-form__actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
-  pre { font-size: 0.8em; background: var(--sh3-surface, #1a1a1a); padding: 8px; overflow: auto; }
 </style>

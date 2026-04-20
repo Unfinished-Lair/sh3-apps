@@ -69,7 +69,12 @@
             sourceTenant: rt.ctx.tenantId,
           });
           rt.progress.processed++;
-          if (res.status === 'failed' && res.reason) rt.progress.errors.push(`${item.path}: ${res.reason}`);
+          if (res.status === 'uploaded') rt.progress.uploaded++;
+          else if (res.status === 'skipped-unchanged') rt.progress.skipped++;
+          else {
+            rt.progress.failed++;
+            if (res.reason) rt.progress.errors.push(`${item.path}: ${res.reason}`);
+          }
           return res.status;
         },
       });

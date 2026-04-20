@@ -40,7 +40,7 @@ describe('targets persistence', () => {
     const list = await listTargets(h);
     expect(list).toHaveLength(1);
     expect(list[0].label).toBe('test');
-    expect(h._store.has(`/targets/${tgt.id}.json`)).toBe(true);
+    expect(h._store.has(`targets/${tgt.id}.json`)).toBe(true);
   });
 
   it('deletes a target', async () => {

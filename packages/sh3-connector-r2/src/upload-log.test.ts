@@ -37,7 +37,7 @@ describe('upload log', () => {
     const h = makeFakeHandle();
     await appendLog(h, entry());
     const metas = await h.list();
-    expect(metas.some((m) => m.path.startsWith('/uploads/2026-04/') && m.path.endsWith('.json'))).toBe(true);
+    expect(metas.some((m) => m.path.startsWith('uploads/2026-04/') && m.path.endsWith('.json'))).toBe(true);
   });
 
   it('listRecentLog returns entries newest-first', async () => {

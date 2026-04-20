@@ -12,7 +12,7 @@ export interface UploadLogEntry {
   at: string;
 }
 
-const DIR = '/uploads/';
+const DIR = 'uploads/';
 
 function monthFolder(iso: string): string {
   return iso.slice(0, 7);  // "YYYY-MM"

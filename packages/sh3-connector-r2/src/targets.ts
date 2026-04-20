@@ -12,7 +12,7 @@ export interface BackupTarget {
   createdAt: string;
 }
 
-const DIR = '/targets/';
+const DIR = 'targets/';
 
 export function newTargetId(): string {
   const bytes = new Uint8Array(8);

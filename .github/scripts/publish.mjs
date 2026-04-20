@@ -65,6 +65,9 @@ export function saveRegistry(pagesDir, registry) {
   writeFileSync(join(pagesDir, 'registry.json'), JSON.stringify(registry, null, 2));
 }
 
+// TEMP: sh3-sync is broken and blocks deploy; re-enable once fixed.
+const SKIP_PACKAGES = new Set(['sh3-sync']);
+
 export function discoverPackages(repoRoot) {
   const packagesDir = join(repoRoot, 'packages');
   if (!existsSync(packagesDir)) return [];
@@ -73,6 +76,8 @@ export function discoverPackages(repoRoot) {
   const result = [];
 
   for (const name of entries) {
+    if (SKIP_PACKAGES.has(name)) continue;
+
     const pkgDir = join(packagesDir, name);
     if (!statSync(pkgDir).isDirectory()) continue;
 

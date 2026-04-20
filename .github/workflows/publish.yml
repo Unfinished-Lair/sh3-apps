@@ -58,6 +58,11 @@ jobs:
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
               name=$(basename "$pkg")
+              # TEMP: sh3-sync is broken and blocks deploy; re-enable once fixed.
+              if [ "$name" = "sh3-sync" ]; then
+                echo "Skipping $name (temporarily disabled)"
+                continue
+              fi
               echo "::group::Build $name"
               npm run build:artifact -w "packages/$name" || { echo "::error::Build failed for $name"; exit 1; }
               echo "::endgroup::"

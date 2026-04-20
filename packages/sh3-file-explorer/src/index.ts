@@ -1,3 +1,3 @@
 export { app } from './app';
 export { shard } from './shard';
-export type { SelectionAction } from './contributions';
+export { SELECTION_ACTION_POINT, type SelectionAction } from './contributions';

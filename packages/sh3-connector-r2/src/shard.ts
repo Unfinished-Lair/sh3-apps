@@ -1,6 +1,12 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
+import type { SelectionAction } from 'sh3-file-explorer';
+
+// Inlined to avoid a runtime import from sh3-file-explorer. The loader's
+// bare-specifier rewriter (sh3-core 0.10.1) only shims sh3-core and svelte;
+// a value import from another shard would fail at install time. Types are
+// erased at compile time, so `SelectionAction` is safe.
+const SELECTION_ACTION_POINT = 'sh3-file-explorer.selectionAction';
 import { mount, unmount } from 'svelte';
-import { registerSelectionAction } from 'sh3-file-explorer/contributions';
 import { createRuntime, type Runtime } from './runtime.svelte';
 import { upload } from './upload';
 import { createR2Client } from './r2/client';
@@ -10,7 +16,6 @@ import BackupView from './views/BackupView.svelte';
 import ImportView from './views/ImportView.svelte';
 
 let runtime: Runtime | null = null;
-const unregisterFns: Array<() => void> = [];
 
 export const shard: SourceShard = {
   manifest: {
@@ -49,7 +54,7 @@ export const shard: SourceShard = {
       },
     });
 
-    const off = registerSelectionAction({
+    ctx.contributions.register<SelectionAction>(SELECTION_ACTION_POINT, {
       id: 'sh3-connector-r2:backup',
       label: 'Back up to R2',
       appliesTo: () => (runtime?.targets.length ?? 0) > 0,
@@ -87,12 +92,9 @@ export const shard: SourceShard = {
       },
       kind: 'secondary',
     });
-    unregisterFns.push(off);
   },
 
   deactivate() {
-    for (const fn of unregisterFns) fn();
-    unregisterFns.length = 0;
     runtime = null;
   },
 };

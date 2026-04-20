@@ -15,22 +15,24 @@ npm --workspace sh3-file-explorer run dev              # watch build
 npm --workspace sh3-file-explorer run test             # vitest
 ```
 
-## Contributions API (0.3.0+)
+## Contributions API (0.4.0+)
 
-Other shards can contribute per-selection action buttons to the file-explorer's selection panel:
+Other shards can contribute per-selection action buttons to the file-explorer's selection panel via sh3-core's `ctx.contributions`:
 
 ```ts
-import { registerSelectionAction } from 'sh3-file-explorer/contributions';
+import type { SelectionAction } from 'sh3-file-explorer';         // type-only
+import { SELECTION_ACTION_POINT } from 'sh3-file-explorer';       // value (a constant string)
 
-const off = registerSelectionAction({
-  id: 'my-shard:do-thing',                      // shard-prefixed, globally unique
-  label: 'Do thing',
-  appliesTo: (sel) => sel.path.endsWith('.md'), // optional filter
-  onInvoke: (sel) => { /* ... */ },
-  kind: 'secondary',                             // or 'primary'
-});
-
-// On shard deactivate, call off() to unregister.
+activate(ctx) {
+  ctx.contributions.register<SelectionAction>(SELECTION_ACTION_POINT, {
+    id: 'my-shard:do-thing',                      // shard-prefixed, globally unique
+    label: 'Do thing',
+    appliesTo: (sel) => sel.path.endsWith('.md'), // optional filter
+    onInvoke: (sel) => { /* ... */ },
+    kind: 'secondary',                             // or 'primary'
+  });
+  // Framework auto-unregisters on shard deactivate.
+}
 ```
 
 The panel re-renders on register/unregister. Errors thrown by `onInvoke` are caught and surfaced as a toast — they don't crash the panel.

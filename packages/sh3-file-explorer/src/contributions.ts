@@ -2,48 +2,27 @@ import type { Selection } from './explorerShard.svelte';
 
 type NonNullSelection = NonNullable<Selection>;
 
+/**
+ * Contribution point id for per-selection action buttons rendered in the
+ * SelectionPanel. Contributors register via
+ * `ctx.contributions.register<SelectionAction>(SELECTION_ACTION_POINT, { ... })`.
+ */
+export const SELECTION_ACTION_POINT = 'sh3-file-explorer.selectionAction';
+
+/**
+ * Shape of a contribution registered under `SELECTION_ACTION_POINT`.
+ * Descriptors are freeform from sh3-core's perspective — file-explorer
+ * reads this type back out of `ctx.contributions.list<SelectionAction>(...)`.
+ */
 export interface SelectionAction {
+  /** Stable, shard-prefixed id. Uniqueness is the provider's concern. */
   id: string;
+  /** Rendered on the action button. */
   label: string;
+  /** Optional selection filter. Default: always show. */
   appliesTo?(sel: NonNullSelection): boolean;
+  /** Invoked on click; runs in the contributing shard's realm. */
   onInvoke(sel: NonNullSelection): void | Promise<void>;
+  /** Visual weight. Default 'secondary'. */
   kind?: 'primary' | 'secondary';
-}
-
-const actions = new Map<string, SelectionAction>();
-const listeners = new Set<() => void>();
-
-function notify(): void {
-  for (const fn of listeners) fn();
-}
-
-export function registerSelectionAction(action: SelectionAction): () => void {
-  if (actions.has(action.id)) {
-    throw new Error(`SelectionAction "${action.id}" is already registered`);
-  }
-  actions.set(action.id, action);
-  notify();
-  return () => {
-    if (actions.delete(action.id)) notify();
-  };
-}
-
-export function listSelectionActions(sel: Selection): SelectionAction[] {
-  if (!sel) return [];
-  const out: SelectionAction[] = [];
-  for (const a of actions.values()) {
-    if (!a.appliesTo || a.appliesTo(sel)) out.push(a);
-  }
-  return out;
-}
-
-export function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => { listeners.delete(listener); };
-}
-
-/** Test-only. Not exported from the package root. */
-export function __resetForTest(): void {
-  actions.clear();
-  listeners.clear();
 }

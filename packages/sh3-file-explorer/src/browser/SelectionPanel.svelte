@@ -1,15 +1,19 @@
 <script lang="ts">
   import type { ExplorerStore } from '../explorerShard.svelte';
-  import { listSelectionActions, subscribe } from '../contributions';
+  import { SELECTION_ACTION_POINT, type SelectionAction } from '../contributions';
 
   let { store }: { store: ExplorerStore } = $props();
 
   let tick = $state(0);
-  $effect(() => subscribe(() => { tick++; }));
+  $effect(() => store.ctx.contributions.onChange(SELECTION_ACTION_POINT, () => { tick++; }));
 
   const actions = $derived.by(() => {
     void tick;
-    return listSelectionActions(store.ready ? store.selection : null);
+    if (!store.ready || !store.selection) return [] as SelectionAction[];
+    const sel = store.selection;
+    return store.ctx.contributions
+      .list<SelectionAction>(SELECTION_ACTION_POINT)
+      .filter((a) => !a.appliesTo || a.appliesTo(sel));
   });
 
   let busy = $state<Record<string, boolean>>({});

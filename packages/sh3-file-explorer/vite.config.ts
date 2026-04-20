@@ -5,17 +5,12 @@ export default defineConfig({
   plugins: [svelte()],
   build: {
     lib: {
-      entry: {
-        index: 'src/index.ts',
-        contributions: 'src/contributions.ts',
-      },
+      entry: 'src/index.ts',
       formats: ['es'],
+      fileName: 'index',
     },
     rollupOptions: {
       external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
-      output: {
-        entryFileNames: '[name].js',
-      },
     },
   },
 });

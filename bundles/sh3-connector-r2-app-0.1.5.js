@@ -1,45 +1,45 @@
 /* sh3-css-inline: injected styles */
 (function(){
   const s=document.createElement("style");
-  s.textContent=".r2-form.svelte-h3b7wu{display:flex;flex-direction:column;gap:8px;max-width:480px;padding:12px}.r2-form.svelte-h3b7wu label:where(.svelte-h3b7wu){display:flex;flex-direction:column;gap:2px;font-size:.9em}.r2-form.svelte-h3b7wu input:where(.svelte-h3b7wu){padding:4px 6px;background:var(--sh3-surface, #1a1a1a);color:inherit;border:1px solid var(--sh3-border, #2a2a2a)}.r2-form__error.svelte-h3b7wu{color:#e66;margin:0}.r2-form__hint.svelte-h3b7wu{align-self:flex-start;background:transparent;border:none;color:var(--sh3-accent, #4a9eff);padding:0;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.r2-form__actions.svelte-h3b7wu{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.r2-guide.svelte-122r6hr{background:var(--sh3-surface, #1a1a1a);border:1px solid var(--sh3-border, #2a2a2a);border-radius:4px;padding:12px 16px;overflow:auto;max-height:100%}.r2-guide__header.svelte-122r6hr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.r2-guide__header.svelte-122r6hr h3:where(.svelte-122r6hr){margin:0;font-size:1em}.r2-guide__close.svelte-122r6hr{background:transparent;color:inherit;border:none;font-size:1.4em;line-height:1;cursor:pointer;padding:0 4px}.r2-guide__close.svelte-122r6hr:hover{color:var(--sh3-accent, #4a9eff)}.r2-guide__steps.svelte-122r6hr{padding-left:1.25em;display:flex;flex-direction:column;gap:10px;font-size:.9em}.r2-guide__steps.svelte-122r6hr li:where(.svelte-122r6hr){line-height:1.45}.r2-guide__steps.svelte-122r6hr code:where(.svelte-122r6hr){font-size:.9em;background:var(--sh3-bg, #111);padding:1px 4px;border-radius:2px}.r2-guide__steps.svelte-122r6hr a:where(.svelte-122r6hr){color:var(--sh3-accent, #4a9eff)}.r2-guide__steps.svelte-122r6hr pre:where(.svelte-122r6hr){font-size:.82em;background:var(--sh3-bg, #111);padding:8px;border-radius:3px;overflow:auto;margin:6px 0 0}.r2-targets.svelte-16gewpp{padding:12px}.r2-targets--split.svelte-16gewpp{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:720px){.r2-targets--split.svelte-16gewpp{grid-template-columns:1fr}}header.svelte-16gewpp{display:flex;justify-content:space-between;align-items:center}.r2-targets__actions.svelte-16gewpp{display:flex;gap:6px}table.svelte-16gewpp{width:100%;border-collapse:collapse;margin-top:8px}th.svelte-16gewpp,td.svelte-16gewpp{text-align:left;padding:6px 8px;border-bottom:1px solid var(--sh3-border, #2a2a2a)}.muted.svelte-16gewpp{color:var(--sh3-muted, #888)}.danger.svelte-16gewpp{color:#e66}.r2-progress.svelte-putn2e{padding:8px;border:1px solid var(--sh3-border, #2a2a2a);border-radius:3px;margin:8px 0}.r2-progress__bar.svelte-putn2e{height:6px;background:var(--sh3-surface, #1a1a1a);margin:4px 0}.r2-progress__fill.svelte-putn2e{height:100%;background:var(--sh3-accent, #4a9eff)}.r2-progress__counts.svelte-putn2e{font-size:.85em;color:var(--sh3-muted, #888)}.r2-backup.svelte-8kfsmf{padding:12px;display:flex;flex-direction:column;gap:8px}label.svelte-8kfsmf{display:flex;flex-direction:column;gap:2px;max-width:420px}.r2-log.svelte-8kfsmf{list-style:none;padding:0;font-size:.85em}.r2-log.svelte-8kfsmf li:where(.svelte-8kfsmf){display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;padding:2px 0}.r2-log.svelte-8kfsmf .status-failed:where(.svelte-8kfsmf){color:#e66}.r2-log.svelte-8kfsmf .status-skipped-unchanged:where(.svelte-8kfsmf){color:var(--sh3-muted, #888)}.muted.svelte-8kfsmf{color:var(--sh3-muted, #888)}.r2-tree.svelte-8cyv1p{width:100%;border-collapse:collapse;font-size:.9em}th.svelte-8cyv1p,td.svelte-8cyv1p{text-align:left;padding:4px 8px;border-bottom:1px solid var(--sh3-border, #2a2a2a)}tr.exists.svelte-8cyv1p{color:var(--sh3-muted, #888)}.badge.svelte-8cyv1p{margin-left:6px;background:var(--sh3-surface, #1a1a1a);padding:0 6px;border-radius:2px;font-size:.75em}.r2-import.svelte-1kdudbk{padding:12px;display:flex;flex-direction:column;gap:8px}label.svelte-1kdudbk{display:flex;flex-direction:column;gap:2px;max-width:420px}.warn.svelte-1kdudbk{background:#5a3a1a;border:1px solid #a77733;padding:8px;color:#ffd}.summary.svelte-1kdudbk{border:1px solid var(--sh3-border, #2a2a2a);padding:8px;border-radius:3px}";
+  s.textContent=".r2-form.svelte-h3b7wu{display:flex;flex-direction:column;gap:8px;max-width:480px;padding:12px}.r2-form.svelte-h3b7wu label:where(.svelte-h3b7wu){display:flex;flex-direction:column;gap:2px;font-size:.9em}.r2-form__error.svelte-h3b7wu{color:#e66;margin:0}.r2-form__hint.svelte-h3b7wu{align-self:flex-start;background:transparent;border:none;color:var(--sh3-accent, #4a9eff);padding:0;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.r2-form__actions.svelte-h3b7wu{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.r2-guide.svelte-122r6hr{background:var(--sh3-surface, #1a1a1a);border:1px solid var(--sh3-border, #2a2a2a);border-radius:4px;padding:12px 16px;overflow:auto;max-height:100%}.r2-guide__header.svelte-122r6hr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.r2-guide__header.svelte-122r6hr h3:where(.svelte-122r6hr){margin:0;font-size:1em}.r2-guide__close.svelte-122r6hr{background:transparent;color:inherit;border:none;font-size:1.4em;line-height:1;cursor:pointer;padding:0 4px}.r2-guide__close.svelte-122r6hr:hover{color:var(--sh3-accent, #4a9eff)}.r2-guide__steps.svelte-122r6hr{padding-left:1.25em;display:flex;flex-direction:column;gap:10px;font-size:.9em}.r2-guide__steps.svelte-122r6hr li:where(.svelte-122r6hr){line-height:1.45}.r2-guide__steps.svelte-122r6hr code:where(.svelte-122r6hr){font-size:.9em;background:var(--sh3-bg, #111);padding:1px 4px;border-radius:2px}.r2-guide__steps.svelte-122r6hr a:where(.svelte-122r6hr){color:var(--sh3-accent, #4a9eff)}.r2-guide__steps.svelte-122r6hr pre:where(.svelte-122r6hr){font-size:.82em;background:var(--sh3-bg, #111);padding:8px;border-radius:3px;overflow:auto;margin:6px 0 0}.r2-targets.svelte-16gewpp{padding:12px}.r2-targets--split.svelte-16gewpp{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}@media(max-width:720px){.r2-targets--split.svelte-16gewpp{grid-template-columns:1fr}}header.svelte-16gewpp{display:flex;justify-content:space-between;align-items:center}.r2-targets__actions.svelte-16gewpp{display:flex;gap:6px}table.svelte-16gewpp{width:100%;border-collapse:collapse;margin-top:8px}th.svelte-16gewpp,td.svelte-16gewpp{text-align:left;padding:6px 8px;border-bottom:1px solid var(--sh3-border, #2a2a2a)}.muted.svelte-16gewpp{color:var(--sh3-muted, #888)}.danger.svelte-16gewpp{color:#e66}.r2-progress.svelte-putn2e{padding:8px;border:1px solid var(--sh3-border, #2a2a2a);border-radius:3px;margin:8px 0}.r2-progress__bar.svelte-putn2e{height:6px;background:var(--sh3-surface, #1a1a1a);margin:4px 0}.r2-progress__fill.svelte-putn2e{height:100%;background:var(--sh3-accent, #4a9eff)}.r2-progress__counts.svelte-putn2e{font-size:.85em;color:var(--sh3-muted, #888)}.r2-backup.svelte-8kfsmf{padding:12px;display:flex;flex-direction:column;gap:8px}label.svelte-8kfsmf{display:flex;flex-direction:column;gap:2px;max-width:420px}select.svelte-8kfsmf{padding:var(--shell-pad-md) var(--shell-pad-lg);background:var(--shell-input-bg);color:var(--shell-fg);border:1px solid var(--shell-border);border-radius:var(--shell-radius);font-family:inherit;font-size:.8125rem;line-height:var(--shell-line)}select.svelte-8kfsmf:focus-visible{border-color:var(--shell-input-border-focus);box-shadow:var(--shell-focus-ring);outline:none}select.svelte-8kfsmf:disabled{opacity:.55;cursor:not-allowed}.r2-log.svelte-8kfsmf{list-style:none;padding:0;font-size:.85em}.r2-log.svelte-8kfsmf li:where(.svelte-8kfsmf){display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;padding:2px 0}.r2-log.svelte-8kfsmf .status-failed:where(.svelte-8kfsmf){color:#e66}.r2-log.svelte-8kfsmf .status-skipped-unchanged:where(.svelte-8kfsmf){color:var(--sh3-muted, #888)}.muted.svelte-8kfsmf{color:var(--sh3-muted, #888)}.r2-tree.svelte-8cyv1p{width:100%;border-collapse:collapse;font-size:.9em}th.svelte-8cyv1p,td.svelte-8cyv1p{text-align:left;padding:4px 8px;border-bottom:1px solid var(--sh3-border, #2a2a2a)}tr.exists.svelte-8cyv1p{color:var(--sh3-muted, #888)}.badge.svelte-8cyv1p{margin-left:6px;background:var(--sh3-surface, #1a1a1a);padding:0 6px;border-radius:2px;font-size:.75em}.r2-import.svelte-1kdudbk{padding:12px;display:flex;flex-direction:column;gap:8px}label.svelte-1kdudbk{display:flex;flex-direction:column;gap:2px;max-width:420px}.warn.svelte-1kdudbk{background:#5a3a1a;border:1px solid #a77733;padding:8px;color:#ffd}.summary.svelte-1kdudbk{border:1px solid var(--sh3-border, #2a2a2a);padding:8px;border-radius:3px}";
   document.head.appendChild(s);
 })();
 var le = Object.defineProperty;
-var ce = (s, t, a) => t in s ? le(s, t, { enumerable: !0, configurable: !0, writable: !0, value: a }) : s[t] = a;
-var X = (s, t, a) => ce(s, typeof t != "symbol" ? t + "" : t, a);
+var ce = (a, t, s) => t in a ? le(a, t, { enumerable: !0, configurable: !0, writable: !0, value: s }) : a[t] = s;
+var X = (a, t, s) => ce(a, typeof t != "symbol" ? t + "" : t, s);
 import { mount as Z, unmount as Q } from "svelte";
 import * as e from "svelte/internal/client";
 import "svelte/internal/disclose-version";
 const te = "targets/";
 function de() {
-  const s = new Uint8Array(8);
-  crypto.getRandomValues(s);
+  const a = new Uint8Array(8);
+  crypto.getRandomValues(a);
   let t = "";
-  for (const a of s) t += a.toString(16).padStart(2, "0");
+  for (const s of a) t += s.toString(16).padStart(2, "0");
   return `tgt-${t}`;
 }
-async function ue(s) {
-  const t = await s.list(), a = [];
+async function ue(a) {
+  const t = await a.list(), s = [];
   for (const n of t) {
     if (!n.path.startsWith(te) || !n.path.endsWith(".json")) continue;
-    const o = await s.read(n.path);
+    const o = await a.read(n.path);
     if (o)
       try {
-        a.push(JSON.parse(o));
+        s.push(JSON.parse(o));
       } catch {
       }
   }
-  return a.sort((n, o) => n.label.localeCompare(o.label));
+  return s.sort((n, o) => n.label.localeCompare(o.label));
 }
-async function ge(s, t) {
-  await s.write(`${te}${t.id}.json`, JSON.stringify(t, null, 2));
+async function ge(a, t) {
+  await a.write(`${te}${t.id}.json`, JSON.stringify(t, null, 2));
 }
-async function he(s, t) {
-  await s.delete(`${te}${t}.json`);
+async function he(a, t) {
+  await a.delete(`${te}${t}.json`);
 }
-function pe(s) {
-  const t = s.documents({ format: "text" });
-  let a = e.state(e.proxy([])), n = e.state(!1);
+function pe(a) {
+  const t = a.documents({ format: "text" });
+  let s = e.state(e.proxy([])), n = e.state(!1);
   const o = e.proxy({
     running: !1,
     currentLabel: "",
@@ -51,13 +51,13 @@ function pe(s) {
     errors: []
   });
   async function r() {
-    e.set(a, await ue(t), !0), e.set(n, !0);
+    e.set(s, await ue(t), !0), e.set(n, !0);
   }
   return {
-    ctx: s,
+    ctx: a,
     docs: t,
     get targets() {
-      return e.get(a);
+      return e.get(s);
     },
     get targetsLoaded() {
       return e.get(n);
@@ -81,31 +81,31 @@ const fe = {
   yaml: "application/yaml",
   yml: "application/yaml"
 };
-function ve(s, t, a) {
+function ve(a, t, s) {
   if (!t) throw new Error("buildObjectKey: shardId is required");
-  if (a.split("/").some((r) => r === ".." || r === "."))
-    throw new Error(`buildObjectKey: path traversal not allowed: ${a}`);
-  const o = a.startsWith("/") ? a.slice(1) : a;
-  return `${s}${t}/${o}`;
+  if (s.split("/").some((r) => r === ".." || r === "."))
+    throw new Error(`buildObjectKey: path traversal not allowed: ${s}`);
+  const o = s.startsWith("/") ? s.slice(1) : s;
+  return `${a}${t}/${o}`;
 }
-function me(s) {
-  const t = s.lastIndexOf(".");
+function me(a) {
+  const t = a.lastIndexOf(".");
   if (t < 0) return "application/octet-stream";
-  const a = s.slice(t + 1).toLowerCase();
-  return fe[a] ?? "application/octet-stream";
+  const s = a.slice(t + 1).toLowerCase();
+  return fe[s] ?? "application/octet-stream";
 }
-const ae = "0123456789abcdef";
-async function ee(s) {
-  const t = typeof s == "string" ? new TextEncoder().encode(s) : s instanceof Uint8Array ? s : new Uint8Array(s), a = await crypto.subtle.digest("SHA-256", t), n = new Uint8Array(a);
+const se = "0123456789abcdef";
+async function ee(a) {
+  const t = typeof a == "string" ? new TextEncoder().encode(a) : a instanceof Uint8Array ? a : new Uint8Array(a), s = await crypto.subtle.digest("SHA-256", t), n = new Uint8Array(s);
   let o = "";
   for (let r = 0; r < n.length; r++)
-    o += ae[n[r] >>> 4], o += ae[n[r] & 15];
+    o += se[n[r] >>> 4], o += se[n[r] & 15];
   return o;
 }
-async function V(s, t) {
-  const a = s instanceof Uint8Array ? s : new Uint8Array(s), n = await crypto.subtle.importKey(
+async function V(a, t) {
+  const s = a instanceof Uint8Array ? a : new Uint8Array(a), n = await crypto.subtle.importKey(
     "raw",
-    a,
+    s,
     { name: "HMAC", hash: "SHA-256" },
     !1,
     ["sign"]
@@ -113,31 +113,31 @@ async function V(s, t) {
   return new Uint8Array(o);
 }
 const Y = "uploads/";
-function be(s) {
-  return s.slice(0, 7);
+function be(a) {
+  return a.slice(0, 7);
 }
 function _e() {
-  const s = new Uint8Array(4);
-  crypto.getRandomValues(s);
+  const a = new Uint8Array(4);
+  crypto.getRandomValues(a);
   let t = "";
-  for (const a of s) t += a.toString(16).padStart(2, "0");
+  for (const s of a) t += s.toString(16).padStart(2, "0");
   return t;
 }
-async function ye(s, t) {
-  const a = `${Y}${be(t.at)}/`, n = `${t.at}-${_e()}.json`;
-  await s.write(`${a}${n}`, JSON.stringify(t, null, 2));
+async function ye(a, t) {
+  const s = `${Y}${be(t.at)}/`, n = `${t.at}-${_e()}.json`;
+  await a.write(`${s}${n}`, JSON.stringify(t, null, 2));
 }
-async function we(s, t) {
-  const a = await s.list(), n = /* @__PURE__ */ new Set();
-  for (const i of a) {
+async function we(a, t) {
+  const s = await a.list(), n = /* @__PURE__ */ new Set();
+  for (const i of s) {
     if (!i.path.startsWith(Y)) continue;
     const l = i.path.slice(Y.length), c = l.indexOf("/");
     c > 0 && n.add(l.slice(0, c));
   }
   const o = Array.from(n).sort().reverse().slice(0, 2), r = [];
-  for (const i of a) {
+  for (const i of s) {
     if (!o.find((m) => i.path.startsWith(`${Y}${m}/`)) || !i.path.endsWith(".json")) continue;
-    const c = await s.read(i.path);
+    const c = await a.read(i.path);
     if (c)
       try {
         r.push(JSON.parse(c));
@@ -147,14 +147,14 @@ async function we(s, t) {
   return r.sort((i, l) => i.at < l.at ? 1 : i.at > l.at ? -1 : 0), r.slice(0, t);
 }
 function W() {
-  const s = new Uint8Array(6);
-  crypto.getRandomValues(s);
+  const a = new Uint8Array(6);
+  crypto.getRandomValues(a);
   let t = "";
-  for (const a of s) t += a.toString(16).padStart(2, "0");
+  for (const s of a) t += s.toString(16).padStart(2, "0");
   return `${Date.now().toString(36)}-${t}`;
 }
-async function ne(s) {
-  const { target: t, client: a, logHandle: n, readForeign: o, shardId: r, path: i } = s, l = ve(t.keyPrefix, r, i), c = (/* @__PURE__ */ new Date()).toISOString();
+async function ne(a) {
+  const { target: t, client: s, logHandle: n, readForeign: o, shardId: r, path: i } = a, l = ve(t.keyPrefix, r, i), c = (/* @__PURE__ */ new Date()).toISOString();
   let m;
   try {
     m = await o(r, i);
@@ -168,13 +168,13 @@ async function ne(s) {
   }
   const k = new TextEncoder().encode(m).length, y = await ee(m);
   try {
-    const p = await a.headObject(l);
+    const p = await s.headObject(l);
     if (p && p.sha256 === y)
       return await $(n, { id: W(), targetId: t.id, shardId: r, path: i, sha256: y, size: k, status: "skipped-unchanged", at: c }), { status: "skipped-unchanged", sha256: y, size: k };
   } catch {
   }
   try {
-    return await a.putObject({
+    return await s.putObject({
       key: l,
       body: m,
       contentType: me(i),
@@ -183,7 +183,7 @@ async function ne(s) {
         "sh3-shard": r,
         "sh3-path": encodeURIComponent(i),
         "sh3-uploaded-at": c,
-        "sh3-source-tenant": s.sourceTenant ?? "",
+        "sh3-source-tenant": a.sourceTenant ?? "",
         "sh3-sha256": y
       }
     }), await $(n, { id: W(), targetId: t.id, shardId: r, path: i, sha256: y, size: k, status: "uploaded", at: c }), { status: "uploaded", sha256: y, size: k };
@@ -192,73 +192,73 @@ async function ne(s) {
     return await $(n, { id: W(), targetId: t.id, shardId: r, path: i, sha256: y, size: k, status: "failed", reason: A, at: c }), { status: "failed", reason: A };
   }
 }
-async function $(s, t) {
+async function $(a, t) {
   try {
-    await ye(s, t);
-  } catch (a) {
-    console.warn("[sh3-connector-r2] failed to append upload log:", a);
+    await ye(a, t);
+  } catch (s) {
+    console.warn("[sh3-connector-r2] failed to append upload log:", s);
   }
 }
 function xe() {
-  const s = /* @__PURE__ */ new Date(), t = (a) => String(a).padStart(2, "0");
-  return `${s.getUTCFullYear()}${t(s.getUTCMonth() + 1)}${t(s.getUTCDate())}T${t(s.getUTCHours())}${t(s.getUTCMinutes())}${t(s.getUTCSeconds())}Z`;
+  const a = /* @__PURE__ */ new Date(), t = (s) => String(s).padStart(2, "0");
+  return `${a.getUTCFullYear()}${t(a.getUTCMonth() + 1)}${t(a.getUTCDate())}T${t(a.getUTCHours())}${t(a.getUTCMinutes())}${t(a.getUTCSeconds())}Z`;
 }
-function ke(s) {
-  return s.slice(0, 8);
+function ke(a) {
+  return a.slice(0, 8);
 }
-async function Se(s) {
-  const t = s.dateOverride ?? xe(), a = ke(t), n = typeof s.payload == "string" ? new TextEncoder().encode(s.payload) : s.payload instanceof Uint8Array ? s.payload : new Uint8Array(s.payload), o = await ee(n), r = {};
-  for (const [b, f] of Object.entries(s.headers ?? {}))
+async function Se(a) {
+  const t = a.dateOverride ?? xe(), s = ke(t), n = typeof a.payload == "string" ? new TextEncoder().encode(a.payload) : a.payload instanceof Uint8Array ? a.payload : new Uint8Array(a.payload), o = await ee(n), r = {};
+  for (const [b, f] of Object.entries(a.headers ?? {}))
     r[b.toLowerCase()] = f;
-  r.host = s.host, r["x-amz-date"] = t, s.service === "s3" && (r["x-amz-content-sha256"] = o);
+  r.host = a.host, r["x-amz-date"] = t, a.service === "s3" && (r["x-amz-content-sha256"] = o);
   const i = Object.entries(r).map(([b, f]) => [b.toLowerCase(), String(f).trim().replace(/\s+/g, " ")]).sort(([b], [f]) => b < f ? -1 : b > f ? 1 : 0), l = i.map(([b]) => b).join(";"), c = i.map(([b, f]) => `${b}:${f}
 `).join(""), m = [
-    s.method.toUpperCase(),
-    s.path,
-    s.query ?? "",
+    a.method.toUpperCase(),
+    a.path,
+    a.query ?? "",
     c,
     l,
     o
   ].join(`
-`), k = `${a}/${s.region}/${s.service}/aws4_request`, y = [
+`), k = `${s}/${a.region}/${a.service}/aws4_request`, y = [
     "AWS4-HMAC-SHA256",
     t,
     k,
     await ee(m)
   ].join(`
 `), p = await V(
-    new TextEncoder().encode(`AWS4${s.credentials.secretAccessKey}`),
-    a
-  ), A = await V(p, s.region), D = await V(A, s.service), S = await V(D, "aws4_request"), O = await V(S, y), R = Array.from(O).map((b) => b.toString(16).padStart(2, "0")).join(""), g = `AWS4-HMAC-SHA256 Credential=${s.credentials.accessKeyId}/${k}, SignedHeaders=${l}, Signature=${R}`, u = { ...r };
-  return u.Authorization = g, { url: `https://${s.host}${s.path}${s.query ? `?${s.query}` : ""}`, method: s.method.toUpperCase(), headers: u, body: n };
+    new TextEncoder().encode(`AWS4${a.credentials.secretAccessKey}`),
+    s
+  ), A = await V(p, a.region), D = await V(A, a.service), S = await V(D, "aws4_request"), O = await V(S, y), R = Array.from(O).map((b) => b.toString(16).padStart(2, "0")).join(""), g = `AWS4-HMAC-SHA256 Credential=${a.credentials.accessKeyId}/${k}, SignedHeaders=${l}, Signature=${R}`, u = { ...r };
+  return u.Authorization = g, { url: `https://${a.host}${a.path}${a.query ? `?${a.query}` : ""}`, method: a.method.toUpperCase(), headers: u, body: n };
 }
 class Ie extends Error {
-  constructor(a, n, o, r) {
-    super(a);
+  constructor(s, n, o, r) {
+    super(s);
     X(this, "name", "R2Error");
     this.status = n, this.code = o, this.responseText = r;
   }
 }
-async function Te(s) {
-  const t = fetch, a = s.body ?? "", n = await Se({
-    method: s.method,
-    host: s.host,
-    path: s.path,
-    query: s.query ?? "",
-    headers: s.headers,
-    payload: a,
-    service: s.service,
-    region: s.region,
-    credentials: s.credentials
+async function Te(a) {
+  const t = fetch, s = a.body ?? "", n = await Se({
+    method: a.method,
+    host: a.host,
+    path: a.path,
+    query: a.query ?? "",
+    headers: a.headers,
+    payload: s,
+    service: a.service,
+    region: a.region,
+    credentials: a.credentials
   }), o = await t(n.url, {
     method: n.method,
     headers: n.headers,
-    body: s.method === "GET" || s.method === "HEAD" ? void 0 : n.body
+    body: a.method === "GET" || a.method === "HEAD" ? void 0 : n.body
   });
   if (!o.ok) {
     const r = await o.text().catch(() => ""), i = r.match(/<Code>([^<]+)<\/Code>/);
     throw new Ie(
-      `R2 ${s.method} ${s.path} failed (${o.status})`,
+      `R2 ${a.method} ${a.path} failed (${o.status})`,
       o.status,
       i == null ? void 0 : i[1],
       r
@@ -266,21 +266,21 @@ async function Te(s) {
   }
   return o;
 }
-function J(s, t) {
-  const a = `${s.accountId}.r2.cloudflarestorage.com`, n = {
-    accessKeyId: s.accessKeyId,
-    secretAccessKey: s.secretAccessKey
-  }, o = `/${s.bucket}`;
+function J(a, t) {
+  const s = `${a.accountId}.r2.cloudflarestorage.com`, n = {
+    accessKeyId: a.accessKeyId,
+    secretAccessKey: a.secretAccessKey
+  }, o = `/${a.bucket}`;
   async function r(i, l, c = {}) {
     return Te({
       method: i,
-      host: a,
+      host: s,
       path: `${o}${l}`,
       query: c.query,
       headers: c.headers,
       body: c.body,
       service: "s3",
-      region: s.region,
+      region: a.region,
       credentials: n
     });
   }
@@ -338,46 +338,46 @@ function J(s, t) {
     }
   };
 }
-class se extends Error {
+class ae extends Error {
   constructor() {
     super(...arguments);
     X(this, "name", "MissingCapabilityError");
   }
 }
 const Ae = "documents:read not available. Reinstall the shard with the documents:read permission granted (sh3-core 0.9.1+).", Ce = "documents:write not available. Reinstall the shard with the documents:write permission granted (sh3-core 0.9.1+).";
-function oe(s) {
-  return async (t, a) => {
+function oe(a) {
+  return async (t, s) => {
     var r;
-    const n = (r = s.browse) == null ? void 0 : r.readFrom;
-    if (!n) throw new se(Ae);
-    const o = await n(t, a);
+    const n = (r = a.browse) == null ? void 0 : r.readFrom;
+    if (!n) throw new ae(Ae);
+    const o = await n(t, s);
     if (o === null) return null;
     if (typeof o == "string") return o;
     throw new Error(
-      `Binary document at ${t}/${a} is not supported in v0.1.0 (deferred).`
+      `Binary document at ${t}/${s} is not supported in v0.1.0 (deferred).`
     );
   };
 }
-function Re(s) {
-  return async (t, a, n) => {
+function Re(a) {
+  return async (t, s, n) => {
     var r;
-    const o = (r = s.browse) == null ? void 0 : r.writeTo;
-    if (!o) throw new se(Ce);
-    await o(t, a, n);
+    const o = (r = a.browse) == null ? void 0 : r.writeTo;
+    if (!o) throw new ae(Ce);
+    await o(t, s, n);
   };
 }
-var Ee = e.from_html('<p class="r2-form__error svelte-h3b7wu"> </p>'), Oe = e.from_html('<button type="button" class="r2-form__hint svelte-h3b7wu">New to Cloudflare R2? Open the setup guide →</button>'), je = e.from_html('<form class="r2-form svelte-h3b7wu"><label class="svelte-h3b7wu">Label<input type="text" required="" class="svelte-h3b7wu"/></label> <label class="svelte-h3b7wu">Cloudflare Account ID<input type="text" required="" class="svelte-h3b7wu"/></label> <label class="svelte-h3b7wu">Bucket name<input type="text" required="" class="svelte-h3b7wu"/></label> <label class="svelte-h3b7wu">Key prefix (e.g. sh3-laptop/)<input type="text" class="svelte-h3b7wu"/></label> <label class="svelte-h3b7wu">Access Key ID<input type="password" required="" class="svelte-h3b7wu"/></label> <label class="svelte-h3b7wu">Secret Access Key<input type="password" required="" class="svelte-h3b7wu"/></label> <!> <!> <div class="r2-form__actions svelte-h3b7wu"><button type="button">Cancel</button> <button type="submit"> </button></div></form>');
-function re(s, t) {
+var Ee = e.from_html('<p class="r2-form__error svelte-h3b7wu"> </p>'), Oe = e.from_html('<button type="button" class="r2-form__hint svelte-h3b7wu">New to Cloudflare R2? Open the setup guide →</button>'), je = e.from_html('<form class="r2-form svelte-h3b7wu"><label class="svelte-h3b7wu">Label<input type="text" required=""/></label> <label class="svelte-h3b7wu">Cloudflare Account ID<input type="text" required=""/></label> <label class="svelte-h3b7wu">Bucket name<input type="text" required=""/></label> <label class="svelte-h3b7wu">Key prefix (e.g. sh3-laptop/)<input type="text"/></label> <label class="svelte-h3b7wu">Access Key ID<input type="password" required=""/></label> <label class="svelte-h3b7wu">Secret Access Key<input type="password" required=""/></label> <!> <!> <div class="r2-form__actions svelte-h3b7wu"><button type="button">Cancel</button> <button type="submit"> </button></div></form>');
+function re(a, t) {
   var C, T, P, U, B, q;
   e.push(t, !0);
-  let a = e.state(e.proxy(((C = t.initial) == null ? void 0 : C.label) ?? "")), n = e.state(e.proxy(((T = t.initial) == null ? void 0 : T.accountId) ?? "")), o = e.state(e.proxy(((P = t.initial) == null ? void 0 : P.bucket) ?? "")), r = e.state(e.proxy(((U = t.initial) == null ? void 0 : U.keyPrefix) ?? "")), i = e.state(e.proxy(((B = t.initial) == null ? void 0 : B.accessKeyId) ?? "")), l = e.state(e.proxy(((q = t.initial) == null ? void 0 : q.secretAccessKey) ?? "")), c = e.state(!1), m = e.state(null);
+  let s = e.state(e.proxy(((C = t.initial) == null ? void 0 : C.label) ?? "")), n = e.state(e.proxy(((T = t.initial) == null ? void 0 : T.accountId) ?? "")), o = e.state(e.proxy(((P = t.initial) == null ? void 0 : P.bucket) ?? "")), r = e.state(e.proxy(((U = t.initial) == null ? void 0 : U.keyPrefix) ?? "")), i = e.state(e.proxy(((B = t.initial) == null ? void 0 : B.accessKeyId) ?? "")), l = e.state(e.proxy(((q = t.initial) == null ? void 0 : q.secretAccessKey) ?? "")), c = e.state(!1), m = e.state(null);
   async function k(w) {
     var z, N;
     w.preventDefault(), e.set(m, null), e.set(c, !0);
     const j = {
       id: ((z = t.initial) == null ? void 0 : z.id) ?? de(),
       createdAt: ((N = t.initial) == null ? void 0 : N.createdAt) ?? (/* @__PURE__ */ new Date()).toISOString(),
-      label: e.get(a).trim(),
+      label: e.get(s).trim(),
       accountId: e.get(n).trim(),
       bucket: e.get(o).trim(),
       region: "auto",
@@ -431,10 +431,10 @@ function re(s, t) {
   var x = e.sibling(K, 2), h = e.child(x), v = e.sibling(h, 2), E = e.child(v, !0);
   e.reset(v), e.reset(x), e.reset(y), e.template_effect(() => {
     h.disabled = e.get(c), v.disabled = e.get(c), e.set_text(E, e.get(c) ? "Validating…" : "Save & validate");
-  }), e.event("submit", y, k), e.bind_value(A, () => e.get(a), (w) => e.set(a, w)), e.bind_value(S, () => e.get(n), (w) => e.set(n, w)), e.bind_value(R, () => e.get(o), (w) => e.set(o, w)), e.bind_value(u, () => e.get(r), (w) => e.set(r, w)), e.bind_value(b, () => e.get(i), (w) => e.set(i, w)), e.bind_value(d, () => e.get(l), (w) => e.set(l, w)), e.delegated("click", h, function(...w) {
+  }), e.event("submit", y, k), e.bind_value(A, () => e.get(s), (w) => e.set(s, w)), e.bind_value(S, () => e.get(n), (w) => e.set(n, w)), e.bind_value(R, () => e.get(o), (w) => e.set(o, w)), e.bind_value(u, () => e.get(r), (w) => e.set(r, w)), e.bind_value(b, () => e.get(i), (w) => e.set(i, w)), e.bind_value(d, () => e.get(l), (w) => e.set(l, w)), e.delegated("click", h, function(...w) {
     var j;
     (j = t.onCancel) == null || j.apply(this, w);
-  }), e.append(s, y), e.pop();
+  }), e.append(a, y), e.pop();
 }
 e.delegate(["click"]);
 var He = e.from_html(`<aside class="r2-guide svelte-122r6hr" aria-label="Cloudflare R2 setup guide"><header class="r2-guide__header svelte-122r6hr"><h3 class="svelte-122r6hr">Cloudflare R2 setup</h3> <button class="r2-guide__close svelte-122r6hr" type="button" aria-label="Close guide">×</button></header> <ol class="r2-guide__steps svelte-122r6hr"><li class="svelte-122r6hr"><strong>Sign in to Cloudflare.</strong> Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener" class="svelte-122r6hr">dash.cloudflare.com</a>.
@@ -442,7 +442,7 @@ var He = e.from_html(`<aside class="r2-guide svelte-122r6hr" aria-label="Cloudfl
       Then click <em>Create bucket</em>, give it a name (e.g. <code class="svelte-122r6hr">sh3-backups</code>), and pick a location hint close to you.</li> <li class="svelte-122r6hr"><strong>Copy your Account ID.</strong> On the R2 overview page, the right sidebar shows <em>Account ID</em>. Paste it into the form's Account ID field.</li> <li class="svelte-122r6hr"><strong>Create an API token.</strong> Top right of the R2 page: <em>Manage R2 API Tokens</em> → <em>Create API token</em>.
       Name it (e.g. <code class="svelte-122r6hr">sh3-connector-r2</code>), choose <em>Object Read &amp; Write</em>, scope it to your bucket.
       After creating, copy the <em>Access Key ID</em> and <em>Secret Access Key</em> — they are shown <strong>once</strong> — into the form.</li> <li class="svelte-122r6hr"><strong>Configure CORS on the bucket.</strong> Open your bucket → <em>Settings</em> → <em>CORS Policy</em> → <em>Edit CORS policy</em> → paste: <pre class="svelte-122r6hr"> </pre> Without this, the browser blocks uploads from this SH3 origin.</li> <li class="svelte-122r6hr"><strong>Fill in the form and save.</strong> Back in the left column: fill Label + Account ID + Bucket + Key prefix (optional) + Access Key + Secret. <em>Save &amp; validate</em> issues a signed <code class="svelte-122r6hr">HeadBucket</code> — a green result means credentials and CORS are both working.</li></ol></aside>`);
-function De(s, t) {
+function De(a, t) {
   const n = `[
   {
     "AllowedOrigins": ["${typeof location < "u" ? location.origin : "<SH3 origin>"}"],
@@ -457,15 +457,15 @@ function De(s, t) {
   e.reset(m), e.next(), e.reset(c), e.next(2), e.reset(l), e.reset(o), e.template_effect(() => e.set_text(k, n)), e.delegated("click", i, function(...y) {
     var p;
     (p = t.onClose) == null || p.apply(this, y);
-  }), e.append(s, o);
+  }), e.append(a, o);
 }
 e.delegate(["click"]);
 var Ke = e.from_html('<button type="button">Help</button>'), Pe = e.from_html('<button type="button">Add target</button>'), Le = e.from_html("<p>Loading…</p>"), Me = e.from_html(`<p class="muted svelte-16gewpp">No targets yet. Click "Add target" to configure one, or "Help" if you're new to Cloudflare R2.</p>`), Ue = e.from_html('<tr><td class="svelte-16gewpp"> </td><td class="svelte-16gewpp"> </td><td class="svelte-16gewpp"> </td><td class="svelte-16gewpp"><button type="button">Edit</button> <button type="button" class="danger svelte-16gewpp">Delete</button></td></tr>'), Be = e.from_html('<table class="svelte-16gewpp"><thead><tr><th class="svelte-16gewpp">Label</th><th class="svelte-16gewpp">Bucket</th><th class="svelte-16gewpp">Prefix</th><th class="svelte-16gewpp"></th></tr></thead><tbody></tbody></table>'), qe = e.from_html('<div class="r2-targets__guide"><!></div>'), ze = e.from_html('<div><div class="r2-targets__main"><header class="svelte-16gewpp"><h2>R2 Targets</h2> <div class="r2-targets__actions svelte-16gewpp"><!> <!></div></header> <!></div> <!></div>');
-function Ne(s, t) {
+function Ne(a, t) {
   e.push(t, !0);
-  let a = e.state(null), n = e.state(!1);
+  let s = e.state(null), n = e.state(!1);
   async function o(d) {
-    await ge(t.rt.docs, d), await t.rt.refreshTargets(), e.set(a, null);
+    await ge(t.rt.docs, d), await t.rt.refreshTargets(), e.set(s, null);
   }
   async function r(d) {
     confirm("Delete this target? Existing R2 objects are not removed.") && (await he(t.rt.docs, d), await t.rt.refreshTargets());
@@ -492,10 +492,10 @@ function Ne(s, t) {
   {
     var O = (d) => {
       var I = Pe();
-      e.delegated("click", I, () => e.set(a, "new")), e.append(d, I);
+      e.delegated("click", I, () => e.set(s, "new")), e.append(d, I);
     };
     e.if(S, (d) => {
-      e.get(a) === null && d(O);
+      e.get(s) === null && d(O);
     });
   }
   e.reset(p), e.reset(y);
@@ -504,16 +504,16 @@ function Ne(s, t) {
     var g = (d) => {
       re(d, {
         onSave: o,
-        onCancel: () => e.set(a, null),
+        onCancel: () => e.set(s, null),
         onShowGuide: i
       });
     }, u = (d) => {
       re(d, {
         get initial() {
-          return e.get(a);
+          return e.get(s);
         },
         onSave: o,
-        onCancel: () => e.set(a, null),
+        onCancel: () => e.set(s, null),
         onShowGuide: i
       });
     }, _ = (d) => {
@@ -537,7 +537,7 @@ function Ne(s, t) {
             var N = e.sibling(j), F = e.child(N), G = e.sibling(F, 2);
             e.reset(N), e.reset(P), e.template_effect(() => {
               e.set_text(B, e.get(T).label), e.set_text(w, e.get(T).bucket), e.set_text(z, e.get(T).keyPrefix || "(none)");
-            }), e.delegated("click", F, () => e.set(a, e.get(T), !0)), e.delegated("click", G, () => r(e.get(T).id)), e.append(C, P);
+            }), e.delegated("click", F, () => e.set(s, e.get(T), !0)), e.delegated("click", G, () => r(e.get(T).id)), e.append(C, P);
           }), e.reset(E), e.reset(v), e.append(h, v);
         };
         e.if(H, (h) => {
@@ -547,7 +547,7 @@ function Ne(s, t) {
       e.append(d, I);
     };
     e.if(R, (d) => {
-      e.get(a) === "new" ? d(g) : e.get(a) && typeof e.get(a) != "string" ? d(u, 1) : d(_, -1);
+      e.get(s) === "new" ? d(g) : e.get(s) && typeof e.get(s) != "string" ? d(u, 1) : d(_, -1);
     });
   }
   e.reset(k);
@@ -561,23 +561,23 @@ function Ne(s, t) {
       e.get(n) && d(f);
     });
   }
-  e.reset(c), e.template_effect(() => m = e.set_class(c, 1, "r2-targets svelte-16gewpp", null, m, { "r2-targets--split": e.get(n) })), e.append(s, c), e.pop();
+  e.reset(c), e.template_effect(() => m = e.set_class(c, 1, "r2-targets svelte-16gewpp", null, m, { "r2-targets--split": e.get(n) })), e.append(a, c), e.pop();
 }
 e.delegate(["click"]);
-async function Fe(s) {
-  const t = await s.list(), a = s.scope.pathPrefix ?? "", n = t.filter(
-    (r) => r.shardId === s.scope.shardId && r.path.startsWith(a)
+async function Fe(a) {
+  const t = await a.list(), s = a.scope.pathPrefix ?? "", n = t.filter(
+    (r) => r.shardId === a.scope.shardId && r.path.startsWith(s)
   ), o = { total: n.length, uploaded: 0, skipped: 0, failed: 0 };
   for (let r = 0; r < n.length; r++) {
-    const i = await s.onItem(n[r], r, n.length);
+    const i = await a.onItem(n[r], r, n.length);
     i === "uploaded" ? o.uploaded++ : i === "skipped-unchanged" ? o.skipped++ : o.failed++;
   }
   return o;
 }
 var Ge = e.from_html("<li> </li>"), Ve = e.from_html("<details><summary> </summary> <ul></ul></details>"), We = e.from_html('<div class="r2-progress svelte-putn2e"><div class="r2-progress__label"><!></div> <div class="r2-progress__bar svelte-putn2e"><div class="r2-progress__fill svelte-putn2e"></div></div> <div class="r2-progress__counts svelte-putn2e"> </div> <!></div>');
-function $e(s, t) {
+function $e(a, t) {
   e.push(t, !0);
-  const a = e.derived(() => t.p.total === 0 ? 0 : Math.round(t.p.processed / t.p.total * 100));
+  const s = e.derived(() => t.p.total === 0 ? 0 : Math.round(t.p.processed / t.p.total * 100));
   var n = e.comment(), o = e.first_child(n);
   {
     var r = (i) => {
@@ -616,44 +616,44 @@ function $e(s, t) {
         });
       }
       e.reset(l), e.template_effect(() => {
-        D = e.set_style(A, "", D, { width: `${e.get(a) ?? ""}%` }), e.set_text(O, `${t.p.processed ?? ""}/${t.p.total ?? ""} — uploaded ${t.p.uploaded ?? ""}, skipped ${t.p.skipped ?? ""}, failed ${t.p.failed ?? ""}`);
+        D = e.set_style(A, "", D, { width: `${e.get(s) ?? ""}%` }), e.set_text(O, `${t.p.processed ?? ""}/${t.p.total ?? ""} — uploaded ${t.p.uploaded ?? ""}, skipped ${t.p.skipped ?? ""}, failed ${t.p.failed ?? ""}`);
       }), e.append(i, l);
     };
     e.if(o, (i) => {
       (t.p.running || t.p.total > 0) && i(r);
     });
   }
-  e.append(s, n), e.pop();
+  e.append(a, n), e.pop();
 }
-var Je = e.from_html("<p>No R2 targets configured. Add one in the Targets tab.</p>"), Ye = e.from_html("<option> </option>"), Xe = e.from_html("<option> </option>"), Ze = e.from_html('<p class="muted svelte-8kfsmf">No uploads yet.</p>'), Qe = e.from_html('<span class="reason"> </span>'), et = e.from_html('<li><span class="ts"> </span> <span class="path"> </span> <span class="status"> </span> <!></li>'), tt = e.from_html('<ul class="r2-log svelte-8kfsmf"></ul>'), st = e.from_html('<label class="svelte-8kfsmf">Target <select></select></label> <label class="svelte-8kfsmf">Shard <select></select></label> <label class="svelte-8kfsmf">Path prefix (optional) <input type="text" placeholder="e.g. journal/"/></label> <button> </button> <!> <h3>Recent activity</h3> <!>', 1), at = e.from_html('<div class="r2-backup svelte-8kfsmf"><h2>Back up to R2</h2> <!></div>');
-function rt(s, t) {
+var Je = e.from_html("<p>No R2 targets configured. Add one in the Targets tab.</p>"), Ye = e.from_html("<option> </option>"), Xe = e.from_html("<option> </option>"), Ze = e.from_html('<p class="muted svelte-8kfsmf">No uploads yet.</p>'), Qe = e.from_html('<span class="reason"> </span>'), et = e.from_html('<li><span class="ts"> </span> <span class="path"> </span> <span class="status"> </span> <!></li>'), tt = e.from_html('<ul class="r2-log svelte-8kfsmf"></ul>'), at = e.from_html('<label class="svelte-8kfsmf">Target <select class="svelte-8kfsmf"></select></label> <label class="svelte-8kfsmf">Shard <select class="svelte-8kfsmf"></select></label> <label class="svelte-8kfsmf">Path prefix (optional) <input type="text" placeholder="e.g. journal/"/></label> <button> </button> <!> <h3>Recent activity</h3> <!>', 1), st = e.from_html('<div class="r2-backup svelte-8kfsmf"><h2>Back up to R2</h2> <!></div>');
+function rt(a, t) {
   e.push(t, !0);
-  let a = e.prop(t, "rt", 7), n = e.state(""), o = e.state(""), r = e.state(""), i = e.state(e.proxy([])), l = e.state(e.proxy([]));
+  let s = e.prop(t, "rt", 7), n = e.state(""), o = e.state(""), r = e.state(""), i = e.state(e.proxy([])), l = e.state(e.proxy([]));
   e.user_effect(() => {
-    a().targets.length > 0 && !e.get(n) && e.set(n, a().targets[0].id, !0);
+    s().targets.length > 0 && !e.get(n) && e.set(n, s().targets[0].id, !0);
   });
   async function c() {
-    a().ctx.browse && (e.set(i, await a().ctx.browse.listShards(), !0), !e.get(o) && e.get(i).length > 0 && e.set(o, e.get(i)[0], !0));
+    s().ctx.browse && (e.set(i, await s().ctx.browse.listShards(), !0), !e.get(o) && e.get(i).length > 0 && e.set(o, e.get(i)[0], !0));
   }
   e.user_effect(() => {
     c();
   });
   async function m() {
-    e.set(l, await we(a().docs, 50), !0);
+    e.set(l, await we(s().docs, 50), !0);
   }
   e.user_effect(() => {
     m();
   });
   async function k() {
-    const S = a().targets.find((O) => O.id === e.get(n));
-    if (!(!S || !a().ctx.browse)) {
+    const S = s().targets.find((O) => O.id === e.get(n));
+    if (!(!S || !s().ctx.browse)) {
       if (!e.get(o)) {
         alert("Pick a shard to back up.");
         return;
       }
-      a().progress.running = !0, a().progress.currentLabel = "", a().progress.total = 0, a().progress.processed = 0, a().progress.uploaded = 0, a().progress.skipped = 0, a().progress.failed = 0, a().progress.errors = [];
+      s().progress.running = !0, s().progress.currentLabel = "", s().progress.total = 0, s().progress.processed = 0, s().progress.uploaded = 0, s().progress.skipped = 0, s().progress.failed = 0, s().progress.errors = [];
       try {
-        const O = J(S), R = oe(a().ctx), g = a().ctx.browse;
+        const O = J(S), R = oe(s().ctx), g = s().ctx.browse;
         await Fe({
           list: async () => (await g.listDocuments()).map((_) => ({ shardId: _.shardId, path: _.path })),
           scope: {
@@ -661,32 +661,32 @@ function rt(s, t) {
             pathPrefix: e.get(r) || void 0
           },
           onItem: async (u, _, b) => {
-            a().progress.currentLabel = `${u.shardId}/${u.path}`, a().progress.total = b;
+            s().progress.currentLabel = `${u.shardId}/${u.path}`, s().progress.total = b;
             const f = await ne({
               target: S,
               client: O,
-              logHandle: a().docs,
+              logHandle: s().docs,
               readForeign: R,
               shardId: u.shardId,
               path: u.path,
-              sourceTenant: a().ctx.tenantId
+              sourceTenant: s().ctx.tenantId
             });
-            return a().progress.processed++, f.status === "uploaded" ? a().progress.uploaded++ : f.status === "skipped-unchanged" ? a().progress.skipped++ : (a().progress.failed++, f.reason && a().progress.errors.push(`${u.path}: ${f.reason}`)), f.status;
+            return s().progress.processed++, f.status === "uploaded" ? s().progress.uploaded++ : f.status === "skipped-unchanged" ? s().progress.skipped++ : (s().progress.failed++, f.reason && s().progress.errors.push(`${u.path}: ${f.reason}`)), f.status;
           }
         });
       } finally {
-        a().progress.running = !1, await m();
+        s().progress.running = !1, await m();
       }
     }
   }
-  var y = at(), p = e.sibling(e.child(y), 2);
+  var y = st(), p = e.sibling(e.child(y), 2);
   {
     var A = (S) => {
       var O = Je();
       e.append(S, O);
     }, D = (S) => {
-      var O = st(), R = e.first_child(O), g = e.sibling(e.child(R));
-      e.each(g, 21, () => a().targets, (h) => h.id, (h, v) => {
+      var O = at(), R = e.first_child(O), g = e.sibling(e.child(R));
+      e.each(g, 21, () => s().targets, (h) => h.id, (h, v) => {
         var E = Ye(), C = e.child(E);
         e.reset(E);
         var T = {};
@@ -710,7 +710,7 @@ function rt(s, t) {
       var H = e.sibling(d, 2);
       $e(H, {
         get p() {
-          return a().progress;
+          return s().progress;
         }
       });
       var K = e.sibling(H, 4);
@@ -747,20 +747,20 @@ function rt(s, t) {
         });
       }
       e.template_effect(() => {
-        d.disabled = a().progress.running, e.set_text(I, a().progress.running ? "Running…" : "Back up now");
+        d.disabled = s().progress.running, e.set_text(I, s().progress.running ? "Running…" : "Back up now");
       }), e.bind_select_value(g, () => e.get(n), (h) => e.set(n, h)), e.bind_select_value(_, () => e.get(o), (h) => e.set(o, h)), e.bind_value(f, () => e.get(r), (h) => e.set(r, h)), e.delegated("click", d, k), e.append(S, O);
     };
     e.if(p, (S) => {
-      a().targets.length === 0 ? S(A) : S(D, -1);
+      s().targets.length === 0 ? S(A) : S(D, -1);
     });
   }
-  e.reset(y), e.append(s, y), e.pop();
+  e.reset(y), e.append(a, y), e.pop();
 }
 e.delegate(["click"]);
-var nt = e.from_html('<span class="badge svelte-8cyv1p" title="Already exists locally — unchecked by default to protect local copy">local</span>'), ot = e.from_html('<tr><td class="svelte-8cyv1p"><input type="checkbox"/></td><td class="svelte-8cyv1p"> <!></td><td class="svelte-8cyv1p"> </td><td class="svelte-8cyv1p"> </td></tr>'), it = e.from_html('<table class="r2-tree svelte-8cyv1p"><thead><tr><th class="svelte-8cyv1p"></th><th class="svelte-8cyv1p">Key</th><th class="svelte-8cyv1p">Size</th><th class="svelte-8cyv1p">Modified</th></tr></thead><tbody></tbody></table>');
-function lt(s, t) {
+var nt = e.from_html('<span class="badge svelte-8cyv1p" title="Already exists locally — unchecked by default to protect local copy">local</span>'), ot = e.from_html('<tr><td class="svelte-8cyv1p"><input type="checkbox" class="shell-base-check"/></td><td class="svelte-8cyv1p"> <!></td><td class="svelte-8cyv1p"> </td><td class="svelte-8cyv1p"> </td></tr>'), it = e.from_html('<table class="r2-tree svelte-8cyv1p"><thead><tr><th class="svelte-8cyv1p"></th><th class="svelte-8cyv1p">Key</th><th class="svelte-8cyv1p">Size</th><th class="svelte-8cyv1p">Modified</th></tr></thead><tbody></tbody></table>');
+function lt(a, t) {
   e.push(t, !0);
-  var a = it(), n = e.sibling(e.child(a));
+  var s = it(), n = e.sibling(e.child(s));
   e.each(n, 21, () => t.nodes, (o) => o.path, (o, r) => {
     var i = ot(), l = e.child(i), c = e.child(l);
     e.remove_input_defaults(c), e.reset(l);
@@ -784,19 +784,19 @@ function lt(s, t) {
       },
       [() => t.selected.has(e.get(r).path)]
     ), e.delegated("change", c, () => t.onToggle(e.get(r).path)), e.append(o, i);
-  }), e.reset(n), e.reset(a), e.append(s, a), e.pop();
+  }), e.reset(n), e.reset(s), e.append(a, s), e.pop();
 }
 e.delegate(["change"]);
 var ct = e.from_html(`<div class="warn svelte-1kdudbk">Import requires the <code>documents:write</code> permission (sh3-core 0.9.1+).
       Reinstall the shard and grant this permission when prompted.</div>`), dt = e.from_html("<p>No R2 targets configured. Add one in the Targets tab.</p>"), ut = e.from_html("<option> </option>"), gt = e.from_html("<p> </p> <!> <button> </button>", 1), ht = e.from_html("<li> </li>"), pt = e.from_html("<details><summary>Errors</summary><ul></ul></details>"), ft = e.from_html('<div class="summary svelte-1kdudbk"> <!></div>'), vt = e.from_html('<label class="svelte-1kdudbk">Target <select></select></label> <button> </button> <!> <!>', 1), mt = e.from_html('<div class="r2-import svelte-1kdudbk"><h2>Import from R2</h2> <!> <!></div>');
-function bt(s, t) {
+function bt(a, t) {
   e.push(t, !0);
-  let a = e.state(""), n = e.state(e.proxy([])), o = e.state(e.proxy(/* @__PURE__ */ new Set())), r = e.state(!1), i = e.state(!1), l = e.state(!1), c = e.state(null);
+  let s = e.state(""), n = e.state(e.proxy([])), o = e.state(e.proxy(/* @__PURE__ */ new Set())), r = e.state(!1), i = e.state(!1), l = e.state(!1), c = e.state(null);
   e.user_effect(() => {
-    t.rt.targets.length > 0 && !e.get(a) && e.set(a, t.rt.targets[0].id, !0);
+    t.rt.targets.length > 0 && !e.get(s) && e.set(s, t.rt.targets[0].id, !0);
   });
   async function m() {
-    const g = t.rt.targets.find((u) => u.id === e.get(a));
+    const g = t.rt.targets.find((u) => u.id === e.get(s));
     if (!(!g || !t.rt.ctx.browse)) {
       e.set(c, null), e.set(r, !0);
       try {
@@ -824,7 +824,7 @@ function bt(s, t) {
     e.get(o).has(g) ? e.get(o).delete(g) : e.get(o).add(g), e.set(o, new Set(e.get(o)), !0);
   }
   async function y() {
-    const g = t.rt.targets.find((_) => _.id === e.get(a));
+    const g = t.rt.targets.find((_) => _.id === e.get(s));
     if (!g) return;
     e.set(c, null), e.set(i, !0);
     const u = { imported: 0, skipped: 0, failed: 0, errors: [] };
@@ -842,7 +842,7 @@ function bt(s, t) {
           const x = await _.getObject(f);
           await b(K, L, x), u.imported++;
         } catch (x) {
-          if (x instanceof se) {
+          if (x instanceof ae) {
             e.set(l, !0);
             break;
           }
@@ -928,13 +928,13 @@ function bt(s, t) {
       }
       e.template_effect(() => {
         f.disabled = e.get(r), e.set_text(d, e.get(r) ? "Scanning…" : "Scan bucket");
-      }), e.bind_select_value(b, () => e.get(a), (x) => e.set(a, x)), e.delegated("click", f, m), e.append(g, u);
+      }), e.bind_select_value(b, () => e.get(s), (x) => e.set(s, x)), e.delegated("click", f, m), e.append(g, u);
     };
     e.if(S, (g) => {
       t.rt.targets.length === 0 ? g(O) : g(R, -1);
     });
   }
-  e.reset(p), e.append(s, p), e.pop();
+  e.reset(p), e.append(a, p), e.pop();
 }
 e.delegate(["click"]);
 const _t = "sh3-file-explorer.selectionAction";
@@ -950,52 +950,52 @@ const kt = {
     ],
     permissions: ["documents:browse", "documents:read", "documents:write"]
   },
-  async activate(s) {
-    M = pe(s), M.refreshTargets(), s.registerView("sh3-connector-r2-targets", {
+  async activate(a) {
+    M = pe(a), M.refreshTargets(), a.registerView("sh3-connector-r2-targets", {
       mount(t) {
-        const a = Z(Ne, { target: t, props: { rt: M } });
+        const s = Z(Ne, { target: t, props: { rt: M } });
         return { unmount() {
-          Q(a);
+          Q(s);
         } };
       }
-    }), s.registerView("sh3-connector-r2-backup", {
+    }), a.registerView("sh3-connector-r2-backup", {
       mount(t) {
-        const a = Z(rt, { target: t, props: { rt: M } });
+        const s = Z(rt, { target: t, props: { rt: M } });
         return { unmount() {
-          Q(a);
+          Q(s);
         } };
       }
-    }), s.registerView("sh3-connector-r2-import", {
+    }), a.registerView("sh3-connector-r2-import", {
       mount(t) {
-        const a = Z(bt, { target: t, props: { rt: M } });
+        const s = Z(bt, { target: t, props: { rt: M } });
         return { unmount() {
-          Q(a);
+          Q(s);
         } };
       }
-    }), s.contributions.register(_t, {
+    }), a.contributions.register(_t, {
       id: "sh3-connector-r2:backup",
       label: "Back up to R2",
       appliesTo: () => ((M == null ? void 0 : M.targets.length) ?? 0) > 0,
       onInvoke: async (t) => {
         if (!M) return;
-        const a = M.targets;
-        if (a.length === 0) {
+        const s = M.targets;
+        if (s.length === 0) {
           alert("No R2 targets configured. Open the R2 Backup app to add one.");
           return;
         }
-        const n = a.length === 1 ? a[0] : a.find((c) => c.label === window.prompt(
-          `Target label (${a.map((m) => m.label).join(", ")}):`,
-          a[0].label
+        const n = s.length === 1 ? s[0] : s.find((c) => c.label === window.prompt(
+          `Target label (${s.map((m) => m.label).join(", ")}):`,
+          s[0].label
         ));
         if (!n) return;
-        const o = J(n), r = oe(s), i = await ne({
+        const o = J(n), r = oe(a), i = await ne({
           target: n,
           client: o,
           logHandle: M.docs,
           readForeign: r,
           shardId: t.shardId,
           path: t.path,
-          sourceTenant: s.tenantId
+          sourceTenant: a.tenantId
         }), l = i.status === "uploaded" ? "Uploaded" : i.status === "skipped-unchanged" ? "Already up to date" : `Failed: ${i.reason ?? "unknown"}`;
         alert(`${l}
 ${t.shardId}/${t.path}`);

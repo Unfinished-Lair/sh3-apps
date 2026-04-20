@@ -1,11 +1,23 @@
 {
   "name": "sh3-file-explorer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official SH3 file explorer — browse tenant documents",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./contributions": {
+      "types": "./dist/contributions.d.ts",
+      "svelte": "./dist/contributions.js",
+      "default": "./dist/contributions.js"
+    }
+  },
   "files": ["dist"],
   "scripts": {
     "build": "vite build",

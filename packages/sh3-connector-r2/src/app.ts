@@ -9,8 +9,12 @@ export const app: SourceApp = {
     permissions: ['documents:browse'],
   },
   initialLayout: {
-    type: 'slot',
-    slotId: 'sh3-connector-r2.targets',
-    viewId: 'sh3-connector-r2-targets',
+    type: 'tabs',
+    activeTab: 0,
+    tabs: [
+      { slotId: 'sh3-connector-r2.targets', viewId: 'sh3-connector-r2-targets', label: 'Targets' },
+      { slotId: 'sh3-connector-r2.backup',  viewId: 'sh3-connector-r2-backup',  label: 'Backup' },
+      { slotId: 'sh3-connector-r2.import',  viewId: 'sh3-connector-r2-import',  label: 'Import' },
+    ],
   },
 };

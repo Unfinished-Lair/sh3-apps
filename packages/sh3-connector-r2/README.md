@@ -1,7 +1,7 @@
 # sh3-connector-r2
 
 **Version:** 0.1.0
-**Status:** upload works; import UI complete but gated on [sh3#21](https://github.com/Unfinished-Lair/sh3/issues/21).
+**Status:** UI, SigV4 client, target management, and upload/import pipelines are complete and tested. Runtime upload & import are both gated on [sh3#21](https://github.com/Unfinished-Lair/sh3/issues/21) (cross-shard document read/write). Today every upload path surfaces a clear "permission pending" error when invoked; once #21 ships, only `src/foreign-docs.ts` needs updating.
 
 A client shard + app that backs up SH3 documents to a user-owned Cloudflare R2 bucket.
 
@@ -42,20 +42,22 @@ Gated on upstream sh3#21. Once the `documents:write` permission lands, the Impor
 
 ## Manual QA checklist
 
+### Works today
+
 Against a real R2 bucket:
 
 - [ ] Create target with valid creds — "Save & validate" succeeds.
 - [ ] Create target with bad creds — error surfaced, not persisted.
+- [ ] Delete a target — local config gone; R2 objects untouched.
+- [ ] Install in a second SH3 instance with a different `keyPrefix` on the same bucket — no key collisions when those other tests eventually upload there.
+- [ ] Import tab → pick target → Scan — `ListObjectsV2` paginates through the bucket and populates the remote tree; locally-existing objects (as enumerated by `ctx.browse`) show the "local" badge and are unchecked by default.
+
+### Gated on sh3#21 (cross-shard `documents:read` / `documents:write`)
+
 - [ ] Upload single `.md` file from file-explorer — object appears in R2 dashboard at `<prefix><shardId>/<path>` with content-type `text/markdown`.
 - [ ] Upload same file again — toast says "Already up to date"; no new PUT in R2 logs.
 - [ ] Upload a folder from file-explorer — all descendants appear with correct key structure.
 - [ ] Whole-scope backup from app — Progress shows counts; log table reflects outcomes.
-- [ ] Delete a target — local config gone; R2 objects untouched.
-- [ ] Install in a second SH3 instance with a different `keyPrefix` on the same bucket — no key collisions.
-
-Gated on sh3#21:
-
-- [ ] Import tab → Scan → remote tree populated; locally-existing objects show "local" badge and unchecked by default.
 - [ ] Import selected objects — objects written to correct `{shardId, path}` via `documents:write`.
 
 ## Architecture

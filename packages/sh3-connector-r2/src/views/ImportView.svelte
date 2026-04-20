@@ -2,7 +2,7 @@
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { createR2Client } from '../r2/client';
-  import { writeForeign, NotImplementedError } from '../foreign-docs';
+  import { writeForeign, MissingCapabilityError } from '../foreign-docs';
   import RemoteTree from './components/RemoteTree.svelte';
 
   let { rt }: { rt: Runtime } = $props();
@@ -75,7 +75,7 @@
           await write(shardId, path, content);
           stats.imported++;
         } catch (err) {
-          if (err instanceof NotImplementedError) { permissionBlocked = true; break; }
+          if (err instanceof MissingCapabilityError) { permissionBlocked = true; break; }
           stats.failed++;
           stats.errors.push(`${key}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -92,9 +92,8 @@
 
   {#if permissionBlocked}
     <div class="warn">
-      Import requires the <code>documents:write</code> permission, which is pending upstream
-      <a href="https://github.com/Unfinished-Lair/sh3/issues/21" target="_blank" rel="noopener">sh3#21</a>.
-      Once that lands and the shard is re-installed, this view will work end-to-end.
+      Import requires the <code>documents:write</code> permission (sh3-core 0.9.1+).
+      Reinstall the shard and grant this permission when prompted.
     </div>
   {/if}
 

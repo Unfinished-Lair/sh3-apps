@@ -5,7 +5,7 @@
   "description": "Back up SH3 documents to a user-owned Cloudflare R2 bucket",
   "author": "@unfinished-lair",
   "contractVersion": 1,
-  "permissions": ["documents:browse"],
+  "permissions": ["documents:browse", "documents:read", "documents:write"],
   "views": [
     { "id": "sh3-connector-r2-targets", "label": "Targets" },
     { "id": "sh3-connector-r2-backup",  "label": "Backup" },

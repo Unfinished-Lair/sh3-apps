@@ -62,11 +62,11 @@
       },
       "versions": [
         {
-          "version": "0.1.3",
+          "version": "0.1.4",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-registry-0.1.3.js",
+          "bundleUrl": "bundles/sh3-registry-0.1.4.js",
           "integrity": "sha384-lmsk6XF1JfI5HFnBFQ6CZ0/Rhm9NppK3KvURF+vGEcUhW/+BgGm/6bq2gvi4nHAJ",
-          "serverBundleUrl": "bundles/sh3-registry-0.1.3-server.js"
+          "serverBundleUrl": "bundles/sh3-registry-0.1.4-server.js"
         }
       ]
     },
@@ -91,16 +91,33 @@
       "id": "sh3-file-explorer-app",
       "type": "combo",
       "label": "File Explorer",
-      "description": "Official SH3 file explorer — browse documents and manage sync grants",
+      "description": "Official SH3 file explorer — browse tenant documents",
       "author": {
         "name": "@unfinished-lair"
       },
       "versions": [
         {
-          "version": "0.1.3",
+          "version": "0.4.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-file-explorer-app-0.1.3.js",
-          "integrity": "sha384-RyOIScyl6WHP1TJOJ/X9CH8OT370FFeSv5qJiJ6isi0Jk1NsFLJf5hKcZ940cJ8X"
+          "bundleUrl": "bundles/sh3-file-explorer-app-0.4.0.js",
+          "integrity": "sha384-AzxCvqxyYxfuf1Y+WBmFerqnVXq2yMuXFaBm14eJr3DcjtFiynhX2ZZeFdnD6BNa"
+        }
+      ]
+    },
+    {
+      "id": "sh3-connector-r2-app",
+      "type": "combo",
+      "label": "R2 Backup",
+      "description": "Cloudflare R2 backup connector for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "versions": [
+        {
+          "version": "0.1.4",
+          "contractVersion": "1",
+          "bundleUrl": "bundles/sh3-connector-r2-app-0.1.4.js",
+          "integrity": "sha384-AhulzSDP+VJ4FZOFMJvmNXmqMpAEgwONPpncO5Q/w6BE16rRfNl2+7vrq5vbH3p4"
         }
       ]
     }

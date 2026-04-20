@@ -104,16 +104,18 @@ const registryServer = {
                 writeFileSync(join(bundlesDir, serverFilename), serverBytes);
                 serverBundleUrl = `bundles/${serverFilename}`;
             }
-            // Update registry index
-            if (bundleUrl) {
+            // Update registry index — accept client-only, server-only, or combo artifacts.
+            if (bundleUrl || serverBundleUrl) {
                 const registry = loadRegistryJson(registryJsonPath);
                 const existing = registry.packages.findIndex((p) => p.id === id);
                 const versionEntry = {
                     version,
                     contractVersion: String(manifest.contractVersion ?? 1),
-                    bundleUrl,
-                    integrity,
                 };
+                if (bundleUrl)
+                    versionEntry.bundleUrl = bundleUrl;
+                if (integrity)
+                    versionEntry.integrity = integrity;
                 if (serverBundleUrl)
                     versionEntry.serverBundleUrl = serverBundleUrl;
                 if (existing >= 0) {
@@ -143,7 +145,7 @@ const registryServer = {
                 }
                 saveRegistryJson(registryJsonPath, registry);
             }
-            return c.json({ ok: true, id, version, integrity, bundleUrl });
+            return c.json({ ok: true, id, version, integrity, bundleUrl, serverBundleUrl });
         });
         // ---- Admin: update metadata ----
         router.patch('/packages/:id', ctx.adminOnly, async (c) => {
@@ -170,10 +172,14 @@ const registryServer = {
             if (!pkg)
                 return c.json({ error: 'Package not found' }, 404);
             for (const ver of pkg.versions) {
-                const filename = ver.bundleUrl.replace('/bundles/', '');
-                const bundlePath = join(bundlesDir, filename);
-                if (existsSync(bundlePath))
-                    unlinkSync(bundlePath);
+                for (const url of [ver.bundleUrl, ver.serverBundleUrl]) {
+                    if (!url)
+                        continue;
+                    const filename = url.replace('/bundles/', '');
+                    const bundlePath = join(bundlesDir, filename);
+                    if (existsSync(bundlePath))
+                        unlinkSync(bundlePath);
+                }
             }
             registry.packages = registry.packages.filter((p) => p.id !== pkgId);
             saveRegistryJson(registryJsonPath, registry);

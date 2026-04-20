@@ -1,7 +1,32 @@
 <script lang="ts">
   import type { ExplorerStore } from '../explorerShard.svelte';
+  import { listSelectionActions, subscribe } from '../contributions';
 
   let { store }: { store: ExplorerStore } = $props();
+
+  let tick = $state(0);
+  $effect(() => subscribe(() => { tick++; }));
+
+  const actions = $derived.by(() => {
+    void tick;
+    return listSelectionActions(store.ready ? store.selection : null);
+  });
+
+  let busy = $state<Record<string, boolean>>({});
+
+  async function invoke(id: string, onInvoke: (sel: { shardId: string; path: string }) => void | Promise<void>) {
+    if (!store.ready || !store.selection) return;
+    const sel = store.selection;
+    busy[id] = true;
+    try {
+      await onInvoke(sel);
+    } catch (err) {
+      console.error(`[sh3-file-explorer] action "${id}" threw:`, err);
+      alert(`Action "${id}" failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      busy[id] = false;
+    }
+  }
 </script>
 
 {#if !store.ready}
@@ -13,6 +38,20 @@
     <div class="sh3-fe-panel__path">{store.selection.path || '(shard root)'}</div>
     <div class="sh3-fe-panel__shard">{store.selection.shardId}</div>
   </header>
+  {#if actions.length > 0}
+    <div class="sh3-fe-panel__actions">
+      {#each actions as action (action.id)}
+        <button
+          class="sh3-fe-panel__action"
+          class:primary={action.kind === 'primary'}
+          disabled={busy[action.id]}
+          onclick={() => invoke(action.id, action.onInvoke)}
+        >
+          {busy[action.id] ? '…' : action.label}
+        </button>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -20,4 +59,17 @@
   .sh3-fe-panel__header { border-bottom: 1px solid var(--sh3-border, #2a2a2a); padding-bottom: 6px; margin-bottom: 8px; }
   .sh3-fe-panel__path { font-weight: 600; }
   .sh3-fe-panel__shard { font-size: 0.85em; color: var(--sh3-muted, #888); }
+  .sh3-fe-panel__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .sh3-fe-panel__action {
+    background: var(--sh3-surface, #1a1a1a);
+    color: var(--sh3-fg, #eee);
+    border: 1px solid var(--sh3-border, #2a2a2a);
+    padding: 4px 10px;
+    font: inherit;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .sh3-fe-panel__action:hover { background: var(--sh3-surface-hover, #222); }
+  .sh3-fe-panel__action.primary { border-color: var(--sh3-accent, #4a9eff); }
+  .sh3-fe-panel__action[disabled] { opacity: 0.5; cursor: progress; }
 </style>

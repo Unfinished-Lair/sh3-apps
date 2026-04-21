@@ -1,4 +1,4 @@
-import type { ConflictsApi } from 'sh3-core';
+import type { ConflictsApi, ConflictItem, ConflictManagerBranch } from 'sh3-core';
 
 export interface ImportConflictInput {
   shardId: string;
@@ -16,10 +16,45 @@ export type ImportConflictDecision =
   | { path: string; shardId: string; choice: 'local' | 'incoming'; remoteKey: string }
   | { path: string; shardId: string; choice: 'skipped'; remoteKey: string };
 
+function extensionOf(path: string): string | undefined {
+  const dot = path.lastIndexOf('.');
+  if (dot < 0) return undefined;
+  const slash = path.lastIndexOf('/');
+  if (dot < slash) return undefined;
+  return path.slice(dot);
+}
+
+function toConflictItem(input: ImportConflictInput): ConflictItem {
+  const id = `${input.shardId}/${input.path}`;
+  const localBranch: ConflictManagerBranch = {
+    origin: 'local',
+    version: input.localVersion,
+    at: input.localAt,
+    content: input.localContent,
+  };
+  const remoteBranch: ConflictManagerBranch = {
+    origin: `r2:${input.targetLabel}`,
+    version: 0,
+    at: input.incomingAt,
+    content: input.incomingContent,
+  };
+  const item: ConflictItem = {
+    id,
+    label: id,
+    branches: [localBranch, remoteBranch],
+    meta: { remoteKey: input.remoteKey, shardId: input.shardId, path: input.path },
+  };
+  const ext = extensionOf(input.path);
+  if (ext !== undefined) item.extension = ext;
+  return item;
+}
+
 export async function presentImportConflicts(
   conflictsApi: ConflictsApi,
   items: ImportConflictInput[],
 ): Promise<ImportConflictDecision[] | 'cancelled'> {
   if (items.length === 0) return [];
-  throw new Error('not implemented');
+  const conflictItems = items.map(toConflictItem);
+  await conflictsApi.resolve(conflictItems, { title: 'Resolve R2 import conflicts' });
+  return 'cancelled'; // placeholder until Task 4
 }

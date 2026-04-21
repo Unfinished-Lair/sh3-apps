@@ -1,58 +1,69 @@
-import type { HistoryEntry, HistoryResult } from '../types';
+import type { HistoryCommand } from '../types';
 
-const COALESCE_MS = 300;
 const DEFAULT_MAX_DEPTH = 200;
 
 export class HistoryEngine {
-  private undoStack: HistoryEntry[] = [];
-  private redoStack: HistoryEntry[] = [];
+  private undoStack: HistoryCommand[] = [];
+  private redoStack: HistoryCommand[] = [];
   private maxDepth: number;
+  private listeners = new Set<() => void>();
 
   constructor(maxDepth: number = DEFAULT_MAX_DEPTH) {
     this.maxDepth = maxDepth;
   }
 
-  /**
-   * Record a content change. Consecutive single-character edits within
-   * COALESCE_MS are merged into one undo entry.
-   */
-  push(before: string, after: string, cursorBefore: number, cursorAfter: number): void {
-    const now = Date.now();
-    const last = this.undoStack[this.undoStack.length - 1];
-
-    const isSingleChar = Math.abs(after.length - before.length) <= 1;
-    if (last && isSingleChar && (now - last.timestamp) < COALESCE_MS) {
-      last.after = after;
-      last.cursorAfter = cursorAfter;
-      last.timestamp = now;
-      this.redoStack.length = 0;
-      return;
+  push(cmd: HistoryCommand): void {
+    if (cmd.meta && cmd.meta.timestamp == null) {
+      cmd.meta.timestamp = Date.now();
+    } else if (!cmd.meta) {
+      cmd.meta = { timestamp: Date.now() };
     }
-
-    this.undoStack.push({ before, after, cursorBefore, cursorAfter, timestamp: now });
+    this.undoStack.push(cmd);
     if (this.undoStack.length > this.maxDepth) {
       this.undoStack.shift();
     }
     this.redoStack.length = 0;
+    this.emit();
   }
 
-  undo(): HistoryResult | null {
-    const entry = this.undoStack.pop();
-    if (!entry) return null;
-    this.redoStack.push(entry);
-    return { content: entry.before, cursor: entry.cursorBefore };
+  undo(): boolean {
+    const cmd = this.undoStack.pop();
+    if (!cmd) return false;
+    cmd.revert();
+    this.redoStack.push(cmd);
+    this.emit();
+    return true;
   }
 
-  redo(): HistoryResult | null {
-    const entry = this.redoStack.pop();
-    if (!entry) return null;
-    this.undoStack.push(entry);
-    return { content: entry.after, cursor: entry.cursorAfter };
+  redo(): boolean {
+    const cmd = this.redoStack.pop();
+    if (!cmd) return false;
+    cmd.apply();
+    this.undoStack.push(cmd);
+    this.emit();
+    return true;
+  }
+
+  peek(): HistoryCommand | null {
+    return this.undoStack[this.undoStack.length - 1] ?? null;
+  }
+
+  replaceTop(cmd: HistoryCommand): boolean {
+    if (this.undoStack.length === 0) return false;
+    if (cmd.meta && cmd.meta.timestamp == null) {
+      cmd.meta.timestamp = Date.now();
+    } else if (!cmd.meta) {
+      cmd.meta = { timestamp: Date.now() };
+    }
+    this.undoStack[this.undoStack.length - 1] = cmd;
+    this.emit();
+    return true;
   }
 
   clear(): void {
     this.undoStack.length = 0;
     this.redoStack.length = 0;
+    this.emit();
   }
 
   get canUndo(): boolean {
@@ -61,5 +72,14 @@ export class HistoryEngine {
 
   get canRedo(): boolean {
     return this.redoStack.length > 0;
+  }
+
+  onChange(cb: () => void): () => void {
+    this.listeners.add(cb);
+    return () => { this.listeners.delete(cb); };
+  }
+
+  private emit(): void {
+    for (const cb of this.listeners) cb();
   }
 }

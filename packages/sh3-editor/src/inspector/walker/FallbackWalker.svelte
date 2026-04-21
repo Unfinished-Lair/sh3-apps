@@ -1,15 +1,18 @@
 <script lang="ts">
-  import type { InspectorMeta, InspectorApi, HistoryCommand } from '../../types';
+  import type { InspectorMeta, InspectorApi, HistoryCommand, WalkerCommitOverride } from '../../types';
   import Field from '../primitives/Field.svelte';
   import EditablePrimitive from '../primitives/EditablePrimitive.svelte';
   import Inspect from '../primitives/Inspect.svelte';
+  import { attemptCommit } from './commit';
 
   interface Props {
     value: unknown;    // always plain object or array (enforced by Inspect dispatch)
     meta?: InspectorMeta;
     api: InspectorApi;
+    walkerOnCommit?: WalkerCommitOverride;
+    basePath?: (string | number)[];
   }
-  let { value, meta, api }: Props = $props();
+  let { value, meta, api, walkerOnCommit, basePath = [] }: Props = $props();
 
   function isPrimitive(v: unknown): v is string | number | boolean | null | undefined {
     return v === null || v === undefined
@@ -29,6 +32,24 @@
     };
     api.push(cmd);
     (container as any)[key] = next;   // caller mutates after push; push doesn't apply
+  }
+
+  // For primitives: walker is the commit site — consult override directly.
+  function commitPrimitiveField(key: string | number): (next: string | number | boolean) => void {
+    return (next) => {
+      attemptCommit(
+        walkerOnCommit,
+        [...basePath, key],
+        next,
+        () => commitPrimitive(value as any, key, next),
+      );
+    };
+  }
+
+  // For non-primitives: the child <Inspect> consults override via customRendererCommit.
+  // Pass only the default commit so Inspect can decide.
+  function defaultCommitForField(key: string | number): (next: unknown) => void {
+    return (next) => commitPrimitive(value as any, key, next as any);
   }
 
   let entries = $derived.by<Array<{ key: string | number; child: unknown; fieldMeta: InspectorMeta | undefined }>>(() => {
@@ -60,7 +81,7 @@
           <EditablePrimitive
             value={entry.child as any}
             readonly={isReadOnly}
-            onCommit={(next) => commitPrimitive(value as any, entry.key, next)}
+            onCommit={isReadOnly ? undefined : commitPrimitiveField(entry.key)}
           />
         </Field>
       {:else}
@@ -69,7 +90,9 @@
             value={entry.child}
             meta={entry.fieldMeta}
             {api}
-            onCommit={isReadOnly ? undefined : (next) => commitPrimitive(value as any, entry.key, next as any)}
+            onCommit={isReadOnly ? undefined : defaultCommitForField(entry.key)}
+            walkerOnCommit={walkerOnCommit}
+            basePath={[...basePath, entry.key]}
           />
         </Field>
       {/if}

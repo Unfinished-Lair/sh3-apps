@@ -10,15 +10,18 @@
       "types": "./dist/types.d.ts"
     },
     "./inspector/contributions": {
-      "types": "./dist/inspector/contributions.d.ts"
+      "types": "./dist/inspector/contributions.d.ts",
+      "import": "./dist/inspector/contributions.js",
+      "default": "./dist/inspector/contributions.js"
     }
   },
   "files": [
     "dist/types.d.ts",
-    "dist/inspector/contributions.d.ts"
+    "dist/inspector/contributions.d.ts",
+    "dist/inspector/contributions.js"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.types.json",
+    "build": "tsc -p tsconfig.types.json && tsc -p tsconfig.runtime.json",
     "build:artifact": "vite build --config vite.artifact.ts",
     "dev": "vite build --watch",
     "test": "vitest run"

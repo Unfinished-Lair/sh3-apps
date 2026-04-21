@@ -114,10 +114,10 @@
       },
       "versions": [
         {
-          "version": "0.1.5",
+          "version": "0.2.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-connector-r2-app-0.1.5.js",
-          "integrity": "sha384-h2sHKQSG259Rqb+05ZQYB+wYmg0o0LRqSG0IoSJoFiksenlLbKjpjo3z2kvirQ6f"
+          "bundleUrl": "bundles/sh3-connector-r2-app-0.2.0.js",
+          "integrity": "sha384-BGxdKEAkkCccwzEcF/GDa8YxgHrXUP7j4lImvzPU3ZFRzD/GDvBct092bG8YHf8E"
         }
       ]
     }

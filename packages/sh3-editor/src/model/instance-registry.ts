@@ -1,12 +1,8 @@
 import type { EditorDocument, OpenDocumentOptions, UserPrefs, MatchingConfig } from '../types';
-import { HistoryEngine } from './history';
 
 export interface RegistryEntry {
   document: EditorDocument;
-  history: HistoryEngine;
   options: OpenDocumentOptions;
-  /** Mutable runtime prefs — initialized from matchingConfig, overridden by opts.prefs,
-   *  and updated by the settings popover. */
   prefs: Required<UserPrefs>;
 }
 
@@ -22,6 +18,11 @@ function resolvePrefs(mc: MatchingConfig | undefined, overrides: UserPrefs | und
 
 export class InstanceRegistry {
   private entries = new Map<string, RegistryEntry>();
+  private onClose?: (id: string) => void;
+
+  constructor(onClose?: (id: string) => void) {
+    this.onClose = onClose;
+  }
 
   open(id: string, opts: OpenDocumentOptions): RegistryEntry {
     if (this.entries.has(id)) {
@@ -42,7 +43,6 @@ export class InstanceRegistry {
 
     const entry: RegistryEntry = {
       document,
-      history: new HistoryEngine(),
       options: opts,
       prefs: resolvePrefs(opts.matchingConfig, opts.prefs),
     };
@@ -52,7 +52,9 @@ export class InstanceRegistry {
   }
 
   close(id: string): boolean {
-    return this.entries.delete(id);
+    const had = this.entries.delete(id);
+    if (had && this.onClose) this.onClose(id);
+    return had;
   }
 
   get(id: string): RegistryEntry | undefined {
@@ -68,6 +70,8 @@ export class InstanceRegistry {
   }
 
   clear(): void {
+    const ids = [...this.entries.keys()];
     this.entries.clear();
+    if (this.onClose) for (const id of ids) this.onClose(id);
   }
 }

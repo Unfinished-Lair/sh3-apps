@@ -106,6 +106,19 @@ An **unmatched** `meta.type` falls through to step 2 rather than forcing a leaf 
 
 Top-level primitives are read-only by design: a raw string or number has no container the inspector can mutate on the caller's behalf. Wrap primitives in an object (`{ value: 42 }`) if you need editability.
 
+### Built-in renderer for `type: 'color'`
+
+`sh3-editor` (≥ 0.4.0) auto-registers a color-picker renderer on activate. Any field tagged `meta: { type: 'color' }` with a hex-string value renders the full picker inline; non-string values fall through to a read-only leaf. Consumers can override by registering their own renderer for the `color` type tag with `priority > 10` (the built-in's priority).
+
+```ts
+api.openInspector('my-slot', {
+  value: $state({ fg: '#ff0000', bg: '#000000' }),
+  meta: { fields: { fg: { type: 'color' }, bg: { type: 'color' } } },
+});
+```
+
+See [`color-picker.md`](./color-picker.md) for the full picker API.
+
 ---
 
 ## 6. Writing a custom renderer

@@ -1,5 +1,6 @@
 import type { OpenColorPickerOptions } from '../types';
 import { normalizeHex } from '../util/color';
+import { SvelteMap } from 'svelte/reactivity';
 
 export interface ColorPickerEntry {
   value: string;                  // always a normalized hex: '#rrggbb'
@@ -9,7 +10,7 @@ export interface ColorPickerEntry {
 /** Parallel to InspectorRegistry: open/get/close/list over in-memory entries.
  *  Value normalization applies on open; invalid hex falls back to #000000. */
 export class ColorPickerRegistry {
-  private entries = new Map<string, ColorPickerEntry>();
+  private entries = new SvelteMap<string, ColorPickerEntry>();
   private onClose?: (id: string) => void;
 
   constructor(onClose?: (id: string) => void) {

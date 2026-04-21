@@ -13,4 +13,10 @@ export default defineConfig({
       external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
     },
   },
+  test: {
+    include: [
+      '**/*.{test,spec}.?(c|m)[jt]s?(x)',
+      '**/*.{test,spec}.svelte.?(c|m)[jt]s?(x)',
+    ],
+  },
 });

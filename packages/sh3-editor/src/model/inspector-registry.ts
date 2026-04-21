@@ -1,4 +1,5 @@
 import type { InspectorMeta, OpenInspectorOptions } from '../types';
+import { SvelteMap } from 'svelte/reactivity';
 
 export interface InspectorEntry {
   value: unknown;
@@ -7,7 +8,7 @@ export interface InspectorEntry {
 }
 
 export class InspectorRegistry {
-  private entries = new Map<string, InspectorEntry>();
+  private entries = new SvelteMap<string, InspectorEntry>();
   private onClose?: (id: string) => void;
 
   constructor(onClose?: (id: string) => void) {

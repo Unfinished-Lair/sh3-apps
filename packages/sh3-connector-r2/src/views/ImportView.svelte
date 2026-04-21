@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { DocStatus } from 'sh3-core';
+  import { shell, type DocStatus } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { createR2Client } from '../r2/client';
   import { readForeign, writeForeign, MissingCapabilityError } from '../foreign-docs';
+  import { presentImportConflicts, type ImportConflictInput } from '../conflicts';
   import RemoteTree from './components/RemoteTree.svelte';
 
   let { rt }: { rt: Runtime } = $props();
@@ -20,12 +21,46 @@
     localStatus?: DocStatus;
     binaryUnsupported?: boolean;
   };
+  type Stats = {
+    imported: number;
+    resolvedLocal: number;
+    resolvedIncoming: number;
+    skipped: number;
+    cancelled: number;
+    failed: number;
+    errors: string[];
+  };
+  function emptyStats(): Stats {
+    return { imported: 0, resolvedLocal: 0, resolvedIncoming: 0, skipped: 0, cancelled: 0, failed: 0, errors: [] };
+  }
+
   let nodes = $state<Node[]>([]);
   let selected = $state<Set<string>>(new Set());
   let scanning = $state(false);
   let importing = $state(false);
   let permissionBlocked = $state(false);
-  let summary = $state<{ imported: number; skipped: number; failed: number; errors: string[] } | null>(null);
+  let summary = $state<Stats | null>(null);
+
+  const conflictsAvailable = typeof shell?.conflicts?.resolve === 'function';
+
+  const selectedNodes = $derived(nodes.filter((n) => selected.has(n.path)));
+  const selectedNew = $derived(selectedNodes.filter((n) => !n.existsLocal));
+  const selectedExistingUsable = $derived(
+    selectedNodes.filter((n) => n.existsLocal && !n.binaryUnsupported),
+  );
+  const selectedExistingBinary = $derived(
+    selectedNodes.filter((n) => n.existsLocal && n.binaryUnsupported),
+  );
+
+  const canImportNew = $derived(
+    selectedNew.length > 0 && selectedExistingUsable.length === 0 && selectedExistingBinary.length === 0,
+  );
+  const canImportUpdated = $derived(
+    conflictsAvailable && selectedExistingUsable.length > 0 && selectedNew.length === 0,
+  );
+  const canImportMixed = $derived(
+    conflictsAvailable && selectedNew.length > 0 && selectedExistingUsable.length > 0,
+  );
 
   $effect(() => { if (rt.targets.length > 0 && !targetId) targetId = rt.targets[0].id; });
 
@@ -102,33 +137,121 @@
     selected = new Set(selected);
   }
 
-  async function runImport() {
+  async function writeNew(
+    client: ReturnType<typeof createR2Client>,
+    write: (shardId: string, path: string, content: string) => Promise<void>,
+    stats: Stats,
+    newNodes: Node[],
+  ): Promise<boolean> {
+    for (const node of newNodes) {
+      try {
+        const content = await client.getObject(node.path);
+        await write(node.shardId, node.docPath, content);
+        stats.imported++;
+      } catch (err) {
+        if (err instanceof MissingCapabilityError) {
+          permissionBlocked = true;
+          return false;
+        }
+        stats.failed++;
+        stats.errors.push(`${node.path}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return true;
+  }
+
+  async function writeExisting(
+    target: BackupTarget,
+    client: ReturnType<typeof createR2Client>,
+    write: (shardId: string, path: string, content: string) => Promise<void>,
+    stats: Stats,
+    existingUsable: Node[],
+    existingBinary: Node[],
+  ): Promise<boolean> {
+    for (const node of existingBinary) {
+      stats.failed++;
+      stats.errors.push(`${node.path}: binary not supported`);
+    }
+    if (existingUsable.length === 0) return true;
+    if (!shell?.conflicts) return true;
+
+    const inputs: ImportConflictInput[] = [];
+    for (const node of existingUsable) {
+      try {
+        const incoming = await client.getObject(node.path);
+        const parsed = Date.parse(node.lastModified);
+        inputs.push({
+          shardId: node.shardId,
+          path: node.docPath,
+          localContent: node.localContent ?? '',
+          localVersion: node.localStatus?.version ?? 1,
+          localAt: node.localStatus?.lastSyncedAt ?? 0,
+          incomingContent: incoming,
+          incomingAt: Number.isFinite(parsed) ? parsed : Date.now(),
+          targetLabel: target.label,
+          remoteKey: node.path,
+        });
+      } catch (err) {
+        stats.failed++;
+        stats.errors.push(`${node.path}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (inputs.length === 0) return true;
+
+    const decisions = await presentImportConflicts(shell.conflicts, inputs);
+    if (decisions === 'cancelled') {
+      stats.cancelled += inputs.length;
+      return true;
+    }
+
+    const byRemoteKey = new Map(inputs.map((i) => [i.remoteKey, i] as const));
+    for (const d of decisions) {
+      if (d.choice === 'local') {
+        stats.resolvedLocal++;
+      } else if (d.choice === 'skipped') {
+        stats.skipped++;
+      } else {
+        const input = byRemoteKey.get(d.remoteKey);
+        if (!input) continue;
+        try {
+          await write(d.shardId, d.path, input.incomingContent);
+          stats.resolvedIncoming++;
+        } catch (err) {
+          if (err instanceof MissingCapabilityError) {
+            permissionBlocked = true;
+            return false;
+          }
+          stats.failed++;
+          stats.errors.push(`${d.shardId}/${d.path}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+    return true;
+  }
+
+  async function runImport(mode: 'new' | 'updated' | 'mixed') {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
     if (!target) return;
     summary = null;
     importing = true;
-    const stats = { imported: 0, skipped: 0, failed: 0, errors: [] as string[] };
+    const stats = emptyStats();
     try {
       const client = createR2Client(target);
       const write = writeForeign(rt.ctx);
-
-      for (const key of selected) {
-        const node = nodes.find((n) => n.path === key);
-        if (!node) continue;
-        const inner = key.slice(target.keyPrefix.length);
-        const slash = inner.indexOf('/');
-        const shardId = inner.slice(0, slash);
-        const path = inner.slice(slash + 1);
-        if (node.existsLocal) { stats.skipped++; continue; }
-        try {
-          const content = await client.getObject(key);
-          await write(shardId, path, content);
-          stats.imported++;
-        } catch (err) {
-          if (err instanceof MissingCapabilityError) { permissionBlocked = true; break; }
-          stats.failed++;
-          stats.errors.push(`${key}: ${err instanceof Error ? err.message : String(err)}`);
-        }
+      if (mode === 'new' || mode === 'mixed') {
+        const ok = await writeNew(client, write, stats, selectedNew);
+        if (!ok) return;
+      }
+      if (mode === 'updated' || mode === 'mixed') {
+        await writeExisting(
+          target,
+          client,
+          write,
+          stats,
+          selectedExistingUsable,
+          mode === 'updated' ? selectedExistingBinary : [],
+        );
       }
     } finally {
       importing = false;
@@ -159,15 +282,37 @@
 
     {#if nodes.length > 0}
       <p>{nodes.length} object{nodes.length === 1 ? '' : 's'} — {selected.size} selected</p>
-      <RemoteTree nodes={nodes} selected={selected} onToggle={toggle} />
-      <button disabled={importing || selected.size === 0} onclick={runImport}>
-        {importing ? 'Importing…' : `Import ${selected.size} object${selected.size === 1 ? '' : 's'}`}
-      </button>
+      <RemoteTree {nodes} {selected} onToggle={toggle} />
+
+      <div class="actions">
+        <button disabled={importing || !canImportNew} onclick={() => runImport('new')}>
+          {importing ? 'Importing…' : `Import New (${selectedNew.length})`}
+        </button>
+        <button
+          disabled={importing || !canImportUpdated}
+          title={!conflictsAvailable ? 'Requires sh3-core 0.10.4+' : ''}
+          onclick={() => runImport('updated')}
+        >
+          {importing ? 'Importing…' : `Import Updated (${selectedExistingUsable.length})`}
+        </button>
+        <button
+          disabled={importing || !canImportMixed}
+          title={!conflictsAvailable ? 'Requires sh3-core 0.10.4+' : ''}
+          onclick={() => runImport('mixed')}
+        >
+          {importing ? 'Importing…' : `Import Selected`}
+        </button>
+      </div>
     {/if}
 
     {#if summary}
       <div class="summary">
-        Imported: {summary.imported} · Skipped (exists locally): {summary.skipped} · Failed: {summary.failed}
+        Imported: {summary.imported}
+        · Kept local: {summary.resolvedLocal}
+        · Applied remote: {summary.resolvedIncoming}
+        · Skipped: {summary.skipped}
+        · Cancelled: {summary.cancelled}
+        · Failed: {summary.failed}
         {#if summary.errors.length > 0}
           <details><summary>Errors</summary><ul>{#each summary.errors as e}<li>{e}</li>{/each}</ul></details>
         {/if}
@@ -181,4 +326,5 @@
   label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; }
   .warn { background: #5a3a1a; border: 1px solid #a77733; padding: 8px; color: #ffd; }
   .summary { border: 1px solid var(--sh3-border, #2a2a2a); padding: 8px; border-radius: 3px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

@@ -4,6 +4,7 @@
   import type { RegistryEntry } from '../model/instance-registry';
   import type { ApiInternals } from '../model/api';
   import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
+  import { createTextSwapCommand } from '../model/history-registry';
   import Toolbar from './Toolbar.svelte';
   import EditorSettings from './EditorSettings.svelte';
 
@@ -42,6 +43,17 @@
     (showSettings ?? true) && userOptionCount > 0,
   );
 
+  const TEXT_COALESCE_MS = 300;
+
+  const setContent = (content: string, cursor: number) => {
+    local = content;
+    doc.content = content;
+    doc.cursorStart = cursor;
+    doc.cursorEnd = cursor;
+    internals.contentChange.emit(doc.id, content);
+    setCursor(cursor, cursor);
+  };
+
   function openSettingsModal() {
     shell.modal.open(EditorSettings, {
       indentType,
@@ -67,7 +79,6 @@
     internals.prefsChange.emit(entry.document.id, { ...entry.prefs });
   }
 
-  // Sync from document when content changes externally
   $effect(() => {
     local = doc.content;
   });
@@ -96,10 +107,41 @@
     const id = doc.id;
     const before = doc.content;
     if (before === newContent) return;
-    entry.history.push(before, newContent, doc.cursorStart, cursorStart);
+    const cursorBefore = doc.cursorStart;
+
     doc.content = newContent;
     doc.cursorStart = cursorStart;
     doc.cursorEnd = cursorEnd;
+
+    const ctrl = internals.history(id);
+    const now = Date.now();
+    const top = ctrl.peek();
+    const prevSnap = top?.meta?.kind === 'text-swap'
+      ? (top.meta as any).snapshot as { before: string; after: string; cursorBefore: number; cursorAfter: number } | undefined
+      : undefined;
+    const isSingleChar = Math.abs(newContent.length - before.length) <= 1;
+    const withinWindow = prevSnap && top?.meta?.timestamp != null && now - (top.meta.timestamp as number) < TEXT_COALESCE_MS;
+
+    if (prevSnap && isSingleChar && withinWindow) {
+      ctrl.replaceTop(createTextSwapCommand({
+        setter: setContent,
+        before: prevSnap.before,
+        after: newContent,
+        cursorBefore: prevSnap.cursorBefore,
+        cursorAfter: cursorStart,
+        now,
+      }));
+    } else {
+      ctrl.push(createTextSwapCommand({
+        setter: setContent,
+        before,
+        after: newContent,
+        cursorBefore,
+        cursorAfter: cursorStart,
+        now,
+      }));
+    }
+
     const wasDirty = doc.dirty;
     doc.dirty = true;
     internals.contentChange.emit(id, newContent);
@@ -116,44 +158,24 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    // Save
     if (e.key === 's' && isModKey(e)) {
       e.preventDefault();
       internals.emitSave(doc.id);
       return;
     }
 
-    // Undo
     if (e.key.toLowerCase() === 'z' && isModKey(e) && !e.shiftKey) {
       e.preventDefault();
-      const result = entry.history.undo();
-      if (result) {
-        local = result.content;
-        doc.content = result.content;
-        doc.cursorStart = result.cursor;
-        doc.cursorEnd = result.cursor;
-        internals.contentChange.emit(doc.id, result.content);
-        setCursor(result.cursor, result.cursor);
-      }
+      internals.history(doc.id).undo();
       return;
     }
 
-    // Redo
     if ((e.key.toLowerCase() === 'y' && isModKey(e)) || (e.key.toLowerCase() === 'z' && isModKey(e) && e.shiftKey)) {
       e.preventDefault();
-      const result = entry.history.redo();
-      if (result) {
-        local = result.content;
-        doc.content = result.content;
-        doc.cursorStart = result.cursor;
-        doc.cursorEnd = result.cursor;
-        internals.contentChange.emit(doc.id, result.content);
-        setCursor(result.cursor, result.cursor);
-      }
+      internals.history(doc.id).redo();
       return;
     }
 
-    // Enter: optional auto-indent based on indentType.
     if (e.key === 'Enter' && !e.shiftKey && !isModKey(e) && !e.altKey) {
       if (indentType === 'none') return;
       const el = e.currentTarget as HTMLTextAreaElement;
@@ -173,7 +195,6 @@
       return;
     }
 
-    // `}` on whitespace-only line: dedent to enclosing `{`'s indent (brace mode only).
     if (e.key === '}' && indentType === 'brace' && !isModKey(e) && !e.altKey) {
       const el = e.currentTarget as HTMLTextAreaElement;
       const result = applyClosingBrace(
@@ -190,7 +211,6 @@
       }
     }
 
-    // Tab / Shift+Tab
     if (e.key === 'Tab') {
       e.preventDefault();
       const el = e.currentTarget as HTMLTextAreaElement;

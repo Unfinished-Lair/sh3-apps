@@ -65,7 +65,12 @@
         </Field>
       {:else}
         <Field {label} readonly={isReadOnly}>
-          <Inspect value={entry.child} meta={entry.fieldMeta} {api} />
+          <Inspect
+            value={entry.child}
+            meta={entry.fieldMeta}
+            {api}
+            onCommit={isReadOnly ? undefined : (next) => commitPrimitive(value as any, entry.key, next as any)}
+          />
         </Field>
       {/if}
     {/if}

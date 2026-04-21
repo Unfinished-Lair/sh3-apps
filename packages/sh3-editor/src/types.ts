@@ -124,6 +124,11 @@ export interface InspectorRendererProps {
   value: unknown;
   meta?: InspectorMeta;
   api: InspectorApi;
+  /** Optional commit hook supplied by the walker when this renderer is mounted at a
+   *  field site. Custom renderers call this with the new value; the walker builds the
+   *  apply/revert history command and writes back to the inspected object. Absent for
+   *  root-level mounts, in which case the renderer has no parent to write to. */
+  onCommit?: (next: unknown) => void;
 }
 
 /** The public API surface exposed to consuming shards. */

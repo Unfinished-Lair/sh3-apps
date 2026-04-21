@@ -5,10 +5,13 @@ import type {
   HistoryController,
   OpenDocumentOptions,
   OpenInspectorOptions,
+  OpenColorPickerOptions,
+  ColorPickerPrefs,
   UserPrefs,
 } from '../types';
 import { InstanceRegistry } from './instance-registry';
 import { InspectorRegistry } from './inspector-registry';
+import { ColorPickerRegistry } from './color-picker-registry';
 import { HistoryRegistry, createTextSwapCommand } from './history-registry';
 
 type Callback<T extends unknown[]> = (...args: T) => void;
@@ -37,8 +40,11 @@ export interface ApiInternals {
   saveEvent: EventBus<[string]>;
   prefsChange: EventBus<[string, UserPrefs]>;
   inspectorValueChange: EventBus<[string, unknown]>;
+  colorPickerValueChange: EventBus<[string, string]>;
+  colorPickerPrefsChange: EventBus<[string, ColorPickerPrefs]>;
   history: (id: string) => HistoryController;
   inspectors: InspectorRegistry;
+  colorPickers: ColorPickerRegistry;
 }
 
 /** Wraps a HistoryEngine as a HistoryController with the public surface.
@@ -88,9 +94,14 @@ export function createApi(
   const saveEvent = new EventBus<[string]>();
   const prefsChange = new EventBus<[string, UserPrefs]>();
   const inspectorValueChange = new EventBus<[string, unknown]>();
+  const colorPickerValueChange = new EventBus<[string, string]>();
+  const colorPickerPrefsChange = new EventBus<[string, ColorPickerPrefs]>();
 
   const historyRegistry = new HistoryRegistry();
   const inspectors = new InspectorRegistry((id) => {
+    historyRegistry.release(id);
+  });
+  const colorPickers = new ColorPickerRegistry((id) => {
     historyRegistry.release(id);
   });
 
@@ -99,10 +110,13 @@ export function createApi(
   function history(id: string): HistoryController {
     let c = controllers.get(id);
     if (!c) {
-      const isInspector = () => inspectors.has(id);
       c = makeController(historyRegistry, id, () => {
-        if (isInspector()) {
+        if (inspectors.has(id)) {
           inspectorValueChange.emit(id, inspectors.get(id)?.value ?? null);
+        }
+        if (colorPickers.has(id)) {
+          const entry = colorPickers.get(id);
+          if (entry) colorPickerValueChange.emit(id, entry.value);
         }
       });
       controllers.set(id, c);
@@ -220,6 +234,21 @@ export function createApi(
     },
     onInspectorValueChange(cb) { return inspectorValueChange.on(cb); },
 
+    openColorPicker(id, opts: OpenColorPickerOptions) {
+      colorPickers.open(id, opts);
+    },
+    closeColorPicker(id) {
+      if (colorPickers.close(id)) releaseHistory(id);
+    },
+    getColorPickerValue(id) {
+      return colorPickers.get(id)?.value ?? null;
+    },
+    listColorPickerInstances() {
+      return colorPickers.list();
+    },
+    onColorPickerValueChange(cb) { return colorPickerValueChange.on(cb); },
+    onColorPickerPrefsChange(cb) { return colorPickerPrefsChange.on(cb); },
+
     history,
   };
 
@@ -230,8 +259,11 @@ export function createApi(
     saveEvent,
     prefsChange,
     inspectorValueChange,
+    colorPickerValueChange,
+    colorPickerPrefsChange,
     history,
     inspectors,
+    colorPickers,
   };
 
   const teardown = () => {
@@ -240,9 +272,12 @@ export function createApi(
     saveEvent.clear();
     prefsChange.clear();
     inspectorValueChange.clear();
+    colorPickerValueChange.clear();
+    colorPickerPrefsChange.clear();
     historyRegistry.clear();
     controllers.clear();
     inspectors.clear();
+    colorPickers.clear();
   };
 
   return { api, internals, teardown };

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2
+
+### Fixed
+- `sh3-editor:inspector` and `sh3-editor:color-picker` views now re-render when their registry entry changes. Previously the view captured the entry reference once at mount; consumers doing `closeInspector(id)` + `openInspector(id, newOpts)` (or the color-picker equivalent) observed the view stuck on the original value. The registries now use `SvelteMap` from `svelte/reactivity`, and both views derive their entry via `$derived(internals.<registry>.get(instanceId))`. Resolves [sh3-apps#2](https://github.com/Unfinished-Lair/sh3-apps/issues/2).
+
+### Notes
+- No breaking changes. Public `EditorApi` surface is unchanged.
+- Consumer code that was already calling `close + open` to swap the inspected value now just works. `open` on an already-open id still returns the existing entry without replacing it; callers that want to rebind must `close + open`.
+- `ColorPicker.svelte`'s `prefs` and `compact` are still read once at mount (pre-existing behavior); rebinding with different `prefs.mode` keeps the original mode.
+- Peer `sh3-core` remains `^0.10.4`.
+
 ## 0.4.1
 
 ### Added

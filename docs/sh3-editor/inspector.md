@@ -41,6 +41,8 @@ const off = api.onInspectorValueChange((id, value) => { /* … */ });
 | `toolbarActions` | `ToolbarAction[]` | `[]` | Optional toolbar rendered above the body. |
 | `onCommit` | `WalkerCommitOverride` | — | **0.4.1+.** Route walker field commits through a consumer-owned sink (e.g. the caller's own `editor.dispatch`). See §8.1. |
 
+> **Rebinding a mounted inspector (0.4.2+).** `Inspector.svelte` tracks the registry reactively. Calling `closeInspector(id)` followed by `openInspector(id, newOpts)` re-renders the live view with the new value, meta, and `onCommit`. History is released on `close` (fresh undo stack per rebinding) — wrap the value in a stable reference if you want undo to carry across rebinds.
+
 ---
 
 ## 3. Ad-hoc mounts

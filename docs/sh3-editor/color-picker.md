@@ -50,6 +50,8 @@ The `id` MUST match the `slotId` the view is mounted at.
 | `prefs` | `ColorPickerPrefs` | `{ mode: 'hsv' }` | Consumer-restored prefs from a prior session. |
 | `compact` | `boolean` | `false` | Inspector-renderer layout: preview + hex + popover trigger. |
 
+> **Rebinding a mounted color-picker (0.4.2+).** `ColorPicker.svelte` tracks the registry reactively — `closeColorPicker(id)` + `openColorPicker(id, newOpts)` rebinds the live view. Note: `prefs` and `compact` are snapshotted at the **initial** mount and are not re-read on rebind; a rebind with a different `prefs.mode` keeps the original mode.
+
 ---
 
 ## 3. Ad-hoc mounts

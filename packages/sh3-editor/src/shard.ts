@@ -3,17 +3,21 @@ import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry';
 import { createApi } from './model/api';
 import type { ApiInternals } from './model/api';
-import type { EditorApi, OpenDocumentOptions, InspectorMeta } from './types';
+import type { EditorApi, OpenDocumentOptions, InspectorMeta, ColorPalette } from './types';
 import { INSPECTOR_RENDERER_POINT, type InspectorRenderer } from './inspector/contributions';
 import { setRenderers } from './inspector/registry';
+import { setColorRendererDeps } from './inspector/color-renderer-deps';
 import Editor from './views/Editor.svelte';
 import Inspector from './views/Inspector.svelte';
+import ColorPicker from './views/ColorPicker.svelte';
+import ColorRenderer from './inspector/color-renderer.svelte';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
 let internalsRef: ApiInternals | null = null;
 let teardownRef: (() => void) | null = null;
 let unsubscribeContributions: (() => void) | null = null;
+let unregisterColorRenderer: (() => void) | null = null;
 
 export function getApi(): EditorApi | null {
   return apiRef;
@@ -24,8 +28,9 @@ export const shard: SourceShard = {
     id: 'sh3-editor',
     label: 'Editor',
     views: [
-      { id: 'sh3-editor:editor',    label: 'Editor',    standalone: true },
-      { id: 'sh3-editor:inspector', label: 'Inspector', standalone: true },
+      { id: 'sh3-editor:editor',       label: 'Editor',       standalone: true },
+      { id: 'sh3-editor:inspector',    label: 'Inspector',    standalone: true },
+      { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
     ],
   },
 
@@ -44,6 +49,43 @@ export const shard: SourceShard = {
     };
     refresh();
     unsubscribeContributions = ctx.contributions.onChange(INSPECTOR_RENDERER_POINT, refresh);
+
+    // User-zone palettes.
+    const userPaletteState = ctx.state<{ user: { colorPickerPalettes: ColorPalette[] } }>({
+      user: { colorPickerPalettes: [] },
+    });
+
+    function handleSavePalette(palette: ColorPalette): void {
+      const list = userPaletteState.user.colorPickerPalettes;
+      const idx = list.findIndex((p) => p.id === palette.id);
+      if (idx === -1) list.push(palette);
+      else list[idx] = palette;
+    }
+
+    function handleDeletePalette(paletteId: string): void {
+      const list = userPaletteState.user.colorPickerPalettes;
+      const idx = list.findIndex((p) => p.id === paletteId);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+
+    // Expose shard-side deps to the inspector color-renderer (mounted inside
+    // the inspector walker, which does not have direct access to this scope).
+    setColorRendererDeps({
+      internals,
+      userPalettes: userPaletteState.user.colorPickerPalettes,
+      onSaveUserPalette: handleSavePalette,
+      onDeleteUserPalette: handleDeletePalette,
+    });
+
+    // Auto-register the default color renderer against the inspector contribution point.
+    const colorRendererContribution: InspectorRenderer = {
+      id: 'sh3-editor:color',
+      type: 'color',
+      component: ColorRenderer as any,
+      priority: 10,
+    };
+    unregisterColorRenderer =
+      ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, colorRendererContribution);
 
     const defaultOptions: OpenDocumentOptions = {
       content: 'Hello, World',
@@ -96,9 +138,40 @@ export const shard: SourceShard = {
         };
       },
     });
+
+    ctx.registerView('sh3-editor:color-picker', {
+      mount(container, context) {
+        const instanceId = context.slotId;
+        const entry = internals.colorPickers.get(instanceId);
+        const ephemeral = context.meta as { value?: string; readonly?: boolean } | undefined;
+        const component = mount(ColorPicker, {
+          target: container,
+          props: {
+            instanceId,
+            entry,
+            adHocValue: ephemeral?.value,
+            adHocReadonly: ephemeral?.readonly ?? false,
+            internals: internalsRef!,
+            toolbarActions: entry?.options.toolbarActions ?? [],
+            prefs: entry?.options.prefs ?? { mode: 'hsv' },
+            compact: entry?.options.compact ?? false,
+            userPalettes: userPaletteState.user.colorPickerPalettes,
+            onSaveUserPalette: handleSavePalette,
+            onDeleteUserPalette: handleDeletePalette,
+          },
+        });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
+        };
+      },
+    });
   },
 
   deactivate() {
+    unregisterColorRenderer?.();
+    unregisterColorRenderer = null;
+    setColorRendererDeps(null);
     unsubscribeContributions?.();
     unsubscribeContributions = null;
     teardownRef?.();

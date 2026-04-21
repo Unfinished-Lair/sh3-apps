@@ -9,8 +9,8 @@ import Editor from './views/Editor.svelte';
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
 let internalsRef: ApiInternals | null = null;
+let teardownRef: (() => void) | null = null;
 
-/** Exposed so consuming shards can access the API via registeredShards. */
 export function getApi(): EditorApi | null {
   return apiRef;
 }
@@ -19,20 +19,22 @@ export const shard: SourceShard = {
   manifest: {
     id: 'sh3-editor',
     label: 'Editor',
-    views: [{ id: 'sh3-editor:editor', label: 'Editor', standalone: true }],
+    views: [
+      { id: 'sh3-editor:editor', label: 'Editor', standalone: true },
+    ],
   },
 
   activate(ctx: ShardContext) {
     registry = new InstanceRegistry();
-    const { api, internals } = createApi(registry);
+    const { api, internals, teardown } = createApi(registry);
     apiRef = api;
     internalsRef = internals;
+    teardownRef = teardown;
 
-    // Expose the API on the shard for external access.
     (shard as any).api = api;
 
-    const defaultOptions: OpenDocumentOptions =  {
-      content: "Hello, World"
+    const defaultOptions: OpenDocumentOptions = {
+      content: 'Hello, World',
     };
 
     ctx.registerView('sh3-editor:editor', {
@@ -64,14 +66,12 @@ export const shard: SourceShard = {
   },
 
   deactivate() {
-    internalsRef?.contentChange.clear();
-    internalsRef?.dirtyChange.clear();
-    internalsRef?.saveEvent.clear();
-    internalsRef?.prefsChange.clear();
+    teardownRef?.();
     registry?.clear();
     registry = null;
     apiRef = null;
     internalsRef = null;
+    teardownRef = null;
     (shard as any).api = null;
   },
 };

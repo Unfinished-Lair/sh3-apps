@@ -1,14 +1,25 @@
 <script lang="ts">
+  import type { DocStatus } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { createR2Client } from '../r2/client';
-  import { writeForeign, MissingCapabilityError } from '../foreign-docs';
+  import { readForeign, writeForeign, MissingCapabilityError } from '../foreign-docs';
   import RemoteTree from './components/RemoteTree.svelte';
 
   let { rt }: { rt: Runtime } = $props();
 
   let targetId = $state<string>('');
-  type Node = { path: string; size: number; lastModified: string; existsLocal: boolean };
+  type Node = {
+    path: string;
+    size: number;
+    lastModified: string;
+    existsLocal: boolean;
+    shardId: string;
+    docPath: string;
+    localContent?: string;
+    localStatus?: DocStatus;
+    binaryUnsupported?: boolean;
+  };
   let nodes = $state<Node[]>([]);
   let selected = $state<Set<string>>(new Set());
   let scanning = $state(false);
@@ -25,8 +36,11 @@
     scanning = true;
     try {
       const client = createR2Client(target);
+      const read = readForeign(rt.ctx);
+      const statusFrom = rt.ctx.browse.statusFrom;
       const localSet = new Set<string>();
       for (const d of await rt.ctx.browse.listDocuments()) localSet.add(`${d.shardId}/${d.path}`);
+
       const collected: Node[] = [];
       const nextSel = new Set<string>();
       for await (const obj of client.listObjectsV2({ prefix: target.keyPrefix })) {
@@ -34,9 +48,45 @@
         const slash = inner.indexOf('/');
         if (slash < 0) continue;
         const shardId = inner.slice(0, slash);
-        const path = inner.slice(slash + 1);
-        const existsLocal = localSet.has(`${shardId}/${path}`);
-        collected.push({ path: obj.key, size: obj.size, lastModified: obj.lastModified, existsLocal });
+        const docPath = inner.slice(slash + 1);
+        const existsLocal = localSet.has(`${shardId}/${docPath}`);
+
+        let localContent: string | undefined;
+        let localStatus: DocStatus | undefined;
+        let binaryUnsupported = false;
+        if (existsLocal) {
+          try {
+            const c = await read(shardId, docPath);
+            localContent = c ?? '';
+          } catch (err) {
+            if (err instanceof MissingCapabilityError) {
+              permissionBlocked = true;
+              scanning = false;
+              return;
+            }
+            binaryUnsupported = true;
+          }
+          if (statusFrom) {
+            try {
+              const s = await statusFrom(shardId, docPath);
+              if (s) localStatus = s;
+            } catch {
+              // defensive; fall back to defaults at use-site
+            }
+          }
+        }
+
+        collected.push({
+          path: obj.key,
+          size: obj.size,
+          lastModified: obj.lastModified,
+          existsLocal,
+          shardId,
+          docPath,
+          localContent,
+          localStatus,
+          binaryUnsupported: binaryUnsupported || undefined,
+        });
         if (!existsLocal) nextSel.add(obj.key);
       }
       nodes = collected;

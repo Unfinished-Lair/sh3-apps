@@ -4,8 +4,10 @@ import { presentImportConflicts, type ImportConflictInput } from './conflicts';
 
 function fakeConflictsApi(over: Partial<ConflictsApi> = {}): ConflictsApi {
   return {
-    resolve: vi.fn(async () => ({ status: 'resolved', choices: [], skipped: [] })),
-    resolveDocuments: vi.fn(async () => ({ status: 'resolved', resolved: [], failed: [], skipped: [] })),
+    resolve: vi.fn<ConflictsApi['resolve']>(async () => ({ status: 'resolved', choices: [], skipped: [] })),
+    resolveDocuments: vi.fn<ConflictsApi['resolveDocuments']>(
+      async () => ({ status: 'resolved', resolved: [], failed: [], skipped: [] }),
+    ),
     ...over,
   };
 }
@@ -21,7 +23,7 @@ describe('presentImportConflicts', () => {
 
 describe('presentImportConflicts — item construction', () => {
   it('passes a ConflictItem per input with correct id, label, extension, branches, meta', async () => {
-    const resolve = vi.fn(async () => ({ status: 'resolved' as const, choices: [], skipped: [] }));
+    const resolve = vi.fn<ConflictsApi['resolve']>(async () => ({ status: 'resolved', choices: [], skipped: [] }));
     const api = fakeConflictsApi({ resolve });
     const inputs: ImportConflictInput[] = [
       {
@@ -56,7 +58,7 @@ describe('presentImportConflicts — item construction', () => {
   });
 
   it('omits extension for dotless paths and for dots in parent dirs', async () => {
-    const resolve = vi.fn(async () => ({ status: 'resolved' as const, choices: [], skipped: [] }));
+    const resolve = vi.fn<ConflictsApi['resolve']>(async () => ({ status: 'resolved', choices: [], skipped: [] }));
     const api = fakeConflictsApi({ resolve });
     await presentImportConflicts(api, [
       { shardId: 's', path: 'README', localContent: '', localVersion: 1, localAt: 0, incomingContent: '', incomingAt: 0, targetLabel: 't', remoteKey: 'k1' },

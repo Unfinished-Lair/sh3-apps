@@ -55,7 +55,9 @@ export async function presentImportConflicts(
 ): Promise<ImportConflictDecision[] | 'cancelled'> {
   if (items.length === 0) return [];
   const conflictItems = items.map(toConflictItem);
-  const byId = new Map(items.map((i) => [`${i.shardId}/${i.path}`, i] as const));
+  const byId = new Map<string, ImportConflictInput>(
+    items.map((i) => [`${i.shardId}/${i.path}`, i]),
+  );
 
   let outcome;
   try {

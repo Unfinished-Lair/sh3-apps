@@ -14,12 +14,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-core": "^0.10.1",
+    "sh3-core": "^0.10.4",
     "sh3-file-explorer": "^0.4.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-core": "^0.10.1",
+    "sh3-core": "^0.10.4",
     "sh3-file-explorer": "^0.4.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",

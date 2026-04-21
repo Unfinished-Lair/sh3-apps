@@ -55,6 +55,33 @@ export async function presentImportConflicts(
 ): Promise<ImportConflictDecision[] | 'cancelled'> {
   if (items.length === 0) return [];
   const conflictItems = items.map(toConflictItem);
-  await conflictsApi.resolve(conflictItems, { title: 'Resolve R2 import conflicts' });
-  return 'cancelled'; // placeholder until Task 4
+  const byId = new Map(items.map((i) => [`${i.shardId}/${i.path}`, i] as const));
+
+  const outcome = await conflictsApi.resolve(conflictItems, { title: 'Resolve R2 import conflicts' });
+
+  if (outcome.status === 'cancelled') return 'cancelled';
+
+  const decisions: ImportConflictDecision[] = [];
+  for (const choice of outcome.choices) {
+    const input = byId.get(choice.itemId);
+    if (!input) continue;
+    const resolved: 'local' | 'incoming' = choice.chosen.origin === 'local' ? 'local' : 'incoming';
+    decisions.push({
+      shardId: input.shardId,
+      path: input.path,
+      choice: resolved,
+      remoteKey: input.remoteKey,
+    });
+  }
+  for (const itemId of outcome.skipped) {
+    const input = byId.get(itemId);
+    if (!input) continue;
+    decisions.push({
+      shardId: input.shardId,
+      path: input.path,
+      choice: 'skipped',
+      remoteKey: input.remoteKey,
+    });
+  }
+  return decisions;
 }

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1
+
+- Re-export `getApi` from the package entry so consumers can `import { getApi } from '@unfinished-lair/sh3-editor'`.
+
+## 0.3.0
+
+- New view `sh3-editor:inspector` — renders arbitrary objects with a fallback walker for plain objects/arrays and editable leaves for primitives.
+- Per-instance generic history bus on `EditorApi.history(instanceId)`: `push` / `undo` / `redo` / `peek` / `replaceTop` / `clear` / `onChange`. Custom `HistoryCommand`s from external shards interleave with the editor's text-swap commands in the same stack.
+- Inspector renderer contributions — register custom renderers for a type tag via `ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, …)`. Subpath: `@unfinished-lair/sh3-editor/inspector/contributions`.
+- New `EditorApi` surface: `openInspector` / `closeInspector` / `getInspectorValue` / `listInspectorInstances` / `onInspectorValueChange` / `history(id)`.
+- Peer bump: `sh3-core` `^0.10.4` (required for `ctx.contributions`).
+- Retroactive documentation under `docs/sh3-editor/{editor,inspector}.md`.
+- Primitives subpath d.ts emission deferred — workspace-local consumers can import `<Inspect>` / `<Field>` / `<EditablePrimitive>` by direct path; published subpath is a follow-up.
+
 ## 0.2.0
 
 - Auto-indent on Enter: new `MatchingConfig.indentType` — `'none' | 'brace' | 'indent'`.

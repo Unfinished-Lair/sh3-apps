@@ -105,12 +105,26 @@ export interface InspectorMeta {
   item?: InspectorMeta;
 }
 
+/** Consumer-supplied commit sink for the inspector's fallback walker. Called by the
+ *  walker *before* its default in-place mutation + history push. Receives the path from
+ *  the root inspected value to the edited field (numeric indices for arrays, string keys
+ *  for objects) and the proposed new value. Return `true` to signal the consumer has
+ *  routed the edit elsewhere (e.g. through their own editor.dispatch); the walker will
+ *  skip both the in-place write and the history push. Return `false`, `undefined`, or
+ *  throw to let the walker commit as normal. Not invoked for custom renderers mounted at
+ *  the root, since those have no walker path. */
+export type WalkerCommitOverride = (path: (string | number)[], next: unknown) => boolean | void;
+
 /** Options for opening an inspector instance in sh3-editor's registry. */
 export interface OpenInspectorOptions {
   value: unknown;
   meta?: InspectorMeta;
   readonly?: boolean;
   toolbarActions?: ToolbarAction[];
+  /** Route walker field commits through a consumer-owned sink (e.g. the caller's own
+   *  editor.dispatch) so edits join the caller's coalesce window, autosave stream, and
+   *  undo stack. See `WalkerCommitOverride` for semantics. */
+  onCommit?: WalkerCommitOverride;
 }
 
 /** The object a custom inspector renderer receives as props. */

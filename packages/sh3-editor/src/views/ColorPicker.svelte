@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { ColorPalette, ColorPickerPrefs, ToolbarAction } from '../types';
-  import type { ColorPickerEntry } from '../model/color-picker-registry';
+  import type { ColorPalette, ColorPickerPrefs } from '../types';
   import type { ApiInternals } from '../model/api';
   import {
     hsvToRgb,
@@ -17,11 +16,9 @@
 
   interface Props {
     instanceId: string;
-    entry?: ColorPickerEntry;
     adHocValue?: string;
     adHocReadonly?: boolean;
     internals: ApiInternals;
-    toolbarActions?: ToolbarAction[];
     /** User-zone palettes — live array passed in by the shard. */
     userPalettes?: ColorPalette[];
     /** Initial prefs (mode). */
@@ -39,11 +36,9 @@
 
   let {
     instanceId,
-    entry,
     adHocValue,
     adHocReadonly = false,
     internals,
-    toolbarActions = [],
     userPalettes = [],
     prefs = { mode: 'hsv' },
     compact = false,
@@ -51,6 +46,9 @@
     onDeleteUserPalette,
     onExternalCommit,
   }: Props = $props();
+
+  let entry = $derived(internals.colorPickers.get(instanceId));
+  let toolbarActions = $derived(entry?.options.toolbarActions ?? []);
 
   const SQUARE_SIZE = compact ? 140 : 180;
   const STRIP_WIDTH = 20;

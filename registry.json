@@ -22,16 +22,16 @@
       "id": "sh3-editor",
       "type": "shard",
       "label": "Editor",
-      "description": "Reusable text editor shard for SH3",
+      "description": "Reusable text editor and object inspector shard for SH3",
       "author": {
         "name": "@unfinished-lair"
       },
       "versions": [
         {
-          "version": "0.2.1",
+          "version": "0.3.1",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-editor-0.2.1.js",
-          "integrity": "sha384-twojxaEdX99rRNiYA+Z7BhRHHNqhSDcaQxPVd/onRn3ulGKGe3xbNg3tcMIjWuZO"
+          "bundleUrl": "bundles/sh3-editor-0.3.1.js",
+          "integrity": "sha384-VxsZfyUdS83bwG1QnShw0HVSrW16ZvjacfvIfxXRUOIoP1Iea6BDikGTz2GbFZ6V"
         }
       ]
     },

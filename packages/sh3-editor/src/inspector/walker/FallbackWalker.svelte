@@ -76,7 +76,21 @@
     {#if !entry.fieldMeta?.hidden}
       {@const label = entry.fieldMeta?.label ?? (typeof entry.key === 'number' ? `[${entry.key}]` : String(entry.key))}
       {@const isReadOnly = (entry.fieldMeta?.readonly ?? false) || api.readonly}
-      {#if isPrimitive(entry.child)}
+      {#if entry.fieldMeta?.type}
+        <!-- Field has an explicit type tag — go through <Inspect> so the registry
+             can dispatch to a custom renderer (e.g. type: 'color' for a hex string)
+             even when the value is a primitive. -->
+        <Field {label} readonly={isReadOnly}>
+          <Inspect
+            value={entry.child}
+            meta={entry.fieldMeta}
+            {api}
+            onCommit={isReadOnly ? undefined : defaultCommitForField(entry.key)}
+            walkerOnCommit={walkerOnCommit}
+            basePath={[...basePath, entry.key]}
+          />
+        </Field>
+      {:else if isPrimitive(entry.child)}
         <Field {label} readonly={isReadOnly}>
           <EditablePrimitive
             value={entry.child as any}

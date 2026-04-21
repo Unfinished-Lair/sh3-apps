@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.3
+
+### Fixed
+- Walker now routes fields with an explicit `meta.type` through the renderer registry **before** checking whether the value is a primitive. Previously a primitive value (e.g. a hex string) with `meta: { type: 'color' }` rendered as an `EditablePrimitive` text input instead of dispatching to the color-picker renderer. Now any field with `fieldMeta.type` flows through `<Inspect>`, regardless of primitive-ness.
+- Registry reactivity no longer ships a second signal graph. Earlier 0.4.2 used `SvelteMap` from `svelte/reactivity`, which rollup bundled alongside its own inlined copy of svelte's internal `state()` / `source()` primitives — components kept using the host's external `svelte/internal/client`, so the two graphs never talked to each other and `$derived` didn't re-fire in the live shell. Registries now use a plain `Map` + a `$state(0)` version counter (files renamed to `.svelte.ts`), so the reactive primitives compile to the host-shared runtime and the graph is one.
+
+### Notes
+- No breaking changes. Public `EditorApi` surface is unchanged.
+- Artifact size is back to pre-0.4.2 (~67kB) since SvelteMap is no longer in the bundle.
+
 ## 0.4.2
 
 ### Fixed

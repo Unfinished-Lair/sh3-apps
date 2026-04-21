@@ -148,6 +148,14 @@ export interface EditorApi {
   listInspectorInstances(): string[];
   onInspectorValueChange(callback: (id: string, value: unknown) => void): () => void;
 
+  // Color picker
+  openColorPicker(id: string, opts: OpenColorPickerOptions): void;
+  closeColorPicker(id: string): void;
+  getColorPickerValue(id: string): string | null;
+  listColorPickerInstances(): string[];
+  onColorPickerValueChange(callback: (id: string, hex: string) => void): () => void;
+  onColorPickerPrefsChange(callback: (id: string, prefs: ColorPickerPrefs) => void): () => void;
+
   // Generic history bus
   history(instanceId: string): HistoryController;
 }
@@ -178,4 +186,27 @@ export interface HistoryController {
   readonly canRedo: boolean;
   clear(): void;
   onChange(cb: () => void): () => void;
+}
+
+/** A single palette preset. Built-in palettes set `builtin: true`; user palettes omit it. */
+export interface ColorPalette {
+  id: string;
+  label: string;
+  colors: string[]; // hex strings, e.g. '#FF0000'
+  builtin?: boolean;
+}
+
+/** User-owned view preferences for the color picker.
+ *  Persisted by the consumer (like editor `UserPrefs`). */
+export interface ColorPickerPrefs {
+  mode: 'hsv' | 'rgb';
+}
+
+/** Options passed when opening a color picker instance. */
+export interface OpenColorPickerOptions {
+  value: string;                 // initial hex, e.g. '#ff0000'; invalid → '#000000'
+  readonly?: boolean;
+  toolbarActions?: ToolbarAction[];
+  prefs?: ColorPickerPrefs;      // consumer-provided initial prefs from prior session
+  compact?: boolean;             // tighter layout; inspector renderer sets true
 }

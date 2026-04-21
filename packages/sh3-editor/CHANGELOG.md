@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+- Color picker view `sh3-editor:color-picker` with SV square + vertical hue strip (canvas, no darkening overlay), HSV/RGB numeric slider mode toggle, hex input, palette selector with swatches, and in-picker save/delete for user palettes.
+- `EditorApi` methods: `openColorPicker` / `closeColorPicker` / `getColorPickerValue` / `listColorPickerInstances` / `onColorPickerValueChange` / `onColorPickerPrefsChange`.
+- New types: `ColorPalette`, `ColorPickerPrefs`, `OpenColorPickerOptions`.
+- Default inspector renderer for `meta: { type: 'color' }` — auto-registered on activate at priority 10. Consumers override at `priority > 10`.
+- Ad-hoc mount path via `context.meta` for inspect-a-color-right-now flows.
+- User-palette persistence via sh3-core's User zone (`ctx.state`). Eight built-in palettes (pastel, neon, earth, web1, mono, ocean, sunset, jewel) plus any the user saves from the in-picker UI.
+- Runtime JS export for `@unfinished-lair/sh3-editor/inspector/contributions`. Previously types-only; `INSPECTOR_RENDERER_POINT` now resolves at runtime too.
+- Walker extension: `InspectorRendererProps` gains an optional `onCommit`; `FallbackWalker` now supplies a parent-write closure when recursing into non-primitive children, so custom renderers at field sites commit through the walker rather than having to build their own apply/revert.
+
+### Notes
+- Peer `sh3-core` remains `^0.10.4`.
+- No breaking changes. Existing inspector consumers that do not use `type: 'color'` are unaffected.
+
 ## 0.3.1
 
 - Re-export `getApi` from the package entry so consumers can `import { getApi } from '@unfinished-lair/sh3-editor'`.

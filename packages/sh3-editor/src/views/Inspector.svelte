@@ -29,6 +29,7 @@
   let value = $derived(entry ? entry.value : adHocValue);
   let meta = $derived(entry ? entry.meta : adHocMeta);
   let readonly = $derived(entry ? Boolean(entry.options.readonly) : adHocReadonly);
+  let walkerOnCommit = $derived(entry ? entry.options.onCommit : undefined);
 
   const history = internals.history(instanceId);
 
@@ -78,7 +79,7 @@
     <Toolbar actions={toolbarActions} filePath={null} />
   {/if}
   <div class="inspector-body">
-    <Inspect {value} {meta} {api} />
+    <Inspect {value} {meta} {api} walkerOnCommit={walkerOnCommit} basePath={[]} />
   </div>
 </div>
 

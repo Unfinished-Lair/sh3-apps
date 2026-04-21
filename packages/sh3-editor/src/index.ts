@@ -1,4 +1,4 @@
-export { shard } from './shard';
+export { shard, getApi } from './shard';
 export type {
   EditorApi,
   EditorDocument,

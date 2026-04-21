@@ -125,8 +125,8 @@
 
 <style>
   .sh3-fe-tree, .sh3-fe-tree ul { list-style: none; padding: 0; margin: 0; }
-  .sh3-fe-node { background: none; border: 0; color: inherit; cursor: pointer; padding: 2px 4px; text-align: left; width: 100%; font: inherit; }
-  .sh3-fe-node:hover { background: var(--sh3-hover, #1e1e1e); }
-  .sh3-fe-node.selected { background: var(--sh3-selection, #2d4a7a); }
-  .sh3-fe-empty { color: var(--sh3-muted, #888); padding: 8px; }
+  .sh3-fe-node { background: none; border: 0; color: var(--shell-fg); cursor: pointer; padding: 2px 4px; text-align: left; width: 100%; font: inherit; }
+  .sh3-fe-node:hover { background: var(--shell-bg-elevated); }
+  .sh3-fe-node.selected { background: var(--shell-accent-muted); }
+  .sh3-fe-empty { color: var(--shell-fg-muted); padding: 8px; }
 </style>

@@ -59,21 +59,21 @@
 {/if}
 
 <style>
-  .sh3-fe-panel__empty { color: var(--sh3-muted, #888); }
-  .sh3-fe-panel__header { border-bottom: 1px solid var(--sh3-border, #2a2a2a); padding-bottom: 6px; margin-bottom: 8px; }
+  .sh3-fe-panel__empty { color: var(--shell-fg-muted); }
+  .sh3-fe-panel__header { border-bottom: 1px solid var(--shell-border); padding-bottom: 6px; margin-bottom: 8px; color: var(--shell-fg); }
   .sh3-fe-panel__path { font-weight: 600; }
-  .sh3-fe-panel__shard { font-size: 0.85em; color: var(--sh3-muted, #888); }
+  .sh3-fe-panel__shard { font-size: 0.85em; color: var(--shell-fg-muted); }
   .sh3-fe-panel__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .sh3-fe-panel__action {
-    background: var(--sh3-surface, #1a1a1a);
-    color: var(--sh3-fg, #eee);
-    border: 1px solid var(--sh3-border, #2a2a2a);
+    background: var(--shell-bg-elevated);
+    color: var(--shell-fg);
+    border: 1px solid var(--shell-border);
     padding: 4px 10px;
     font: inherit;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: var(--shell-radius-sm);
   }
-  .sh3-fe-panel__action:hover { background: var(--sh3-surface-hover, #222); }
-  .sh3-fe-panel__action.primary { border-color: var(--sh3-accent, #4a9eff); }
+  .sh3-fe-panel__action:hover { background: var(--shell-accent-muted); }
+  .sh3-fe-panel__action.primary { border-color: var(--shell-accent); }
   .sh3-fe-panel__action[disabled] { opacity: 0.5; cursor: progress; }
 </style>

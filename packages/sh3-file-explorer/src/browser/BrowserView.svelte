@@ -16,6 +16,6 @@
 </div>
 
 <style>
-  .sh3-fe-browser { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(260px, 1fr); height: 100%; gap: 1px; background: var(--sh3-border, #2a2a2a); }
-  .sh3-fe-browser__tree, .sh3-fe-browser__panel { background: var(--sh3-bg, #111); overflow: auto; padding: 8px; }
+  .sh3-fe-browser { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(260px, 1fr); height: 100%; gap: 1px; background: var(--shell-border); }
+  .sh3-fe-browser__tree, .sh3-fe-browser__panel { background: var(--shell-bg); color: var(--shell-fg); overflow: auto; padding: 8px; }
 </style>

@@ -118,18 +118,15 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:inspector', {
       mount(container, context) {
         const instanceId = context.slotId;
-        const entry = internals.inspectors.get(instanceId);
         const ephemeral = context.meta as { value?: unknown; meta?: InspectorMeta; readonly?: boolean } | undefined;
         const component = mount(Inspector, {
           target: container,
           props: {
             instanceId,
-            entry,
             adHocValue: ephemeral?.value,
             adHocMeta: ephemeral?.meta,
             adHocReadonly: ephemeral?.readonly ?? false,
             internals: internalsRef!,
-            toolbarActions: entry?.options.toolbarActions ?? [],
           },
         });
         return {
@@ -142,19 +139,17 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:color-picker', {
       mount(container, context) {
         const instanceId = context.slotId;
-        const entry = internals.colorPickers.get(instanceId);
+        const initialEntry = internals.colorPickers.get(instanceId);
         const ephemeral = context.meta as { value?: string; readonly?: boolean } | undefined;
         const component = mount(ColorPicker, {
           target: container,
           props: {
             instanceId,
-            entry,
             adHocValue: ephemeral?.value,
             adHocReadonly: ephemeral?.readonly ?? false,
             internals: internalsRef!,
-            toolbarActions: entry?.options.toolbarActions ?? [],
-            prefs: entry?.options.prefs ?? { mode: 'hsv' },
-            compact: entry?.options.compact ?? false,
+            prefs: initialEntry?.options.prefs ?? { mode: 'hsv' },
+            compact: initialEntry?.options.compact ?? false,
             userPalettes: userPaletteState.user.colorPickerPalettes,
             onSaveUserPalette: handleSavePalette,
             onDeleteUserPalette: handleDeletePalette,

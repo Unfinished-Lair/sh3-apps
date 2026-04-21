@@ -97,10 +97,10 @@
       },
       "versions": [
         {
-          "version": "0.4.0",
+          "version": "0.4.1",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-file-explorer-app-0.4.0.js",
-          "integrity": "sha384-AzxCvqxyYxfuf1Y+WBmFerqnVXq2yMuXFaBm14eJr3DcjtFiynhX2ZZeFdnD6BNa"
+          "bundleUrl": "bundles/sh3-file-explorer-app-0.4.1.js",
+          "integrity": "sha384-xCyE/Ei/s57pFz+rSc0N4cmg3bNejZw/8esE8T+9kTYstkfI5evxvFxgT3YoEFIN"
         }
       ]
     },

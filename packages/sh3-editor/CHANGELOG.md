@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+### Added
+- `OpenInspectorOptions.onCommit?: (path, next) => boolean | void` — consumer-supplied hook to route walker-dispatched field commits (primitives and custom renderers mounted at field sites) through the caller's own editor history instead of the inspector's built-in per-slot history. Enables coalesce, autosave, and unified undo/redo across consumer-owned scene ops and inspector edits. Resolves [sh3-apps#1](https://github.com/Unfinished-Lair/sh3-apps/issues/1). See `docs/sh3-editor/inspector.md` §8.1.
+- New public type: `WalkerCommitOverride`.
+
+### Notes
+- No breaking changes. Existing consumers that omit `onCommit` see identical behavior.
+- Peer `sh3-core` remains `^0.10.4`.
+
 ## 0.4.0
 
 ### Added

@@ -39,6 +39,7 @@ const off = api.onInspectorValueChange((id, value) => { /* … */ });
 | `meta` | `InspectorMeta` | — | Per-field hint tree (see §4). |
 | `readonly` | `boolean` | `false` | Forces all fields read-only regardless of per-field meta. |
 | `toolbarActions` | `ToolbarAction[]` | `[]` | Optional toolbar rendered above the body. |
+| `onCommit` | `WalkerCommitOverride` | — | **0.4.1+.** Route walker field commits through a consumer-owned sink (e.g. the caller's own `editor.dispatch`). See §8.1. |
 
 ---
 
@@ -223,6 +224,38 @@ The fallback walker mutates `value` in place and then pushes a reversible comman
 - External shards can observe the history controller via `api.history(instanceId).onChange(() => …)` or drive it via `.undo()` / `.redo()` / `.clear()`.
 
 Undo/redo shortcuts (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) trigger only when the inspector's root element holds focus. Programmatic undo via `getApi().history(id).undo()` works regardless of focus.
+
+### 8.1. Routing field commits through your own editor (`onCommit`, 0.4.1+)
+
+By default the fallback walker commits each field edit by (a) mutating the inspected object in place and (b) pushing a `HistoryCommand` onto the inspector instance's own history stack. Consumers who own an editor with its own history — and want walker edits to join that history for coalesce, autosave, or unified undo/redo — can supply an `onCommit` callback on `OpenInspectorOptions`:
+
+```ts
+api.openInspector('node-inspector', {
+  value: selectedNode,
+  meta: { fields: { fill: { type: 'color' }, stroke: { type: 'color' } } },
+  onCommit: (path, next) => {
+    // path: ['fill'] | ['stroke'] | ['children', 3, 'opacity']
+    myEditor.dispatch({ type: 'updateNode', id: selectedNode.id, path, value: next });
+    return true;   // "I handled it — don't mutate, don't push to inspector history"
+  },
+});
+```
+
+**Semantics:**
+
+- Called **before** the walker's default mutation + push, for every walker-dispatched field commit — both primitives (via `EditablePrimitive`) and custom renderers mounted at field sites (e.g. `type: 'color'`).
+- `path` is the sequence of keys/indices from the root inspected value to the edited field (string for object fields, number for array indices).
+- Return `true` to suppress the walker's default commit.
+- Return `false` or `undefined` to let the walker commit as usual — useful if you want to observe edits without replacing the commit path.
+- **Not** invoked when a custom renderer is mounted at the **root** (no walker path).
+- Throwing from the callback is propagated to the caller; prefer returning `false` if your dispatch can fail and you want the walker to take the edit anyway.
+
+The callback signature:
+
+```ts
+type WalkerCommitOverride =
+  (path: (string | number)[], next: unknown) => boolean | void;
+```
 
 ---
 

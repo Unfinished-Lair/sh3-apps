@@ -104,3 +104,31 @@ export interface EditorApi {
   onSave(callback: (id: string) => void): () => void;
   onPrefsChange(callback: (id: string, prefs: UserPrefs) => void): () => void;
 }
+
+/** A reversible command on the undo stack. push() does NOT call apply();
+ *  the caller is responsible for putting the world in the post-apply state
+ *  before recording. undo runs revert(); redo runs apply(). */
+export interface HistoryCommand {
+  apply(): void;
+  revert(): void;
+  meta?: {
+    kind?: string;
+    label?: string;
+    timestamp?: number;
+    [key: string]: unknown;
+  };
+}
+
+/** Per-instance history surface. Stable across the lifetime of the
+ *  instance — calling history(id) always returns the same object. */
+export interface HistoryController {
+  push(cmd: HistoryCommand): void;
+  undo(): boolean;
+  redo(): boolean;
+  peek(): HistoryCommand | null;
+  replaceTop(cmd: HistoryCommand): boolean;
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  clear(): void;
+  onChange(cb: () => void): () => void;
+}

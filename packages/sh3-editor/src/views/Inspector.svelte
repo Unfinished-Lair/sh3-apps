@@ -1,6 +1,5 @@
 <script lang="ts">
-  import type { InspectorMeta, InspectorApi, ToolbarAction, HistoryCommand } from '../types';
-  import type { InspectorEntry } from '../model/inspector-registry';
+  import type { InspectorMeta, InspectorApi, HistoryCommand } from '../types';
   import type { ApiInternals } from '../model/api';
   import { isModKey } from '../util/keybindings';
   import Inspect from '../inspector/primitives/Inspect.svelte';
@@ -8,28 +7,27 @@
 
   interface Props {
     instanceId: string;
-    entry?: InspectorEntry;    // from InspectorRegistry; undefined for ad-hoc mounts
-    adHocValue?: unknown;       // from MountContext.meta for ad-hoc mounts
+    /** Ad-hoc value supplied via MountContext.meta when no registry entry exists. */
+    adHocValue?: unknown;
     adHocMeta?: InspectorMeta;
     adHocReadonly?: boolean;
     internals: ApiInternals;
-    toolbarActions?: ToolbarAction[];
   }
 
   let {
     instanceId,
-    entry,
     adHocValue,
     adHocMeta,
     adHocReadonly = false,
     internals,
-    toolbarActions = [],
   }: Props = $props();
 
+  let entry = $derived(internals.inspectors.get(instanceId));
   let value = $derived(entry ? entry.value : adHocValue);
   let meta = $derived(entry ? entry.meta : adHocMeta);
   let readonly = $derived(entry ? Boolean(entry.options.readonly) : adHocReadonly);
   let walkerOnCommit = $derived(entry ? entry.options.onCommit : undefined);
+  let toolbarActions = $derived(entry?.options.toolbarActions ?? []);
 
   const history = internals.history(instanceId);
 

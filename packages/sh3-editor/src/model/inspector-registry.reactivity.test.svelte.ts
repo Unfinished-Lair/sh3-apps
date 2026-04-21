@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InspectorRegistry } from './inspector-registry';
+import { InspectorRegistry } from './inspector-registry.svelte';
 
 describe('InspectorRegistry — reactivity', () => {
   it('$derived(registry.get(id)) re-evaluates after close + open', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InspectorRegistry } from './inspector-registry';
+import { InspectorRegistry } from './inspector-registry.svelte';
 
 describe('InspectorRegistry', () => {
   it('open stores value/meta/options under id', () => {

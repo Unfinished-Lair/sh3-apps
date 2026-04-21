@@ -12,17 +12,7 @@ export default defineConfig({
     },
     outDir: 'dist/artifact',
     rollupOptions: {
-      // Keep svelte + its internal runtime external (the SH3 host provides them
-      // via its import map). svelte/reactivity is INTENTIONALLY bundled — the
-      // host doesn't map that subpath, so SvelteMap has to ride along. Its own
-      // imports of svelte/internal/client stay external, so the reactive signal
-      // graph is still the host's.
-      external: [
-        'sh3-core',
-        /^sh3-core\//,
-        'svelte',
-        /^svelte\/internal/,
-      ],
+      external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
     },
   },
 });

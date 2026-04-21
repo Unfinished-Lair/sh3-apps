@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ColorPickerRegistry } from './color-picker-registry';
+import { ColorPickerRegistry } from './color-picker-registry.svelte';
 
 describe('ColorPickerRegistry', () => {
   it('starts empty', () => {

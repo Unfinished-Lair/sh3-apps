@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { ConflictsApi } from 'sh3-core';
+import { ConflictSessionOrphanedError, type ConflictsApi } from 'sh3-core';
 import { presentImportConflicts, type ImportConflictInput } from './conflicts';
 
 function fakeConflictsApi(over: Partial<ConflictsApi> = {}): ConflictsApi {
@@ -125,6 +125,34 @@ describe('presentImportConflicts — outcome mapping', () => {
     const resolve = vi.fn(async () => ({ status: 'cancelled' as const }));
     const api = fakeConflictsApi({ resolve });
     const result = await presentImportConflicts(api, [baseInput()]);
+    expect(result).toBe('cancelled');
+  });
+
+  it('returns "cancelled" when resolve throws ConflictSessionOrphanedError', async () => {
+    const resolve = vi.fn(async () => { throw new ConflictSessionOrphanedError(); });
+    const api = fakeConflictsApi({ resolve });
+    const result = await presentImportConflicts(api, [
+      {
+        shardId: 'notes', path: 'a.md',
+        localContent: 'L', localVersion: 1, localAt: 0,
+        incomingContent: 'R', incomingAt: 100,
+        targetLabel: 'prod', remoteKey: 'pfx/notes/a.md',
+      },
+    ]);
+    expect(result).toBe('cancelled');
+  });
+
+  it('returns "cancelled" when resolve throws an unknown error', async () => {
+    const resolve = vi.fn(async () => { throw new Error('boom'); });
+    const api = fakeConflictsApi({ resolve });
+    const result = await presentImportConflicts(api, [
+      {
+        shardId: 'notes', path: 'a.md',
+        localContent: 'L', localVersion: 1, localAt: 0,
+        incomingContent: 'R', incomingAt: 100,
+        targetLabel: 'prod', remoteKey: 'pfx/notes/a.md',
+      },
+    ]);
     expect(result).toBe('cancelled');
   });
 

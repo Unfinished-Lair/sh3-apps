@@ -57,7 +57,12 @@ export async function presentImportConflicts(
   const conflictItems = items.map(toConflictItem);
   const byId = new Map(items.map((i) => [`${i.shardId}/${i.path}`, i] as const));
 
-  const outcome = await conflictsApi.resolve(conflictItems, { title: 'Resolve R2 import conflicts' });
+  let outcome;
+  try {
+    outcome = await conflictsApi.resolve(conflictItems, { title: 'Resolve R2 import conflicts' });
+  } catch {
+    return 'cancelled';
+  }
 
   if (outcome.status === 'cancelled') return 'cancelled';
 

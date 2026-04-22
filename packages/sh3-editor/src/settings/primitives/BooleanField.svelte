@@ -20,6 +20,7 @@
     class:on={checked}
     disabled={field.disabled}
     aria-pressed={checked}
+    aria-label={field.label}
     onclick={() => onEdit(!checked)}
   >
     <span class="knob"></span>

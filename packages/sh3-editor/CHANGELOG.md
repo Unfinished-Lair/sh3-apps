@@ -1,14 +1,16 @@
 # Changelog
 
-## 0.4.5
+## 0.4.7
 
 ### Fixed
+- Color-picker styling now uses CSS tokens that actually exist. The pre-refactor code (and therefore the extracted `ColorPickerSurface.svelte`) referenced `--shell-bg-lighter`, `--shell-text`, `--shell-text-bright`, `--shell-text-dim`, `--shell-border-light`, `--shell-bg-light`, `--shell-bg-toolbar` — none of which are defined in `sh3-core/tokens.css`. Slider thumbs had `background: var(--shell-text-bright)` → undefined → transparent → invisible. RGB slider tracks had `background: var(--shell-bg-lighter)` → same story. Tokens are now mapped to real ones: `--shell-input-bg`, `--shell-bg-elevated`, `--shell-bg-sunken`, `--shell-fg`, `--shell-fg-muted`, `--shell-border`.
+- Vendor prefixes on `<input type="range">` (`-webkit-appearance: none`, `-moz-appearance: none`) and `::-webkit-slider-thumb` — Chromium silently ignores custom thumb styling without the `-webkit-` prefix.
 - Compact popup color-picker no longer reverted to the old color right after the user committed a new one. The Surface's `lastSyncedHex` was `$state`, so writing to it inside `emit()` re-triggered the value-sync `$effect`, which then found that the (unchanged) `value` prop differed from the new marker and clobbered `hsv` back to the old color. `lastSyncedHex` is now a plain `let` — the sync effect only re-runs when `value` actually changes.
-- HSV slider handles and the RGB slider track/handles now render. The extracted `ColorPickerSurface.svelte` had `appearance: none` but was missing the `-webkit-appearance: none` / `-moz-appearance: none` vendor prefixes on `<input type="range">` and `::-webkit-slider-thumb`; Chromium silently ignores custom thumb styling without the `-webkit-` prefix.
 - Hue strip no longer degrades to a brownish flat bar. The previous code only called `drawStripIndicator()` on hue change, which painted a white+black line over the existing canvas without clearing; successive drags accumulated lines across the rainbow. The strip now re-renders in full on every h change (canvas.width reset clears, rainbow + single indicator drawn fresh).
 
 ### Notes
-- All fixes land in `ColorPickerSurface.svelte`. Public API unchanged.
+- All fixes land in `ColorPickerSurface.svelte` and `ColorPicker.svelte`. Public API unchanged.
+- The standalone `sh3-editor:color-picker` view incidentally gets the token fixes too — previously its styling was also using undefined tokens, so surfaces rendered with partial theming.
 - Peer `sh3-core` remains `^0.10.4`.
 
 ## 0.4.4

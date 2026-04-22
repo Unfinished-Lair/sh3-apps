@@ -212,7 +212,7 @@
   .cp {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--shell-border-light);
+    border: 1px solid var(--shell-border);
     border-radius: 6px;
     width: fit-content;
   }
@@ -230,7 +230,7 @@
     width: 20px;
     height: 20px;
     cursor: pointer;
-    border: 1px solid var(--shell-border-light);
+    border: 1px solid var(--shell-border);
     border-radius: 4px;
     flex-shrink: 0;
     outline: none;
@@ -240,12 +240,12 @@
   }
   .cp-preview {
     width: 28px; height: 28px; border-radius: 4px;
-    border: 1px solid var(--shell-border-light); flex-shrink: 0;
+    border: 1px solid var(--shell-border); flex-shrink: 0;
   }
   .cp-hex-input {
     flex: 1; padding: 4px 8px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); border-radius: 4px;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); border-radius: 4px;
     font-size: var(--font-size); font-family: inherit; outline: none;
   }
   .cp-hex-input:focus { border-color: var(--shell-accent, #3a7eff); }

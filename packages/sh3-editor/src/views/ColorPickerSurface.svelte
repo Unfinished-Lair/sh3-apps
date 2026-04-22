@@ -559,7 +559,7 @@
     flex-direction: column;
     gap: 12px;
     padding: 12px;
-    background: var(--shell-bg-light);
+    background: var(--shell-bg-elevated);
     border-radius: 6px;
     font-family: var(--shell-font-ui);
     width: fit-content;
@@ -571,15 +571,15 @@
   .cp-right { display: flex; flex-direction: column; min-width: 180px; }
 
   .cp-body { display: flex; gap: 8px; }
-  .cp-square { border: 1px solid var(--shell-border-light); border-radius: 4px; cursor: crosshair; }
-  .cp-strip { border: 1px solid var(--shell-border-light); border-radius: 4px; cursor: pointer; }
+  .cp-square { border: 1px solid var(--shell-border); border-radius: 4px; cursor: crosshair; }
+  .cp-strip { border: 1px solid var(--shell-border); border-radius: 4px; cursor: pointer; }
 
   .cp-mode { display: inline-flex; gap: 0; }
   .cp-mode button {
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
     font: inherit; font-size: 11px; padding: 3px 10px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); cursor: pointer;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); cursor: pointer;
   }
   .cp-mode button:first-child { border-radius: 4px 0 0 4px; border-right: none; }
   .cp-mode button:last-child  { border-radius: 0 4px 4px 0; }
@@ -587,33 +587,33 @@
 
   .cp-sliders { display: flex; flex-direction: column; gap: 6px; }
   .cp-row { display: flex; align-items: center; gap: 8px; }
-  .cp-label { width: 14px; font-size: 11px; color: var(--shell-text-dim); text-align: right; }
-  .cp-value { width: 40px; font-size: 11px; color: var(--shell-text-dim); text-align: right; }
+  .cp-label { width: 14px; font-size: 11px; color: var(--shell-fg-muted); text-align: right; }
+  .cp-value { width: 40px; font-size: 11px; color: var(--shell-fg-muted); text-align: right; }
 
   .cp-range {
     flex: 1; -webkit-appearance: none; -moz-appearance: none; appearance: none;
     height: 8px; border-radius: 4px;
-    background: var(--track-bg, var(--shell-bg-lighter)); outline: none; cursor: pointer;
+    background: var(--track-bg, var(--shell-input-bg)); outline: none; cursor: pointer;
   }
   .cp-range::-webkit-slider-thumb {
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
     width: 14px; height: 14px; border-radius: 50%;
-    background: var(--shell-text-bright); border: 2px solid var(--shell-border-light); cursor: pointer;
+    background: var(--shell-fg); border: 2px solid var(--shell-border); cursor: pointer;
   }
   .cp-range::-moz-range-thumb {
     width: 14px; height: 14px; border-radius: 50%;
-    background: var(--shell-text-bright); border: 2px solid var(--shell-border-light); cursor: pointer;
+    background: var(--shell-fg); border: 2px solid var(--shell-border); cursor: pointer;
   }
 
   .cp-hex-row { display: flex; align-items: center; gap: 8px; }
   .cp-preview {
     width: 28px; height: 28px; border-radius: 4px;
-    border: 1px solid var(--shell-border-light); flex-shrink: 0;
+    border: 1px solid var(--shell-border); flex-shrink: 0;
   }
   .cp-hex-input {
     flex: 1; padding: 4px 8px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); border-radius: 4px;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); border-radius: 4px;
     font-size: var(--font-size); font-family: inherit; outline: none;
   }
   .cp-hex-input:focus { border-color: var(--shell-accent, #3a7eff); }
@@ -622,15 +622,15 @@
   .cp-palette-select {
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
     font: inherit; font-size: 12px; padding: 4px 8px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); border-radius: 4px; outline: none;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); border-radius: 4px; outline: none;
   }
   .cp-palette-select:focus { border-color: var(--shell-accent, #3a7eff); }
 
   .cp-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(24px, 1fr)); gap: 4px; }
   .cp-swatch {
     width: 24px; height: 24px; border-radius: 4px;
-    border: 1px solid var(--shell-border-light); cursor: pointer; padding: 0; outline: none;
+    border: 1px solid var(--shell-border); cursor: pointer; padding: 0; outline: none;
   }
   .cp-swatch.active { box-shadow: 0 0 0 2px var(--shell-accent, #3a7eff); }
 
@@ -638,17 +638,17 @@
   .cp-palette-btn {
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
     font: inherit; font-size: 11px; padding: 4px 8px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); border-radius: 4px; cursor: pointer;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); border-radius: 4px; cursor: pointer;
   }
-  .cp-palette-btn:hover:not([disabled]) { background: var(--shell-bg-toolbar); }
+  .cp-palette-btn:hover:not([disabled]) { background: var(--shell-bg-sunken); }
   .cp-palette-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
   .cp-save-prompt { display: flex; gap: 4px; align-items: center; }
   .cp-save-input {
     flex: 1; min-width: 0; padding: 3px 6px;
-    background: var(--shell-bg-lighter); color: var(--shell-text);
-    border: 1px solid var(--shell-border-light); border-radius: 4px;
+    background: var(--shell-input-bg); color: var(--shell-fg);
+    border: 1px solid var(--shell-border); border-radius: 4px;
     font-size: 12px; font-family: inherit; outline: none;
   }
 </style>

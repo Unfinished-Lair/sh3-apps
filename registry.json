@@ -28,10 +28,10 @@
       },
       "versions": [
         {
-          "version": "0.3.1",
+          "version": "0.5.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-editor-0.3.1.js",
-          "integrity": "sha384-VxsZfyUdS83bwG1QnShw0HVSrW16ZvjacfvIfxXRUOIoP1Iea6BDikGTz2GbFZ6V"
+          "bundleUrl": "bundles/sh3-editor-0.5.0.js",
+          "integrity": "sha384-qgqcByIGyw0GpiSXStNZAeO2+htmcJu6Ft0oI+PMgk6ZrgFRvZHhpcTfYreIds/b"
         }
       ]
     },

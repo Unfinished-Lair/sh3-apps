@@ -51,7 +51,13 @@
   // --- HSV state, driven by controlled `value` ---
   const initialHex = normalizeHex(value) ?? '#000000';
   let hsv = $state<HSV>(hexToHsv(initialHex));
-  let lastSyncedHex = $state(initialHex);
+  // Plain `let` (NOT $state): we use it as a dedupe marker inside the sync
+  // $effect and inside emit(). If it were $state, writing it in emit() would
+  // re-trigger the $effect, which would then find `value` (unchanged) differs
+  // from the new marker and revert hsv — clobbering the user's just-committed
+  // color. Keeping it untracked means the effect only re-runs when `value`
+  // actually changes.
+  let lastSyncedHex = initialHex;
   let mode = $state<'hsv' | 'rgb'>(initialMode);
 
   // Sync external `value` → internal hsv. Only trigger when the incoming hex
@@ -185,7 +191,11 @@
     if (hsv.h !== lastH) {
       lastH = hsv.h;
       renderSquare();
-      drawStripIndicator();
+      // Re-render the strip (not just the indicator): setting canvas.width
+      // inside renderStrip clears it, otherwise successive indicator draws
+      // accumulate on top of the rainbow and it progressively fills with
+      // white+black horizontal lines.
+      renderStrip();
     } else {
       renderSquare();
     }
@@ -566,7 +576,8 @@
 
   .cp-mode { display: inline-flex; gap: 0; }
   .cp-mode button {
-    appearance: none; font: inherit; font-size: 11px; padding: 3px 10px;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    font: inherit; font-size: 11px; padding: 3px 10px;
     background: var(--shell-bg-lighter); color: var(--shell-text);
     border: 1px solid var(--shell-border-light); cursor: pointer;
   }
@@ -580,11 +591,13 @@
   .cp-value { width: 40px; font-size: 11px; color: var(--shell-text-dim); text-align: right; }
 
   .cp-range {
-    flex: 1; appearance: none; height: 8px; border-radius: 4px;
+    flex: 1; -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    height: 8px; border-radius: 4px;
     background: var(--track-bg, var(--shell-bg-lighter)); outline: none; cursor: pointer;
   }
   .cp-range::-webkit-slider-thumb {
-    appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
     background: var(--shell-text-bright); border: 2px solid var(--shell-border-light); cursor: pointer;
   }
   .cp-range::-moz-range-thumb {
@@ -607,7 +620,8 @@
 
   .cp-palette { display: flex; flex-direction: column; gap: 6px; }
   .cp-palette-select {
-    appearance: none; font: inherit; font-size: 12px; padding: 4px 8px;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    font: inherit; font-size: 12px; padding: 4px 8px;
     background: var(--shell-bg-lighter); color: var(--shell-text);
     border: 1px solid var(--shell-border-light); border-radius: 4px; outline: none;
   }
@@ -622,7 +636,8 @@
 
   .cp-palette-actions { display: flex; gap: 4px; }
   .cp-palette-btn {
-    appearance: none; font: inherit; font-size: 11px; padding: 4px 8px;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    font: inherit; font-size: 11px; padding: 4px 8px;
     background: var(--shell-bg-lighter); color: var(--shell-text);
     border: 1px solid var(--shell-border-light); border-radius: 4px; cursor: pointer;
   }

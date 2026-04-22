@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.5
+
+### Fixed
+- Compact popup color-picker no longer reverted to the old color right after the user committed a new one. The Surface's `lastSyncedHex` was `$state`, so writing to it inside `emit()` re-triggered the value-sync `$effect`, which then found that the (unchanged) `value` prop differed from the new marker and clobbered `hsv` back to the old color. `lastSyncedHex` is now a plain `let` — the sync effect only re-runs when `value` actually changes.
+- HSV slider handles and the RGB slider track/handles now render. The extracted `ColorPickerSurface.svelte` had `appearance: none` but was missing the `-webkit-appearance: none` / `-moz-appearance: none` vendor prefixes on `<input type="range">` and `::-webkit-slider-thumb`; Chromium silently ignores custom thumb styling without the `-webkit-` prefix.
+- Hue strip no longer degrades to a brownish flat bar. The previous code only called `drawStripIndicator()` on hue change, which painted a white+black line over the existing canvas without clearing; successive drags accumulated lines across the rainbow. The strip now re-renders in full on every h change (canvas.width reset clears, rainbow + single indicator drawn fresh).
+
+### Notes
+- All fixes land in `ColorPickerSurface.svelte`. Public API unchanged.
+- Peer `sh3-core` remains `^0.10.4`.
+
 ## 0.4.4
 
 ### Changed

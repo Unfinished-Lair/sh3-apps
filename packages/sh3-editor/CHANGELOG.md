@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+- Universal settings view. New subpath export `@unfinished-lair/sh3-editor/settings/contributions` publishes `SETTINGS_POINT` plus `SettingsDescriptor` / `SettingsField` types. Any active shard registers a descriptor at `sh3-editor.settings` via `ctx.contributions.register(...)` and the new `sh3-editor:settings` view renders it — one section per contributor (section header auto-elides when only one contributor is registered). Field types in v1: `boolean`, `string`, `number`, `number-range` (slider), `enum`. Inline validation: `onEdit` throws / rejects → host shows `error.message` under the field and re-pulls values.
+
+### Changed
+- Housekeeping renames to free the `:settings` id for the universal view: `EditorSettings.svelte` → `TextEditorSettings.svelte`; the editor toolbar gear action id moved from `sh3-editor:settings` to `sh3-editor:toolbar`. No behavior change to the per-document text-editor prefs modal.
+
+### Notes
+- Peer `sh3-core` remains `^0.10.4`.
+- No pre-wired preset ships with sh3-editor; consumer apps wire their own trigger (layout preset, toolbar button, menu item). Persistence is entirely the contributor's concern.
+
 ## 0.4.7
 
 ### Fixed

@@ -42,4 +42,15 @@ describe('pruneErrors', () => {
     const prev: Errors = { 'app-a': { foo: 'x' } };
     expect(pruneErrors(prev, [])).toEqual({});
   });
+
+  it('returns the same reference when nothing needs pruning', () => {
+    const prev: Errors = { 'app-a': { foo: 'x' } };
+    expect(pruneErrors(prev, ['app-a', 'app-b'])).toBe(prev);
+  });
+
+  it('returns the same reference for an empty map', () => {
+    const prev: Errors = {};
+    expect(pruneErrors(prev, ['app-a'])).toBe(prev);
+    expect(pruneErrors(prev, [])).toBe(prev);
+  });
 });

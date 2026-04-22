@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1
+
+### Fixed
+- `sh3-editor:settings` no longer spins in an infinite reactive loop on mount. The descriptor-snapshot `$effect` in `Settings.svelte` reads `errors` (to hand it to `pruneErrors`) and writes back `errors = pruneErrors(...)`, but `pruneErrors` was returning a new object reference unconditionally — every run scheduled the next. `pruneErrors` is now referentially stable in the no-change case (empty map, or every existing shard still active → returns `prev` unchanged), which Svelte's `$state` treats as a no-op assignment and the effect settles.
+
+### Notes
+- Peer `sh3-core` remains `^0.10.4`.
+
 ## 0.5.0
 
 ### Added

@@ -6,7 +6,7 @@
   import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
   import { createTextSwapCommand } from '../model/history-registry';
   import Toolbar from './Toolbar.svelte';
-  import EditorSettings from './EditorSettings.svelte';
+  import TextEditorSettings from './TextEditorSettings.svelte';
 
   interface Props {
     entry: RegistryEntry;
@@ -55,7 +55,7 @@
   };
 
   function openSettingsModal() {
-    shell.modal.open(EditorSettings, {
+    shell.modal.open(TextEditorSettings, {
       indentType,
       prefs: entry.prefs,
       onChange: handlePrefsChange,
@@ -65,7 +65,7 @@
   let mergedToolbarActions = $derived.by(() => {
     if (!gearVisible) return toolbarActions;
     const gear: ToolbarAction = {
-      id: 'sh3-editor:settings',
+      id: 'sh3-editor:toolbar',
       label: 'Settings',
       icon: '⚙',
       onAction: openSettingsModal,

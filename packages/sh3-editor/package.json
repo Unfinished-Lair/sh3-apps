@@ -13,12 +13,19 @@
       "types": "./dist/inspector/contributions.d.ts",
       "import": "./dist/inspector/contributions.js",
       "default": "./dist/inspector/contributions.js"
+    },
+    "./settings/contributions": {
+      "types": "./dist/settings/contributions.d.ts",
+      "import": "./dist/settings/contributions.js",
+      "default": "./dist/settings/contributions.js"
     }
   },
   "files": [
     "dist/types.d.ts",
     "dist/inspector/contributions.d.ts",
-    "dist/inspector/contributions.js"
+    "dist/inspector/contributions.js",
+    "dist/settings/contributions.d.ts",
+    "dist/settings/contributions.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.types.json && tsc -p tsconfig.runtime.json",

@@ -11,6 +11,9 @@
     "moduleResolution": "Bundler",
     "isolatedModules": true
   },
-  "include": ["src/inspector/contributions.ts"],
+  "include": [
+    "src/inspector/contributions.ts",
+    "src/settings/contributions.ts"
+  ],
   "exclude": ["**/*.svelte", "**/*.test.ts"]
 }

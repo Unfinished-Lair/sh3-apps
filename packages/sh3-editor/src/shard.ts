@@ -11,6 +11,7 @@ import Editor from './views/Editor.svelte';
 import Inspector from './views/Inspector.svelte';
 import ColorPicker from './views/ColorPicker.svelte';
 import ColorRenderer from './inspector/color-renderer.svelte';
+import Settings from './settings/Settings.svelte';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -31,6 +32,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:editor',       label: 'Editor',       standalone: true },
       { id: 'sh3-editor:inspector',    label: 'Inspector',    standalone: true },
       { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
+      { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
     ],
   },
 
@@ -154,6 +156,19 @@ export const shard: SourceShard = {
             onSaveUserPalette: handleSavePalette,
             onDeleteUserPalette: handleDeletePalette,
           },
+        });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-editor:settings', {
+      mount(container) {
+        const component = mount(Settings, {
+          target: container,
+          props: { ctx },
         });
         return {
           closable: true,

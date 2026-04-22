@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.4
+
+### Changed
+- `sh3-editor:color-picker`'s compact layout (the inspector-renderer path for `meta: { type: 'color' }`) now opens its full picker surface via `shell.popup.show` from sh3-core overlays instead of a hand-rolled inline popover. Dismisses on outside click and Escape, positions with viewport-aware clamp + flip-above when near the bottom edge. The preview swatch itself is the trigger — the separate `…` button is gone.
+- Internal refactor: extracted `ColorPickerSurface.svelte` (the square + strip + sliders + palette UI). The standalone `sh3-editor:color-picker` view embeds the Surface directly; the compact variant hands the Surface to `shell.popup.show`.
+
+### Notes
+- No public API changes. `EditorApi.openColorPicker`, `ColorPalette`, `ColorPickerPrefs`, `OpenColorPickerOptions` — all unchanged.
+- `prefs.mode` is now forwarded to the Surface via `initialMode`, and the Surface emits `onModeChange` back up to the standalone ColorPicker which re-emits `colorPickerPrefsChange` (behavior identical to 0.4.3).
+- Peer `sh3-core` remains `^0.10.4`.
+
 ## 0.4.3
 
 ### Fixed

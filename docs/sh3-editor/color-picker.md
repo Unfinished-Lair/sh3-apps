@@ -48,7 +48,7 @@ The `id` MUST match the `slotId` the view is mounted at.
 | `readonly` | `boolean` | `false` | Freezes interactions; UI dims to 0.5 opacity. |
 | `toolbarActions` | `ToolbarAction[]` | `[]` | Optional toolbar above the body. |
 | `prefs` | `ColorPickerPrefs` | `{ mode: 'hsv' }` | Consumer-restored prefs from a prior session. |
-| `compact` | `boolean` | `false` | Inspector-renderer layout: preview + hex + popover trigger. |
+| `compact` | `boolean` | `false` | Inspector-renderer layout: preview swatch + hex input. The preview itself opens the full picker as a `shell.popup` anchored below it (viewport-aware, dismisses on outside click / Escape). |
 
 > **Rebinding a mounted color-picker (0.4.2+).** `ColorPicker.svelte` tracks the registry reactively — `closeColorPicker(id)` + `openColorPicker(id, newOpts)` rebinds the live view. Note: `prefs` and `compact` are snapshotted at the **initial** mount and are not re-read on rebind; a rebind with a different `prefs.mode` keeps the original mode.
 

@@ -1,6 +1,7 @@
 import { setTokenOverrides } from 'sh3-core';
 import { BUILTIN_PRESETS, DARK } from './presets';
 import { THEME_TOKENS, type ThemeDefinition, type ThemeFile, type ThemeToken, type DefaultTheme } from './types';
+import { driveOppositeColor } from './util/contrast';
 
 export interface ThemeState {
   [key: string]: unknown;
@@ -140,6 +141,24 @@ export function updateToken(
   const theme = state.userThemes.find(t => t.id === themeId);
   if (!theme) return;
   theme.tokens[token] = value;
+
+  // Cascade: semantic surface change → re-drive its paired fg-on-*.
+  // Accent is intentionally excluded; the ColorSection owns it because of Custom mode.
+  const semanticPair: Partial<Record<ThemeToken, ThemeToken>> = {
+    'shell-error':   'shell-fg-on-error',
+    'shell-warning': 'shell-fg-on-warning',
+    'shell-success': 'shell-fg-on-success',
+  };
+  const pairToken = semanticPair[token];
+  if (pairToken) {
+    const resolved = resolveTokens(theme);
+    const driven = driveOppositeColor(value, {
+      light: resolved['shell-fg']!,
+      dark:  resolved['shell-bg']!,
+    });
+    if (driven) theme.tokens[pairToken] = driven.color;
+  }
+
   setTokenOverrides(resolveTokens(theme));
 }
 

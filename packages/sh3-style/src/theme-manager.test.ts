@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { resolveStyleArg, buildStylesRows } from './theme-manager';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock sh3-core's setTokenOverrides so theme-manager can import in tests.
+vi.mock('sh3-core', () => ({
+  setTokenOverrides: vi.fn(),
+}));
+
+import { resolveStyleArg, buildStylesRows, updateToken, createTheme } from './theme-manager';
 import type { ThemeState } from './theme-manager';
 import type { DefaultTheme } from './types';
 import { DARK, BUILTIN_PRESETS } from './presets';
@@ -212,6 +218,57 @@ describe('DARK preset fg-on-* values', () => {
       const r = contrastRatio(DARK.tokens[fgKey]!, DARK.tokens[surfaceKey]!);
       expect(r, `${surfaceKey} must pair to AA`).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe('updateToken semantic cascade', () => {
+  function makeState(): ThemeState {
+    const state: ThemeState = { activeThemeId: '', useDefault: false, userThemes: [] };
+    const t = createTheme('Test', state);
+    t.tokens['shell-fg'] = '#e4e6eb';
+    t.tokens['shell-bg'] = '#1a1b1e';
+    return state;
+  }
+
+  it('updating shell-error also writes shell-fg-on-error via Algorithm A', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-error', '#ff3300', state);
+    const theme = state.userThemes[0];
+    expect(theme.tokens['shell-error']).toBe('#ff3300');
+    // For #ff3300 against fg=#e4e6eb / bg=#1a1b1e, dark endpoint wins.
+    expect(theme.tokens['shell-fg-on-error']).toBe('#1a1b1e');
+  });
+
+  it('updating shell-warning cascades the pair', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-warning', '#ffcc00', state);
+    expect(state.userThemes[0].tokens['shell-fg-on-warning']).toBeDefined();
+  });
+
+  it('updating shell-success cascades the pair', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-success', '#00cc66', state);
+    expect(state.userThemes[0].tokens['shell-fg-on-success']).toBeDefined();
+  });
+
+  it('updating a non-semantic token does NOT cascade', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-border', '#444444', state);
+    expect(state.userThemes[0].tokens['shell-fg-on-error']).toBeUndefined();
+    expect(state.userThemes[0].tokens['shell-fg-on-warning']).toBeUndefined();
+    expect(state.userThemes[0].tokens['shell-fg-on-success']).toBeUndefined();
+  });
+
+  it('updating shell-accent does NOT cascade (ColorSection owns this)', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-accent', '#6ea8fe', state);
+    expect(state.userThemes[0].tokens['shell-accent']).toBe('#6ea8fe');
+    expect(state.userThemes[0].tokens['shell-fg-on-accent']).toBeUndefined();
   });
 });
 

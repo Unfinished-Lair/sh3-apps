@@ -33,15 +33,20 @@
     onEnvUpdate: (patch: { defaultTheme: DefaultTheme | null }) => Promise<void>;
   } = $props();
 
-  // Determine the initial preview: whatever the user has confirmed.
-  let previewThemeId = $state(
-    themeState.useDefault ? DEFAULT_THEME_ID : themeState.activeThemeId,
-  );
+  // Seed ephemeral preview to the confirmed theme on first mount, if unset.
+  if (ephemeralState.previewThemeId == null) {
+    ephemeralState.previewThemeId = themeState.useDefault
+      ? DEFAULT_THEME_ID
+      : themeState.activeThemeId;
+  }
 
-  // Keep ephemeral state in sync.
-  $effect(() => {
-    ephemeralState.previewThemeId = previewThemeId;
-  });
+  // The editor's selection IS the ephemeral preview id. Reading through
+  // ephemeralState means any outside writer (e.g. the `sh3-style:preview`
+  // verb) updates the sidebar reactively.
+  const previewThemeId = $derived(
+    ephemeralState.previewThemeId ??
+      (themeState.useDefault ? DEFAULT_THEME_ID : themeState.activeThemeId),
+  );
 
   const selectedTheme = $derived(
     findTheme(previewThemeId, themeState, env.defaultTheme),
@@ -64,7 +69,7 @@
   });
 
   function onSelectTheme(id: string) {
-    previewThemeId = id;
+    ephemeralState.previewThemeId = id;
     // Apply preview immediately.
     const theme = findTheme(id, themeState, env.defaultTheme);
     if (theme) {

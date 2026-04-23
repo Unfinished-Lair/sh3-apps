@@ -114,8 +114,65 @@ describe('resolveStyleArg — no match + hints', () => {
   });
 });
 
-describe('buildStylesRows — placeholder (filled in Task 3)', () => {
-  it('is defined', () => {
-    expect(typeof buildStylesRows).toBe('function');
+describe('buildStylesRows — order and composition', () => {
+  it('places default first when defaultTheme is set', () => {
+    const rows = buildStylesRows(makeState(), ADMIN_DEFAULT, null);
+    expect(rows[0]).toMatchObject({ id: 'env-default', kind: 'default' });
+  });
+
+  it('omits the default row when defaultTheme is null', () => {
+    const rows = buildStylesRows(makeState(), null, null);
+    expect(rows.some(r => r.kind === 'default')).toBe(false);
+  });
+
+  it('orders builtins before user themes', () => {
+    const state = makeState({
+      userThemes: [{ id: 'user-1', name: 'Mine', builtin: false, tokens: {} }],
+    });
+    const rows = buildStylesRows(state, null, null);
+    const firstBuiltin = rows.findIndex(r => r.kind === 'builtin');
+    const firstUser = rows.findIndex(r => r.kind === 'user');
+    expect(firstBuiltin).toBeGreaterThanOrEqual(0);
+    expect(firstUser).toBeGreaterThan(firstBuiltin);
+  });
+});
+
+describe('buildStylesRows — state markers', () => {
+  it('marks the confirmed builtin as active when useDefault is false', () => {
+    const state = makeState({ activeThemeId: 'builtin-dark', useDefault: false });
+    const rows = buildStylesRows(state, null, null);
+    const dark = rows.find(r => r.id === 'builtin-dark');
+    expect(dark?.state).toBe('active');
+  });
+
+  it('marks env-default as active when useDefault is true', () => {
+    const state = makeState({ useDefault: true });
+    const rows = buildStylesRows(state, ADMIN_DEFAULT, null);
+    const def = rows.find(r => r.id === 'env-default');
+    expect(def?.state).toBe('active');
+  });
+
+  it('marks the preview row as "preview" when it differs from the confirmed row', () => {
+    const state = makeState({ activeThemeId: 'builtin-dark', useDefault: false });
+    const rows = buildStylesRows(state, null, 'builtin-light');
+    const light = rows.find(r => r.id === 'builtin-light');
+    const dark = rows.find(r => r.id === 'builtin-dark');
+    expect(light?.state).toBe('preview');
+    expect(dark?.state).toBe('active');
+  });
+
+  it('collapses to a single "active" row when preview id equals confirmed id', () => {
+    const state = makeState({ activeThemeId: 'builtin-dark', useDefault: false });
+    const rows = buildStylesRows(state, null, 'builtin-dark');
+    const dark = rows.find(r => r.id === 'builtin-dark');
+    expect(dark?.state).toBe('active');
+    expect(rows.filter(r => r.state === 'preview')).toHaveLength(0);
+  });
+
+  it('leaves non-active non-preview rows with empty state', () => {
+    const state = makeState({ activeThemeId: 'builtin-dark', useDefault: false });
+    const rows = buildStylesRows(state, null, null);
+    const light = rows.find(r => r.id === 'builtin-light');
+    expect(light?.state).toBe('');
   });
 });

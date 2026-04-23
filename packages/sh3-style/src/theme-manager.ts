@@ -239,3 +239,41 @@ export function resolveStyleArg(
   }
   return { ok: false, hints };
 }
+
+export type StyleRowState = 'active' | 'preview' | '';
+
+export interface StyleRow {
+  id: string;
+  name: string;
+  kind: 'default' | 'builtin' | 'user';
+  state: StyleRowState;
+}
+
+/**
+ * Build the row set rendered by StylesTable.
+ * Order: default (if set) → builtins → user themes.
+ * State: 'active' for the confirmed row; 'preview' for the ephemeral
+ * preview row if it differs from confirmed; '' otherwise.
+ */
+export function buildStylesRows(
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null,
+  ephemeralPreviewId: string | null,
+): StyleRow[] {
+  const confirmedId = state.useDefault ? DEFAULT_THEME_ID : state.activeThemeId;
+  const showPreview =
+    ephemeralPreviewId != null && ephemeralPreviewId !== confirmedId;
+
+  const rows: StyleRow[] = [];
+  const push = (id: string, name: string, kind: StyleRow['kind']) => {
+    let rowState: StyleRowState = '';
+    if (showPreview && id === ephemeralPreviewId) rowState = 'preview';
+    else if (id === confirmedId) rowState = 'active';
+    rows.push({ id, name, kind, state: rowState });
+  };
+
+  if (defaultTheme) push(DEFAULT_THEME_ID, defaultTheme.name, 'default');
+  for (const t of BUILTIN_PRESETS) push(t.id, t.name, 'builtin');
+  for (const t of state.userThemes) push(t.id, t.name, 'user');
+  return rows;
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import 'sh3-core/tokens.css';
-  import { setTokenOverrides } from 'sh3-core';
+  import { setTokenOverrides, Button } from 'sh3-core';
   import { onDestroy } from 'svelte';
   import type { ThemeState } from '../theme-manager';
   import {
@@ -149,17 +149,9 @@
           {isDefault ? 'DEFAULT' : isBuiltin ? 'BUILTIN' : 'USER'}
         </span>
         <div class="header-actions">
-          <button
-            class="action-btn primary"
-            disabled={isConfirmed}
-            onclick={onConfirm}
-          >
-            Use style
-          </button>
+          <Button disabled={isConfirmed} onclick={onConfirm}>Use style</Button>
           {#if isAdmin && !isDefault}
-            <button class="action-btn" onclick={onSetDefault}>
-              Set as default
-            </button>
+            <Button variant="ghost" onclick={onSetDefault}>Set as default</Button>
           {/if}
         </div>
       </div>
@@ -247,39 +239,5 @@
   }
   .default-message p {
     margin: 0;
-  }
-  .action-btn {
-    all: unset;
-    padding: 4px 8px;
-    background: var(--shell-bg-elevated);
-    border-radius: 4px;
-    text-align: center;
-    font-size: 11px;
-    cursor: pointer;
-    color: var(--shell-fg);
-    white-space: nowrap;
-  }
-  .action-btn:hover {
-    background: var(--shell-border);
-  }
-  .action-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  .action-btn:disabled:hover {
-    background: var(--shell-bg-elevated);
-  }
-  .action-btn.primary {
-    background: var(--shell-accent);
-    color: var(--shell-bg);
-  }
-  .action-btn.primary:hover {
-    opacity: 0.9;
-  }
-  .action-btn.primary:disabled {
-    opacity: 0.4;
-  }
-  .action-btn.primary:disabled:hover {
-    opacity: 0.4;
   }
 </style>

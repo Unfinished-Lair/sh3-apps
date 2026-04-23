@@ -4,6 +4,7 @@
   import { updateToken, resolveTokens } from '../theme-manager';
   import AccentPairRow from './AccentPairRow.svelte';
   import SemanticRow from './SemanticRow.svelte';
+  import ContrastMatrix from './ContrastMatrix.svelte';
 
   let {
     theme,
@@ -111,6 +112,11 @@
         label="Success"
       />
     </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">Contrast</div>
+    <ContrastMatrix {theme} />
   </div>
 </div>
 

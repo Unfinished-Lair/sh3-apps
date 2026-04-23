@@ -4,8 +4,10 @@ export type ThemeToken =
   | 'shell-input-bg'
   | 'shell-border' | 'shell-border-strong'
   | 'shell-fg' | 'shell-fg-muted' | 'shell-fg-subtle'
+  | 'shell-fg-on-accent' | 'shell-fg-on-error' | 'shell-fg-on-warning' | 'shell-fg-on-success'
   | 'shell-accent' | 'shell-accent-muted'
   | 'shell-error' | 'shell-warning' | 'shell-success'
+  | 'shell-focus-ring' | 'shell-input-border-focus'
   | 'shell-radius-sm' | 'shell-radius' | 'shell-radius-md' | 'shell-radius-lg'
   | 'shell-font-ui' | 'shell-font-mono' | 'shell-font-size' | 'shell-line'
   | 'shell-grad-bg' | 'shell-grad-bg-elevated' | 'shell-grad-bg-sunken';
@@ -16,8 +18,10 @@ export const THEME_TOKENS: ThemeToken[] = [
   'shell-input-bg',
   'shell-border', 'shell-border-strong',
   'shell-fg', 'shell-fg-muted', 'shell-fg-subtle',
+  'shell-fg-on-accent', 'shell-fg-on-error', 'shell-fg-on-warning', 'shell-fg-on-success',
   'shell-accent', 'shell-accent-muted',
   'shell-error', 'shell-warning', 'shell-success',
+  'shell-focus-ring', 'shell-input-border-focus',
   'shell-radius-sm', 'shell-radius', 'shell-radius-md', 'shell-radius-lg',
   'shell-font-ui', 'shell-font-mono', 'shell-font-size', 'shell-line',
   'shell-grad-bg', 'shell-grad-bg-elevated', 'shell-grad-bg-sunken',

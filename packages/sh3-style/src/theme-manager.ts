@@ -190,3 +190,52 @@ export function importTheme(file: unknown, state: ThemeState): ThemeDefinition |
   state.userThemes.push(theme);
   return theme;
 }
+
+/**
+ * Build the ordered candidate pool used by the verb layer:
+ * admin default (if set) → builtins → user themes.
+ */
+function styleCandidates(
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null,
+): Array<{ id: string; name: string }> {
+  const out: Array<{ id: string; name: string }> = [];
+  if (defaultTheme) {
+    out.push({ id: DEFAULT_THEME_ID, name: defaultTheme.name });
+  }
+  for (const t of BUILTIN_PRESETS) out.push({ id: t.id, name: t.name });
+  for (const t of state.userThemes) out.push({ id: t.id, name: t.name });
+  return out;
+}
+
+/**
+ * Resolve a user-typed argument to a theme id.
+ *
+ * Algorithm:
+ *   1. Exact id match across [default, builtins, user themes].
+ *   2. Case-insensitive exact name match across the same set, first wins.
+ *   3. Otherwise collect up to 3 startsWith hints (by name OR id, case-insensitive).
+ */
+export function resolveStyleArg(
+  arg: string,
+  state: ThemeState,
+  defaultTheme: DefaultTheme | null,
+): { ok: true; id: string } | { ok: false; hints: Array<{ id: string; name: string }> } {
+  const candidates = styleCandidates(state, defaultTheme);
+  const needle = arg.toLowerCase();
+
+  const idHit = candidates.find(c => c.id === arg);
+  if (idHit) return { ok: true, id: idHit.id };
+
+  const nameHit = candidates.find(c => c.name.toLowerCase() === needle);
+  if (nameHit) return { ok: true, id: nameHit.id };
+
+  const hints: Array<{ id: string; name: string }> = [];
+  for (const c of candidates) {
+    if (c.name.toLowerCase().startsWith(needle) || c.id.toLowerCase().startsWith(needle)) {
+      hints.push({ id: c.id, name: c.name });
+      if (hints.length === 3) break;
+    }
+  }
+  return { ok: false, hints };
+}

@@ -1,4 +1,4 @@
-import type { SourceShard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext, VerbContext } from 'sh3-core';
 import { setTokenOverrides } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import type { ThemeState } from './theme-manager';
@@ -6,9 +6,13 @@ import {
   applyTheme,
   resolveTokens,
   buildDefaultPseudoTheme,
+  resolveStyleArg,
+  buildStylesRows,
+  DEFAULT_THEME_ID,
 } from './theme-manager';
 import type { DefaultTheme } from './types';
 import ThemeEditor from './editor/ThemeEditor.svelte';
+import StylesTable from './rich/StylesTable.svelte';
 
 /** Shape of the env state for sh3-style. */
 interface StyleEnv {
@@ -93,6 +97,83 @@ export const shard: SourceShard = {
             unmount(component);
           },
         };
+      },
+    });
+
+    const pushStylesTable = (vctx: VerbContext) => {
+      vctx.scrollback.push({
+        kind: 'rich',
+        component: StylesTable,
+        props: {
+          data: {
+            rows: buildStylesRows(
+              state.user,
+              env.defaultTheme,
+              state.ephemeral.previewThemeId,
+            ),
+            onClickStyle: (id: string) => {
+              void vctx.dispatch(`sh3-style:preview ${id}`);
+            },
+          },
+        },
+        ts: Date.now(),
+      });
+    };
+
+    ctx.registerVerb({
+      name: 'preview',
+      summary: 'Preview a theme without saving it. Usage: preview [style]',
+      async run(vctx, args) {
+        if (args.length === 0) {
+          pushStylesTable(vctx);
+          return;
+        }
+        const arg = args.join(' ');
+        const result = resolveStyleArg(arg, state.user, env.defaultTheme);
+        if (!result.ok) {
+          const hint = result.hints.length
+            ? ` — did you mean: ${result.hints.map(h => `${h.id} (${h.name})`).join(', ')}?`
+            : '';
+          vctx.scrollback.push({
+            kind: 'text',
+            stream: 'stderr',
+            chunks: [`sh3-style: unknown style '${arg}'${hint}`],
+            ts: Date.now(),
+          });
+          return;
+        }
+        state.ephemeral.previewThemeId = result.id;
+        applyTheme(result.id, state.user, env.defaultTheme);
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'styles',
+      summary: 'List available themes. Click a row to preview.',
+      async run(vctx) {
+        pushStylesTable(vctx);
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'clear',
+      summary: 'Clear any active theme preview.',
+      async run(vctx) {
+        const confirmedId = state.user.useDefault
+          ? DEFAULT_THEME_ID
+          : state.user.activeThemeId;
+        const previewId = state.ephemeral.previewThemeId;
+        if (previewId && previewId !== confirmedId) {
+          restoreConfirmedTheme();
+          state.ephemeral.previewThemeId = confirmedId;
+          return;
+        }
+        vctx.scrollback.push({
+          kind: 'status',
+          text: 'no preview active',
+          level: 'info',
+          ts: Date.now(),
+        });
       },
     });
   },

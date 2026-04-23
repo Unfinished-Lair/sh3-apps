@@ -51,3 +51,32 @@ export function wcagBadge(ratio: number, usage: WcagUsage): WcagBadge {
   if (ratio >= 3) return 'AA';
   return 'fail';
 }
+
+export interface DrivenColor {
+  color: string;
+  ratio: number;
+  endpoint: 'light' | 'dark';
+}
+
+/**
+ * Algorithm A: pick whichever of the two endpoints gives higher contrast against `surface`.
+ * On a numerical tie, the `dark` endpoint wins.
+ * Returns undefined if any of the three hex strings is invalid (alpha is rejected).
+ */
+export function driveOppositeColor(
+  surface: string,
+  endpoints: { light: string; dark: string },
+): DrivenColor | undefined {
+  const ls = relativeLuminance(surface);
+  const ll = relativeLuminance(endpoints.light);
+  const ld = relativeLuminance(endpoints.dark);
+  if (ls === undefined || ll === undefined || ld === undefined) return undefined;
+
+  const rLight = (Math.max(ll, ls) + 0.05) / (Math.min(ll, ls) + 0.05);
+  const rDark = (Math.max(ld, ls) + 0.05) / (Math.min(ld, ls) + 0.05);
+
+  if (rDark >= rLight) {
+    return { color: endpoints.dark, ratio: rDark, endpoint: 'dark' };
+  }
+  return { color: endpoints.light, ratio: rLight, endpoint: 'light' };
+}

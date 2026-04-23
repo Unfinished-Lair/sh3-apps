@@ -272,6 +272,66 @@ describe('updateToken semantic cascade', () => {
   });
 });
 
+describe('updateToken endpoint cascade', () => {
+  function makeState(): ThemeState {
+    const state: ThemeState = { activeThemeId: '', useDefault: false, userThemes: [] };
+    const t = createTheme('Test', state);
+    t.tokens['shell-fg'] = '#e4e6eb';
+    t.tokens['shell-bg'] = '#1a1b1e';
+    t.tokens['shell-error']   = '#f87171';
+    t.tokens['shell-warning'] = '#fbbf24';
+    t.tokens['shell-success'] = '#34d399';
+    t.tokens['shell-fg-on-error']   = '#1a1b1e';
+    t.tokens['shell-fg-on-warning'] = '#1a1b1e';
+    t.tokens['shell-fg-on-success'] = '#1a1b1e';
+    return state;
+  }
+
+  it('changing shell-bg re-drives fg-on-error/warning/success', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-bg', '#f5f5f7', state);
+    const theme = state.userThemes[0];
+    expect(theme.tokens['shell-bg']).toBe('#f5f5f7');
+    expect(theme.tokens['shell-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['shell-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['shell-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it('changing shell-fg re-drives fg-on-error/warning/success', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    updateToken(id, 'shell-fg', '#000000', state);
+    const theme = state.userThemes[0];
+    expect(theme.tokens['shell-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['shell-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['shell-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it('endpoint change does NOT touch fg-on-accent (ColorSection owns it)', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    state.userThemes[0].tokens['shell-fg-on-accent'] = '#abcdef';
+    updateToken(id, 'shell-bg', '#f5f5f7', state);
+    expect(state.userThemes[0].tokens['shell-fg-on-accent']).toBe('#abcdef');
+  });
+
+  it('shell-bg change actually recomputes values against the new endpoint', () => {
+    const state = makeState();
+    const id = state.userThemes[0].id;
+    // Start: fg=#e4e6eb, bg=#1a1b1e — fg-on-error drove to dark (#1a1b1e).
+    // After flipping fg to pure black, both endpoints are dark; bg=#1a1b1e
+    // is the "dark" endpoint and it's still the winning choice. But if we
+    // flip bg to near-white, we should see the value change for some surface.
+    updateToken(id, 'shell-bg', '#ffffff', state);
+    const theme = state.userThemes[0];
+    // fg=#e4e6eb (light endpoint), bg=#ffffff (dark endpoint now — but whiter than fg).
+    // For #f87171 (error): vs #e4e6eb contrast is ~2.2, vs #ffffff contrast is ~3.0.
+    // Dark (#ffffff) wins. So fg-on-error becomes #ffffff.
+    expect(theme.tokens['shell-fg-on-error']).toBe('#ffffff');
+  });
+});
+
 describe('every built-in preset has AA-compliant fg-on-* pairs', () => {
   for (const preset of BUILTIN_PRESETS) {
     describe(preset.name, () => {

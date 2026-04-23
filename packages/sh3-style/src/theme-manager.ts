@@ -142,13 +142,14 @@ export function updateToken(
   if (!theme) return;
   theme.tokens[token] = value;
 
-  // Cascade: semantic surface change → re-drive its paired fg-on-*.
-  // Accent is intentionally excluded; the ColorSection owns it because of Custom mode.
   const semanticPair: Partial<Record<ThemeToken, ThemeToken>> = {
     'shell-error':   'shell-fg-on-error',
     'shell-warning': 'shell-fg-on-warning',
     'shell-success': 'shell-fg-on-success',
   };
+
+  // Cascade 1: semantic surface change → re-drive its paired fg-on-*.
+  // Accent is intentionally excluded; the ColorSection owns it because of Custom mode.
   const pairToken = semanticPair[token];
   if (pairToken) {
     const resolved = resolveTokens(theme);
@@ -157,6 +158,23 @@ export function updateToken(
       dark:  resolved['shell-bg']!,
     });
     if (driven) theme.tokens[pairToken] = driven.color;
+  }
+
+  // Cascade 2: endpoint source changed → re-drive all three semantic pairs.
+  // shell-fg-on-accent is not touched here; AccentPairRow handles accent re-drive
+  // via its own reactive $effect because the accent pair can be in Custom mode.
+  if (token === 'shell-fg' || token === 'shell-bg') {
+    const resolved = resolveTokens(theme);
+    const endpoints = {
+      light: resolved['shell-fg']!,
+      dark:  resolved['shell-bg']!,
+    };
+    for (const [surfaceTok, fgOnTok] of Object.entries(semanticPair) as Array<[ThemeToken, ThemeToken]>) {
+      const surface = resolved[surfaceTok];
+      if (!surface) continue;
+      const driven = driveOppositeColor(surface, endpoints);
+      if (driven) theme.tokens[fgOnTok] = driven.color;
+    }
   }
 
   setTokenOverrides(resolveTokens(theme));

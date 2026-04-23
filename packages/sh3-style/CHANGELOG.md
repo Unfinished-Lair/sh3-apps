@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0
+- **Preview verbs** -- added `sh3-style:preview`, `sh3-style:styles`, and `sh3-style:clear` so users can browse and try themes from the terminal without opening the Style app. `preview` accepts either a theme id or a case-insensitive name; invalid input returns a hint list. `styles` renders a clickable rich table; clicking a row dispatches `preview <id>`. `clear` drops any ephemeral preview and restores the confirmed theme. All three honour the existing lifecycle hooks -- `suspend()` and `deactivate()` still reset previews when the Style app itself is the active app.
+
 ## 0.2.2
 - Defer `useDefault = false` until after env hydration, preventing `activate()` from permanently discarding the admin default theme before `autostart()` can apply it
 

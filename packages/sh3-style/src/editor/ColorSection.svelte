@@ -3,6 +3,7 @@
   import type { ThemeState } from '../theme-manager';
   import { updateToken, resolveTokens } from '../theme-manager';
   import AccentPairRow from './AccentPairRow.svelte';
+  import SemanticRow from './SemanticRow.svelte';
 
   let {
     theme,
@@ -87,6 +88,30 @@
       <span class="swatch-label">Accent Muted</span>
     </label>
   </div>
+
+  <div class="group">
+    <div class="group-title">Semantic</div>
+    <div class="semantic-rows">
+      <SemanticRow
+        {theme} {state} {disabled}
+        surfaceToken="shell-error"
+        fgOnToken="shell-fg-on-error"
+        label="Error"
+      />
+      <SemanticRow
+        {theme} {state} {disabled}
+        surfaceToken="shell-warning"
+        fgOnToken="shell-fg-on-warning"
+        label="Warning"
+      />
+      <SemanticRow
+        {theme} {state} {disabled}
+        surfaceToken="shell-success"
+        fgOnToken="shell-fg-on-success"
+        label="Success"
+      />
+    </div>
+  </div>
 </div>
 
 <style>
@@ -143,5 +168,10 @@
   }
   .accent-muted-row {
     margin-top: var(--shell-pad-sm, 4px);
+  }
+  .semantic-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--shell-pad-sm, 4px);
   }
 </style>

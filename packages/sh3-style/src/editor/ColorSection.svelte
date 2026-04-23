@@ -2,6 +2,7 @@
   import type { ThemeDefinition, ThemeToken } from '../types';
   import type { ThemeState } from '../theme-manager';
   import { updateToken, resolveTokens } from '../theme-manager';
+  import AccentPairRow from './AccentPairRow.svelte';
 
   let {
     theme,
@@ -72,6 +73,20 @@
       {/each}
     </div>
   </div>
+
+  <div class="group">
+    <div class="group-title">Accent</div>
+    <AccentPairRow {theme} {state} {disabled} />
+    <label class="swatch-row accent-muted-row">
+      <input
+        type="color"
+        value={resolved['shell-accent-muted'] ?? '#000000'}
+        {disabled}
+        onchange={(e) => handleChange('shell-accent-muted', e.currentTarget.value)}
+      />
+      <span class="swatch-label">Accent Muted</span>
+    </label>
+  </div>
 </div>
 
 <style>
@@ -125,5 +140,8 @@
   .swatch-label {
     font-size: 11px;
     color: var(--shell-fg-muted);
+  }
+  .accent-muted-row {
+    margin-top: var(--shell-pad-sm, 4px);
   }
 </style>

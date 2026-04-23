@@ -53,6 +53,12 @@ export const LIGHT: ThemeDefinition = {
     'shell-error':         '#dc2626',
     'shell-warning':       '#d97706',
     'shell-success':       '#16a34a',
+    // Driven via Algorithm A; fg-on-error overridden to #ffffff because
+    // driven #f5f5f7 only reaches 4.44 (fails AA) while #ffffff hits 4.83.
+    'shell-fg-on-accent':  '#f5f5f7',
+    'shell-fg-on-error':   '#ffffff',
+    'shell-fg-on-warning': '#1d1d1f',
+    'shell-fg-on-success': '#1d1d1f',
     'shell-radius-sm':     '4px',
     'shell-radius':        '6px',
     'shell-radius-md':     '8px',
@@ -83,6 +89,10 @@ export const NEON_PULSE: ThemeDefinition = {
     'shell-error':         '#ff6b8a',
     'shell-warning':       '#ffb86c',
     'shell-success':       '#50fa7b',
+    'shell-fg-on-accent':  '#0d0b1a',
+    'shell-fg-on-error':   '#0d0b1a',
+    'shell-fg-on-warning': '#0d0b1a',
+    'shell-fg-on-success': '#0d0b1a',
     'shell-radius-sm':     '2px',
     'shell-radius':        '3px',
     'shell-radius-md':     '4px',
@@ -116,6 +126,13 @@ export const JADE_GARDEN: ThemeDefinition = {
     'shell-error':         '#c0392b',
     'shell-warning':       '#b8860b',
     'shell-success':       '#2e7d32',
+    // Algorithm A gave sub-AA values for accent (3.87) and warning (3.67)
+    // against this preset's own light fg/bg; overridden to #000000 which
+    // reaches 5.23 and 6.45 respectively.
+    'shell-fg-on-accent':  '#000000',
+    'shell-fg-on-error':   '#fafbf9',
+    'shell-fg-on-warning': '#000000',
+    'shell-fg-on-success': '#fafbf9',
     'shell-radius-sm':     '6px',
     'shell-radius':        '8px',
     'shell-radius-md':     '10px',
@@ -149,6 +166,10 @@ export const MATCHA_INK: ThemeDefinition = {
     'shell-error':         '#e57373',
     'shell-warning':       '#dce775',
     'shell-success':       '#81c784',
+    'shell-fg-on-accent':  '#1c2420',
+    'shell-fg-on-error':   '#1c2420',
+    'shell-fg-on-warning': '#1c2420',
+    'shell-fg-on-success': '#1c2420',
     'shell-radius-sm':     '2px',
     'shell-radius':        '3px',
     'shell-radius-md':     '5px',

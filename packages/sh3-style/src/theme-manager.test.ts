@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { resolveStyleArg, buildStylesRows } from './theme-manager';
 import type { ThemeState } from './theme-manager';
 import type { DefaultTheme } from './types';
-import { DARK } from './presets';
+import { DARK, BUILTIN_PRESETS } from './presets';
 import { driveOppositeColor, contrastRatio } from './util/contrast';
 
 function makeState(over: Partial<ThemeState> = {}): ThemeState {
@@ -213,4 +213,29 @@ describe('DARK preset fg-on-* values', () => {
       expect(r, `${surfaceKey} must pair to AA`).toBeGreaterThanOrEqual(4.5);
     }
   });
+});
+
+describe('every built-in preset has AA-compliant fg-on-* pairs', () => {
+  for (const preset of BUILTIN_PRESETS) {
+    describe(preset.name, () => {
+      it('declares every fg-on-* token', () => {
+        expect(preset.tokens['shell-fg-on-accent']).toBeDefined();
+        expect(preset.tokens['shell-fg-on-error']).toBeDefined();
+        expect(preset.tokens['shell-fg-on-warning']).toBeDefined();
+        expect(preset.tokens['shell-fg-on-success']).toBeDefined();
+      });
+      it('every pair meets AA for text (ratio >= 4.5)', () => {
+        const pairs: Array<['accent' | 'error' | 'warning' | 'success']> = [
+          ['accent'], ['error'], ['warning'], ['success'],
+        ];
+        for (const [key] of pairs) {
+          const surface = preset.tokens[`shell-${key}` as const]!;
+          const fg = preset.tokens[`shell-fg-on-${key}` as const]!;
+          const ratio = contrastRatio(fg, surface);
+          expect(ratio, `${preset.name}: shell-fg-on-${key} vs shell-${key}`)
+            .toBeGreaterThanOrEqual(4.5);
+        }
+      });
+    });
+  }
 });

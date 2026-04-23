@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { resolveStyleArg, buildStylesRows } from './theme-manager';
 import type { ThemeState } from './theme-manager';
 import type { DefaultTheme } from './types';
+import { DARK } from './presets';
+import { driveOppositeColor, contrastRatio } from './util/contrast';
 
 function makeState(over: Partial<ThemeState> = {}): ThemeState {
   return {
@@ -174,5 +176,41 @@ describe('buildStylesRows — state markers', () => {
     const rows = buildStylesRows(state, null, null);
     const light = rows.find(r => r.id === 'builtin-light');
     expect(light?.state).toBe('');
+  });
+});
+
+describe('DARK preset fg-on-* values', () => {
+  const endpoints = () => ({
+    light: DARK.tokens['shell-fg']!,
+    dark: DARK.tokens['shell-bg']!,
+  });
+
+  it('declares fg-on-accent matching Algorithm A', () => {
+    const driven = driveOppositeColor(DARK.tokens['shell-accent']!, endpoints());
+    expect(DARK.tokens['shell-fg-on-accent']).toBe(driven!.color);
+  });
+  it('declares fg-on-error matching Algorithm A', () => {
+    const driven = driveOppositeColor(DARK.tokens['shell-error']!, endpoints());
+    expect(DARK.tokens['shell-fg-on-error']).toBe(driven!.color);
+  });
+  it('declares fg-on-warning matching Algorithm A', () => {
+    const driven = driveOppositeColor(DARK.tokens['shell-warning']!, endpoints());
+    expect(DARK.tokens['shell-fg-on-warning']).toBe(driven!.color);
+  });
+  it('declares fg-on-success matching Algorithm A', () => {
+    const driven = driveOppositeColor(DARK.tokens['shell-success']!, endpoints());
+    expect(DARK.tokens['shell-fg-on-success']).toBe(driven!.color);
+  });
+  it('every declared pair meets AA for text', () => {
+    const pairs: Array<['shell-accent' | 'shell-error' | 'shell-warning' | 'shell-success', 'shell-fg-on-accent' | 'shell-fg-on-error' | 'shell-fg-on-warning' | 'shell-fg-on-success']> = [
+      ['shell-accent', 'shell-fg-on-accent'],
+      ['shell-error', 'shell-fg-on-error'],
+      ['shell-warning', 'shell-fg-on-warning'],
+      ['shell-success', 'shell-fg-on-success'],
+    ];
+    for (const [surfaceKey, fgKey] of pairs) {
+      const r = contrastRatio(DARK.tokens[fgKey]!, DARK.tokens[surfaceKey]!);
+      expect(r, `${surfaceKey} must pair to AA`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

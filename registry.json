@@ -28,10 +28,10 @@
       },
       "versions": [
         {
-          "version": "0.5.1",
+          "version": "0.6.2",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-editor-0.5.1.js",
-          "integrity": "sha384-0ZWBCXY6o5q6SwvnQClq3WofEo09k9cv2dOXCLWcsjlHpp0QeNk+BNCcLwj1JPqD"
+          "bundleUrl": "bundles/sh3-editor-0.6.2.js",
+          "integrity": "sha384-dxPe36LGRlfY50EYiPDQ9TAV25utG2Dt/t/sYY87QvtW7dxiS5H8meK8974sMIUG"
         }
       ]
     },
@@ -80,10 +80,10 @@
       },
       "versions": [
         {
-          "version": "0.2.3",
+          "version": "0.4.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-style-0.2.3.js",
-          "integrity": "sha384-wDSxxamrNX6ZWeo/J2iiztTdoN+JIUapCZPnuURKlX7PzuZghg4CEerV0FkGcvMG"
+          "bundleUrl": "bundles/sh3-style-0.4.0.js",
+          "integrity": "sha384-35p3+WrcxbyRZNUaeibxCNbCnJBMdAvyRbNkYKK6CPJT3+N8sxt1pi6A0PIKrWyu"
         }
       ]
     },

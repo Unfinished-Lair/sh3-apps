@@ -91,14 +91,20 @@
   .list { list-style: none; margin: 0; padding: 0; }
   .row {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 8px;
     align-items: center;
     padding: 4px 0;
     border-bottom: 1px solid var(--shell-border, #2a2a2a);
   }
   .row.disabled { opacity: 0.5; }
-  .label { font-size: 13px; }
+  .label {
+    font-size: 13px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .kbd {
     font-family: var(--shell-mono, monospace);
     font-size: 12px;

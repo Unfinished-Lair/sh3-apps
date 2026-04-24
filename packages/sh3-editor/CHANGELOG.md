@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+### Fixed
+- **Help modal no longer shows an unnecessary horizontal scrollbar.** `.tab-body` now scrolls only vertically (`overflow-x: hidden`), and hotkey rows clamp the label column to the available track (`minmax(0, 1fr)` + `min-width: 0` on the label with ellipsis for overflowing text), so long action labels or scope badges don't push the tab wider than the modal.
+
 ## 0.6.0
 
 ### Added

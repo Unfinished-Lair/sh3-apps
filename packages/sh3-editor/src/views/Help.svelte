@@ -216,7 +216,8 @@
   .tab-body {
     position: absolute;
     inset: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: none;
   }
   .tab-body.active { display: block; }

@@ -53,3 +53,15 @@ editor.onPrefsChange((id, prefs) => saveUserPrefs(id, prefs));
 ```
 
 When `indentType` has user-editable options, a gear toolbar button opens a popover letting the user change `indentUnit` and (for `'brace'`) `braceStyle`. Changes fire `onPrefsChange`; sh3-editor does not persist prefs — the consuming shard does.
+
+## Help view
+
+Pressing **F1** opens a Help modal listing the hotkeys active in the current context. The Hotkeys tab groups actions by scope tier (Global / App / View / Focus / Selection), with user rebindings and platform modifiers resolved.
+
+The Help view is also a registered standalone view (`sh3-editor:help`) — pin it in a layout for a persistent reference panel.
+
+### Extending Help with custom tabs
+
+Help aggregates tabs from any shard that registers against the `sh3-editor:help.tabs` contribution point. Use this to ship integrated guides, changelogs, cheatsheets, or any read-only reference content.
+
+See [`docs/authoring-help-tabs.md`](./docs/authoring-help-tabs.md) for the full authoring guide.

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+### Added
+- **Help view (F1).** New registered view `sh3-editor:help` showing active hotkeys grouped by scope tier. Opens as a modal on **F1** (`sh3-editor:help.open` action, scope `['home', 'app']`, `allowInInputs: true`, `dismissOnBackdrop: true`); also mountable as a persistent view in a layout.
+- **Help tab contribution point.** New contribution point `sh3-editor:help.tabs` lets any shard add tabs to the Help modal. Descriptor + id constant exported from `@unfinished-lair/sh3-editor/help/contributions`. See `docs/authoring-help-tabs.md`.
+- **`sh3-editor:settings.open` action.** Palette-discoverable entry for the editor settings view.
+
+### Changed
+- **`sh3-core` peer bumped** from `^0.10.4` to `^0.11.1` to pick up the Actions / Context / Dispatch framework (needed for F1 and the hotkey registry).
+
+### Notes
+- Hotkeys tab currently uses a local scope-activation shim until the upstream `shell.actions.listActive()` API lands (RFC filed at [Unfinished-Lair/sh3#24](https://github.com/Unfinished-Lair/sh3/issues/24)). The shim and the public call return the same shape; swap is a one-line change in `Help.svelte`.
+
 ## 0.5.1
 
 ### Fixed

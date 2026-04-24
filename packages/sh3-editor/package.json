@@ -18,6 +18,11 @@
       "types": "./dist/settings/contributions.d.ts",
       "import": "./dist/settings/contributions.js",
       "default": "./dist/settings/contributions.js"
+    },
+    "./help/contributions": {
+      "types": "./dist/help/contributions.d.ts",
+      "import": "./dist/help/contributions.js",
+      "default": "./dist/help/contributions.js"
     }
   },
   "files": [
@@ -25,7 +30,9 @@
     "dist/inspector/contributions.d.ts",
     "dist/inspector/contributions.js",
     "dist/settings/contributions.d.ts",
-    "dist/settings/contributions.js"
+    "dist/settings/contributions.js",
+    "dist/help/contributions.d.ts",
+    "dist/help/contributions.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.types.json && tsc -p tsconfig.runtime.json",

@@ -13,7 +13,8 @@
   },
   "include": [
     "src/inspector/contributions.ts",
-    "src/settings/contributions.ts"
+    "src/settings/contributions.ts",
+    "src/help/contributions.ts"
   ],
   "exclude": ["**/*.svelte", "**/*.test.ts"]
 }

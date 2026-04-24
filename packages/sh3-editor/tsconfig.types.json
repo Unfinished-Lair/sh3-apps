@@ -7,6 +7,7 @@
   "include": [
     "src/types.ts",
     "src/inspector/contributions.ts",
-    "src/settings/contributions.ts"
+    "src/settings/contributions.ts",
+    "src/help/contributions.ts"
   ]
 }

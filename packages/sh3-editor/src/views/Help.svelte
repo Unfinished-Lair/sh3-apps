@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, mount as svelteMount, unmount as svelteUnmount } from 'svelte';
-  import { getActiveApp } from 'sh3-core';
+  import { getActiveApp, shell, type ActiveActionDescriptor } from 'sh3-core';
 
   import type {
     HelpTabContribution,
@@ -11,8 +11,6 @@
   import { HELP_TABS_CONTRIBUTION_POINT_ID } from '../help/contributions';
   import { buildTabList } from './help/buildTabList';
   import { captureHelpSnapshot, buildRuntimeInputs } from './help/captureSnapshot';
-  import { listActiveShim, type ActiveActionDescriptor } from './help/listActiveShim';
-  import { detectPlatform } from './help/prettifyShortcut';
   import HotkeysTab from './help/HotkeysTab.svelte';
 
   type CtxLike = {
@@ -68,15 +66,7 @@
     });
     snapshot = captureHelpSnapshot(inputs);
 
-    hotkeysActions = listActiveShim({
-      listActionEntries: () => ctx.contributions.list('sh3.actions') as any[],
-      getActiveAppId: () => snapshot!.activeAppId,
-      getMountedViewIds: () => new Set(snapshot!.mountedViewIds),
-      getFocusedViewId: () => snapshot!.focusedViewId,
-      getSelection: () => snapshot!.selection,
-      getBindings: () => ({}),
-      platform: detectPlatform(),
-    });
+    hotkeysActions = shell.actions.listActive();
 
     const contributions = ctx.contributions.list<HelpTabContribution>(
       HELP_TABS_CONTRIBUTION_POINT_ID,

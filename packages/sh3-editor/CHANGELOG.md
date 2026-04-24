@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.2
+
+### Changed
+- **Hotkeys tab now calls `shell.actions.listActive()`** from sh3-core (0.11.4+), replacing the local scope-activation shim. The upstream API returns the same shape plus `bindingSource`; the shim (`src/views/help/listActiveShim.ts` and its test) has been removed. Peer bumped from `^0.11.1` to `^0.11.4`. See [Unfinished-Lair/sh3#24](https://github.com/Unfinished-Lair/sh3/issues/24) and `docs/shard-authoring.md` §"Inspecting the active action set".
+
 ## 0.6.1
 
 ### Fixed

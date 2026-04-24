@@ -1,6 +1,6 @@
 {
   "name": "@unfinished-lair/sh3-editor",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Reusable text editor and object inspector shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",
@@ -41,11 +41,11 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-core": "^0.11.1"
+    "sh3-core": "^0.11.4"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-core": "^0.11.2",
+    "sh3-core": "^0.11.4",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",
     "vite": "^6.0.0",

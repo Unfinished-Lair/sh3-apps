@@ -1,6 +1,6 @@
 <script lang="ts">
+  import type { ActiveActionDescriptor } from 'sh3-core';
   import type { HelpTabContext } from '../../help/contributions';
-  import type { ActiveActionDescriptor } from './listActiveShim';
   import { prettifyShortcut, detectPlatform } from './prettifyShortcut';
 
   let { tabCtx, actions }: { tabCtx: HelpTabContext; actions: ActiveActionDescriptor[] } = $props();

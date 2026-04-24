@@ -1,4 +1,5 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
+import { shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry';
 import { createApi } from './model/api';
@@ -7,11 +8,16 @@ import type { EditorApi, OpenDocumentOptions, InspectorMeta, ColorPalette } from
 import { INSPECTOR_RENDERER_POINT, type InspectorRenderer } from './inspector/contributions';
 import { setRenderers } from './inspector/registry';
 import { setColorRendererDeps } from './inspector/color-renderer-deps';
+import {
+  HELP_TABS_CONTRIBUTION_POINT_ID,
+  type HelpTabContribution,
+} from './help/contributions';
 import Editor from './views/Editor.svelte';
 import Inspector from './views/Inspector.svelte';
 import ColorPicker from './views/ColorPicker.svelte';
 import ColorRenderer from './inspector/color-renderer.svelte';
 import Settings from './settings/Settings.svelte';
+import Help from './views/Help.svelte';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -33,6 +39,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:inspector',    label: 'Inspector',    standalone: true },
       { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
+      { id: 'sh3-editor:help',         label: 'Help',         standalone: true },
     ],
   },
 
@@ -174,6 +181,69 @@ export const shard: SourceShard = {
           closable: true,
           unmount() { unmount(component); },
         };
+      },
+    });
+
+    ctx.registerView('sh3-editor:help', {
+      mount(container) {
+        const component = mount(Help, {
+          target: container,
+          props: { surface: 'view', ctx },
+        });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
+        };
+      },
+    });
+
+    const hotkeysTabContribution: HelpTabContribution = {
+      id: 'sh3-editor:help-tab:hotkeys',
+      label: 'Hotkeys',
+      priority: 0,
+      mount() {
+        // Help shell short-circuits this id and mounts HotkeysTab directly
+        // with the prebuilt actions list. This registration only makes the
+        // tab appear in the strip — the shell owns its lifecycle.
+        return { unmount() { /* no-op */ } };
+      },
+    };
+    ctx.contributions.register<HelpTabContribution>(
+      HELP_TABS_CONTRIBUTION_POINT_ID,
+      hotkeysTabContribution,
+    );
+
+    let helpOpen = false;
+    ctx.actions.register({
+      id: 'sh3-editor:help.open',
+      label: 'Open Help',
+      scope: ['home', 'app'],
+      defaultShortcut: 'F1',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Help',
+      run() {
+        if (helpOpen) return;
+        helpOpen = true;
+        shell.modal.open(
+          Help,
+          { surface: 'modal', ctx, onClose: () => { helpOpen = false; } },
+          { dismissOnBackdrop: true },
+        );
+      },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:settings.open',
+      label: 'Open Editor Settings',
+      scope: 'view:sh3-editor:settings',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() {
+        // Settings view is standalone-openable via the shell's view launcher.
+        // Placeholder: full wiring belongs in a future task.
       },
     });
   },

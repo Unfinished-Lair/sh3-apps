@@ -30,6 +30,11 @@ export const shard: SourceShard = {
     permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
 
+  // Self-starting marker: keeps the shard active across the whole tenant
+  // session so the SelectionAction contributions stay in the registry while
+  // file-explorer (or any other consuming app) is open without R2 Backup.
+  autostart() {},
+
   async activate(ctx: ShardContext) {
     runtime = createRuntime(ctx);
     void runtime.refreshTargets();

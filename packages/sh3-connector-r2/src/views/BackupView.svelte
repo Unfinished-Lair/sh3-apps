@@ -2,10 +2,10 @@
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { listRecentLog, type UploadLogEntry } from '../upload-log';
-  import { walkScope } from '../walker';
   import { upload } from '../upload';
   import { createR2Client } from '../r2/client';
   import { readForeign } from '../foreign-docs';
+  import { backupFolder } from '../backup-folder';
   import Progress from './components/Progress.svelte';
 
   let { rt }: { rt: Runtime } = $props();
@@ -50,34 +50,33 @@
       const client = createR2Client(target);
       const read = readForeign(rt.ctx);
       const browse = rt.ctx.browse;
-      await walkScope({
+      const stats = await backupFolder({
         list: async () => {
           const all = await browse.listDocuments();
           return all.map((d) => ({ shardId: d.shardId, path: d.path }));
         },
-        scope: { shardId, pathPrefix: pathPrefix || undefined },
-        onItem: async (item, _i, total) => {
-          rt.progress.currentLabel = `${item.shardId}/${item.path}`;
-          rt.progress.total = total;
-          const res = await upload({
-            target,
-            client,
-            logHandle: rt.docs,
-            readForeign: read,
-            shardId: item.shardId,
-            path: item.path,
-            sourceTenant: rt.ctx.tenantId,
-          });
-          rt.progress.processed++;
-          if (res.status === 'uploaded') rt.progress.uploaded++;
-          else if (res.status === 'skipped-unchanged') rt.progress.skipped++;
-          else {
-            rt.progress.failed++;
-            if (res.reason) rt.progress.errors.push(`${item.path}: ${res.reason}`);
-          }
-          return res.status;
+        shardId,
+        pathPrefix: pathPrefix || undefined,
+        recursive: true,
+        upload: async (item) => upload({
+          target,
+          client,
+          logHandle: rt.docs,
+          readForeign: read,
+          shardId: item.shardId,
+          path: item.path,
+          sourceTenant: rt.ctx.tenantId,
+        }),
+        onProgress: (snap) => {
+          rt.progress.currentLabel = snap.currentLabel;
+          rt.progress.total = snap.total;
+          rt.progress.processed = snap.processed;
+          rt.progress.uploaded = snap.uploaded;
+          rt.progress.skipped = snap.skipped;
+          rt.progress.failed = snap.failed;
         },
       });
+      rt.progress.errors = stats.errors;
     } finally {
       rt.progress.running = false;
       await refreshLog();

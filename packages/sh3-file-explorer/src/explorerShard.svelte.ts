@@ -3,6 +3,8 @@ import type {
   DocumentMeta,
   DocumentChange,
 } from 'sh3-core';
+import { DOCUMENT_BADGE_POINT, type BadgeDoc, type Badge, type DocumentBadgeProvider } from './contributions';
+import { iterateBadges } from './browser/iterate-badges';
 
 export type Selection = { shardId: string; path: string; kind: 'file' | 'folder' } | null;
 export type BrowseEntry = DocumentMeta & { shardId: string };
@@ -31,6 +33,7 @@ export type ExplorerStore =
       isExpanded(key: string): boolean;
       refreshDocuments(): Promise<void>;
       startWatch(): () => void;
+      getBadgesFor(doc: BadgeDoc): Array<{ providerId: string; badge: Badge }>;
     };
 
 export function createExplorerStore(ctx: ShardContext): ExplorerStore {
@@ -53,6 +56,31 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
 
   function isExpanded(key: string) { return expanded[key] === true; }
 
+  let badgeTick = $state(0);
+  let providersVersion = $state(0);
+
+  $effect(() => {
+    return ctx.contributions.onChange(DOCUMENT_BADGE_POINT, () => {
+      providersVersion++;
+      badgeTick++;
+    });
+  });
+
+  $effect(() => {
+    void providersVersion;
+    const providers = ctx.contributions.list<DocumentBadgeProvider>(DOCUMENT_BADGE_POINT);
+    const offs = providers.map((p) => p.onChange?.(() => { badgeTick++; }) ?? (() => {}));
+    return () => { for (const off of offs) off(); };
+  });
+
+  function getBadgesFor(doc: BadgeDoc) {
+    void badgeTick;
+    const providers = ctx.contributions.list<DocumentBadgeProvider>(DOCUMENT_BADGE_POINT);
+    return iterateBadges(providers, doc, (id, err) => {
+      console.error(`[sh3-file-explorer] badge provider "${id}" threw:`, err);
+    });
+  }
+
   async function refreshDocuments() {
     documents = await browse.listDocuments();
   }
@@ -74,5 +102,6 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
     isExpanded,
     refreshDocuments,
     startWatch,
+    getBadgesFor,
   };
 }

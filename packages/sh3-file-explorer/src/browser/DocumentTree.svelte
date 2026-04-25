@@ -3,8 +3,8 @@
 
   let { store }: { store: ExplorerStore } = $props();
 
-  type FolderNode = { kind: 'folder'; name: string; path: string; shardId: string; children: TreeNode[] };
-  type FileNode = { kind: 'file'; name: string; path: string; shardId: string };
+  type FolderNode = { kind: 'folder'; name: string; path: string; shardId: string; descendantCount: number; children: TreeNode[] };
+  type FileNode = { kind: 'file'; name: string; path: string; shardId: string; lastModified: number };
   type TreeNode = FolderNode | FileNode;
 
   type BuildState = { folders: Map<string, { node: FolderNode; state: BuildState }>; files: FileNode[] };
@@ -35,12 +35,12 @@
         prefix = prefix ? `${prefix}/${name}` : name;
         const isLast = i === parts.length - 1;
         if (isLast) {
-          cursor.files.push({ kind: 'file', name, path: e.path, shardId });
+          cursor.files.push({ kind: 'file', name, path: e.path, shardId, lastModified: e.lastModified });
         } else {
           let entry = cursor.folders.get(name);
           if (!entry) {
             entry = {
-              node: { kind: 'folder', name, path: prefix, shardId, children: [] },
+              node: { kind: 'folder', name, path: prefix, shardId, descendantCount: 0, children: [] },
               state: emptyState(),
             };
             cursor.folders.set(name, entry);
@@ -49,7 +49,23 @@
         }
       }
     }
-    return materialize(root);
+    const tree = materialize(root);
+    annotateDescendants(tree);
+    return tree;
+  }
+
+  function annotateDescendants(nodes: TreeNode[]): number {
+    let total = 0;
+    for (const node of nodes) {
+      if (node.kind === 'folder') {
+        const sub = annotateDescendants(node.children);
+        node.descendantCount = sub;
+        total += sub;
+      } else {
+        total += 1;
+      }
+    }
+    return total;
   }
 
   const tree = $derived.by((): FolderNode[] => {
@@ -67,6 +83,7 @@
         name: shardId,
         path: '',
         shardId,
+        descendantCount: entries.length,
         children: buildShardTree(shardId, entries),
       });
     }
@@ -92,7 +109,7 @@
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}
-  <li style="padding-left: {depth * 12}px">
+  <li>
     {#if node.kind === 'folder'}
       <div class="sh3-fe-row" style="padding-left: {depth * 12}px">
         <button
@@ -109,6 +126,11 @@
         >
           {node.name || '(root)'}/
         </button>
+        {#if store.ready}
+          {#each store.getBadgesFor({ shardId: node.shardId, path: node.path, kind: 'folder', descendantCount: node.descendantCount }) as { providerId, badge } (providerId)}
+            <span class="sh3-fe-badge sh3-fe-badge--{badge.tone ?? 'ok'}" title={badge.tooltip ?? badge.label ?? ''}>{badge.icon}</span>
+          {/each}
+        {/if}
       </div>
       {#if store.ready && store.isExpanded(keyFor(node))}
         <ul>
@@ -118,14 +140,20 @@
         </ul>
       {/if}
     {:else}
-      <button
-        class="sh3-fe-node sh3-fe-node--file"
-        style="padding-left: {depth * 12}px"
-        class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path && store.selection?.kind === 'file'}
-        onclick={() => onSelectFile(node)}
-      >
-        {node.name}
-      </button>
+      <div class="sh3-fe-row" style="padding-left: {depth * 12}px">
+        <button
+          class="sh3-fe-node sh3-fe-node--file"
+          class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path && store.selection?.kind === 'file'}
+          onclick={() => onSelectFile(node)}
+        >
+          {node.name}
+        </button>
+        {#if store.ready}
+          {#each store.getBadgesFor({ shardId: node.shardId, path: node.path, kind: 'file', lastModified: node.lastModified }) as { providerId, badge } (providerId)}
+            <span class="sh3-fe-badge sh3-fe-badge--{badge.tone ?? 'ok'}" title={badge.tooltip ?? badge.label ?? ''}>{badge.icon}</span>
+          {/each}
+        {/if}
+      </div>
     {/if}
   </li>
 {/snippet}
@@ -161,4 +189,17 @@
   }
   .sh3-fe-twisty:hover { color: var(--shell-fg); }
   .sh3-fe-node--folder { flex: 1 1 auto; }
+  .sh3-fe-node--file { flex: 1 1 auto; }
+  .sh3-fe-badge {
+    display: inline-block;
+    padding: 0 4px;
+    margin-left: 6px;
+    font-size: 0.85em;
+    border-radius: var(--shell-radius-sm, 3px);
+    flex: 0 0 auto;
+    cursor: default;
+  }
+  .sh3-fe-badge--ok { color: var(--shell-accent, #4a90e2); }
+  .sh3-fe-badge--warn { color: #e6a23c; }
+  .sh3-fe-badge--muted { color: var(--shell-fg-muted, #888); }
 </style>

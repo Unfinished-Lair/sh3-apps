@@ -14,6 +14,7 @@ import { readForeign } from './foreign-docs';
 import TargetsView from './views/TargetsView.svelte';
 import BackupView from './views/BackupView.svelte';
 import ImportView from './views/ImportView.svelte';
+import { openFolderBackupDialog } from './folder-backup-dialog';
 
 let runtime: Runtime | null = null;
 
@@ -55,9 +56,9 @@ export const shard: SourceShard = {
     });
 
     ctx.contributions.register<SelectionAction>(SELECTION_ACTION_POINT, {
-      id: 'sh3-connector-r2:backup',
+      id: 'sh3-connector-r2:backup-file',
       label: 'Back up to R2',
-      appliesTo: () => (runtime?.targets.length ?? 0) > 0,
+      appliesTo: (sel) => sel.kind === 'file' && (runtime?.targets.length ?? 0) > 0,
       onInvoke: async (sel) => {
         if (!runtime) return;
         const targets = runtime.targets;
@@ -89,6 +90,21 @@ export const shard: SourceShard = {
           result.status === 'skipped-unchanged' ? 'Already up to date' :
           `Failed: ${result.reason ?? 'unknown'}`;
         alert(`${word}\n${sel.shardId}/${sel.path}`);
+      },
+      kind: 'secondary',
+    });
+
+    ctx.contributions.register<SelectionAction>(SELECTION_ACTION_POINT, {
+      id: 'sh3-connector-r2:backup-folder',
+      label: 'Back up to R2…',
+      appliesTo: (sel) => sel.kind === 'folder' && (runtime?.targets.length ?? 0) > 0,
+      onInvoke: (sel) => {
+        if (!runtime) return;
+        openFolderBackupDialog({
+          rt: runtime,
+          shardId: sel.shardId,
+          pathPrefix: sel.path,
+        });
       },
       kind: 'secondary',
     });

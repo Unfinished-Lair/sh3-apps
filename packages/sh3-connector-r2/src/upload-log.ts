@@ -59,3 +59,21 @@ export async function listRecentLog(handle: DocumentHandle, limit: number): Prom
   entries.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   return entries.slice(0, limit);
 }
+
+export async function listAllSuccessfulLog(handle: DocumentHandle): Promise<UploadLogEntry[]> {
+  const metas = await handle.list();
+  const entries: UploadLogEntry[] = [];
+  for (const m of metas) {
+    if (!m.path.startsWith(DIR)) continue;
+    if (!m.path.endsWith('.json')) continue;
+    const raw = await handle.read(m.path);
+    if (!raw) continue;
+    try {
+      const e = JSON.parse(raw) as UploadLogEntry;
+      if (e.status === 'uploaded') entries.push(e);
+    } catch {
+      // skip corrupt file
+    }
+  }
+  return entries;
+}

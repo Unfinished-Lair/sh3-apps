@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendLog, listRecentLog, type UploadLogEntry } from './upload-log';
+import { appendLog, listRecentLog, listAllSuccessfulLog, type UploadLogEntry } from './upload-log';
 import type { DocumentHandle, DocumentMeta } from 'sh3-core';
 
 function makeFakeHandle(): DocumentHandle {
@@ -54,5 +54,20 @@ describe('upload log', () => {
     await appendLog(h, entry({ id: 'new', at: '2026-04-01T00:00:00Z' }));
     const list = await listRecentLog(h, 10);
     expect(list.map((e) => e.id)).toEqual(['new', 'old']);
+  });
+
+  it('listAllSuccessfulLog returns every uploaded entry across all months', async () => {
+    const h = makeFakeHandle();
+    await appendLog(h, entry({ id: 'jan', path: 'a.md', at: '2026-01-01T00:00:00Z' }));
+    await appendLog(h, entry({ id: 'apr-ok', path: 'b.md', at: '2026-04-01T00:00:00Z' }));
+    await appendLog(h, entry({ id: 'apr-fail', path: 'c.md', status: 'failed', at: '2026-04-02T00:00:00Z' }));
+    await appendLog(h, entry({ id: 'apr-skip', path: 'd.md', status: 'skipped-unchanged', at: '2026-04-02T00:00:00Z' }));
+    const all = await listAllSuccessfulLog(h);
+    expect(all.map((e) => e.id).sort()).toEqual(['apr-ok', 'jan']);
+  });
+
+  it('listAllSuccessfulLog returns empty when no uploads have been logged', async () => {
+    const h = makeFakeHandle();
+    expect(await listAllSuccessfulLog(h)).toEqual([]);
   });
 });

@@ -20,6 +20,7 @@ export interface UploadResult {
   reason?: string;
   sha256?: string;
   size?: number;
+  entry?: UploadLogEntry;
 }
 
 function entryId(): string {
@@ -77,8 +78,9 @@ export async function upload(input: UploadInput): Promise<UploadResult> {
         'sh3-sha256': sha,
       },
     });
-    await logOrIgnore(logHandle, { id: entryId(), targetId: target.id, shardId, path, sha256: sha, size, status: 'uploaded', at });
-    return { status: 'uploaded', sha256: sha, size };
+    const entry: UploadLogEntry = { id: entryId(), targetId: target.id, shardId, path, sha256: sha, size, status: 'uploaded', at };
+    await logOrIgnore(logHandle, entry);
+    return { status: 'uploaded', sha256: sha, size, entry };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     await logOrIgnore(logHandle, { id: entryId(), targetId: target.id, shardId, path, sha256: sha, size, status: 'failed', reason, at });

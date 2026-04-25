@@ -59,6 +59,8 @@ describe('upload primitive', () => {
     });
     expect(res.status).toBe('uploaded');
     expect(put).toHaveBeenCalledOnce();
+    expect(res.entry).toMatchObject({ status: 'uploaded', shardId: 'notes', path: 'a.md' });
+    expect(res.entry?.sha256).toBeTruthy();
   });
 
   it('skips when remote sha256 matches', async () => {

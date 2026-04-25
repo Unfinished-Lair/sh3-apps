@@ -80,18 +80,36 @@
     store.toggleExpanded(keyFor(node));
   }
 
-  function onSelect(node: TreeNode) {
+  function onSelectFile(node: FileNode) {
     if (!store.ready) return;
-    store.setSelection({ shardId: node.shardId, path: node.path });
+    store.setSelection({ shardId: node.shardId, path: node.path, kind: 'file' });
+  }
+
+  function onSelectFolder(node: FolderNode) {
+    if (!store.ready) return;
+    store.setSelection({ shardId: node.shardId, path: node.path, kind: 'folder' });
   }
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}
   <li style="padding-left: {depth * 12}px">
     {#if node.kind === 'folder'}
-      <button class="sh3-fe-node" onclick={() => onToggle(node)}>
-        {store.ready && store.isExpanded(keyFor(node)) ? '▾' : '▸'} {node.name || '(root)'}/
-      </button>
+      <div class="sh3-fe-row" style="padding-left: {depth * 12}px">
+        <button
+          class="sh3-fe-twisty"
+          aria-label={store.ready && store.isExpanded(keyFor(node)) ? 'Collapse' : 'Expand'}
+          onclick={() => onToggle(node)}
+        >
+          {store.ready && store.isExpanded(keyFor(node)) ? '▾' : '▸'}
+        </button>
+        <button
+          class="sh3-fe-node sh3-fe-node--folder"
+          class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path && store.selection?.kind === 'folder'}
+          onclick={() => onSelectFolder(node)}
+        >
+          {node.name || '(root)'}/
+        </button>
+      </div>
       {#if store.ready && store.isExpanded(keyFor(node))}
         <ul>
           {#each node.children as child (keyFor(child))}
@@ -102,8 +120,9 @@
     {:else}
       <button
         class="sh3-fe-node sh3-fe-node--file"
-        class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path}
-        onclick={() => onSelect(node)}
+        style="padding-left: {depth * 12}px"
+        class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path && store.selection?.kind === 'file'}
+        onclick={() => onSelectFile(node)}
       >
         {node.name}
       </button>
@@ -129,4 +148,17 @@
   .sh3-fe-node:hover { background: var(--shell-bg-elevated); }
   .sh3-fe-node.selected { background: var(--shell-accent-muted); }
   .sh3-fe-empty { color: var(--shell-fg-muted); padding: 8px; }
+  .sh3-fe-row { display: flex; align-items: center; gap: 2px; }
+  .sh3-fe-twisty {
+    background: none;
+    border: 0;
+    color: var(--shell-fg-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font: inherit;
+    width: 1.4em;
+    flex: 0 0 auto;
+  }
+  .sh3-fe-twisty:hover { color: var(--shell-fg); }
+  .sh3-fe-node--folder { flex: 1 1 auto; }
 </style>

@@ -4,7 +4,7 @@ import type {
   DocumentChange,
 } from 'sh3-core';
 
-export type Selection = { shardId: string; path: string } | null;
+export type Selection = { shardId: string; path: string; kind: 'file' | 'folder' } | null;
 export type BrowseEntry = DocumentMeta & { shardId: string };
 
 export class PermissionMissingError extends Error {

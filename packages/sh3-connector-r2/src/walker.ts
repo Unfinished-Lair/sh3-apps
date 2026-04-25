@@ -1,6 +1,8 @@
 export interface WalkScope {
   shardId: string;
   pathPrefix?: string;
+  /** When false, only direct children of pathPrefix (or top-level if no prefix) match. Default true. */
+  recursive?: boolean;
 }
 
 export interface WalkStats {
@@ -23,9 +25,14 @@ export interface WalkInput {
 export async function walkScope(input: WalkInput): Promise<WalkStats> {
   const all = await input.list();
   const prefix = input.scope.pathPrefix ?? '';
-  const matched = all.filter(
-    (d) => d.shardId === input.scope.shardId && d.path.startsWith(prefix),
-  );
+  const recursive = input.scope.recursive ?? true;
+  const matched = all.filter((d) => {
+    if (d.shardId !== input.scope.shardId) return false;
+    if (!d.path.startsWith(prefix)) return false;
+    if (recursive) return true;
+    const tail = d.path.slice(prefix.length);
+    return tail.length > 0 && !tail.includes('/');
+  });
 
   const stats: WalkStats = { total: matched.length, uploaded: 0, skipped: 0, failed: 0 };
   for (let i = 0; i < matched.length; i++) {

@@ -34,8 +34,7 @@ export function normalizeOrFallback(initial: string | undefined): string {
 import { shell } from 'sh3-core';
 import type { ColorPickOptions } from 'sh3-core';
 import type { ColorPalette } from '../types';
-// import PopupPickWrapper from './PopupPickWrapper.svelte';   // Task 4 restores this
-const PopupPickWrapper = {} as any;
+import PopupPickWrapper from './PopupPickWrapper.svelte';
 
 export interface PickDeps {
   userPalettes: ColorPalette[];

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shell } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { listRecentLog, type UploadLogEntry } from '../upload-log';
@@ -35,7 +36,7 @@
   async function run() {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
     if (!target || !rt.ctx.browse) return;
-    if (!shardId) { alert('Pick a shard to back up.'); return; }
+    if (!shardId) { shell.toast.notify('Pick a shard to back up.', { level: 'warn' }); return; }
 
     rt.progress.running = true;
     rt.progress.currentLabel = '';

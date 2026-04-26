@@ -97,10 +97,10 @@
       },
       "versions": [
         {
-          "version": "0.5.0",
+          "version": "0.6.1",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-file-explorer-app-0.5.0.js",
-          "integrity": "sha384-cWGZ3RgrAyKYOxkdgH2xwlFBkvCAMmGsF7g1Sq59KGU12iF/AVjvM0Z5aegr7Vlw"
+          "bundleUrl": "bundles/sh3-file-explorer-app-0.6.1.js",
+          "integrity": "sha384-veXXIX6lzHQx3O1m47TlnrrUwq5i+HNroAZNsQl4hHbhIPjbc4cYJeN3f6bP9RHR"
         }
       ]
     },
@@ -114,10 +114,10 @@
       },
       "versions": [
         {
-          "version": "0.3.1",
+          "version": "0.4.4",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-connector-r2-app-0.3.1.js",
-          "integrity": "sha384-KwneZRSmNVi0j2flasPgmVD6Uv0u2E6ezQ1qzUj445Q0OehWo8gX90/ZKDG4eTsL"
+          "bundleUrl": "bundles/sh3-connector-r2-app-0.4.4.js",
+          "integrity": "sha384-Y08MI2Edch1KzU/M995+d61qBksSK1S4UHcCYkvr/A0l6sVDQiAUyNpvR/JS9w94"
         }
       ]
     }

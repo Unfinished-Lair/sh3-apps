@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.3
+
+### Added
+- **Registers at sh3-core's `sh3.color-picker` contribution point** (sh3-core 0.11.4+). `shell.color.pick()` from any shard now routes to sh3-editor's rich picker when active, falling back to the native `<input type="color">` otherwise. New module: `src/color-picker/` (`popup-pick.ts` + `PopupPickWrapper.svelte`).
+
+### Changed
+- **`docs/sh3-editor/color-picker.md` reframed.** §2 (`getApi().openColorPicker(...)`) is now flagged as intra-shard only — external shards must use `shell.color.pick()` per the sh3-core 0.10.x+ shard runtime model. New §1.5 documents the cross-shard usage path.
+
+### Notes
+- `opts.alpha` is silently ignored in V1 — sh3-editor's picker does not yet support RGBA. Future enhancements (alpha, HDR, Linear/Gamma) will honor it without a contract change.
+- Per-pick prefs are not persisted; each `shell.color.pick()` opens in HSV mode regardless of the user's last toggle in the standalone view or inspector compact mode.
+
 ## 0.6.2
 
 ### Changed

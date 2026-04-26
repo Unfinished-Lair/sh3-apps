@@ -2,6 +2,10 @@
 
 Reusable text editor shard for SH3. Provides a configurable, multi-instance code/text editor with syntax highlighting, undo/redo, bracket/indent matching, and a pluggable toolbar.
 
+## Features
+
+- **Cross-shard color picker.** Registers as a `sh3.color-picker` contributor — `shell.color.pick()` from any shard uses sh3-editor's rich picker (SV square, palettes, HSV/RGB toggle) when the shard is active. Falls back to native `<input type="color">` when inactive.
+
 ## Usage
 
 Add `sh3-editor` to your app's `requiredShards`, then use the API:

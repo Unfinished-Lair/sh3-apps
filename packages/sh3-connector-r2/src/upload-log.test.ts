@@ -40,6 +40,15 @@ describe('upload log', () => {
     expect(metas.some((m) => m.path.startsWith('uploads/2026-04/') && m.path.endsWith('.json'))).toBe(true);
   });
 
+  it('writes filenames without colons (Windows-safe)', async () => {
+    const h = makeFakeHandle();
+    await appendLog(h, entry({ at: '2026-04-26T00:11:01.019Z' }));
+    const metas = await h.list();
+    const stored = metas.find((m) => m.path.startsWith('uploads/'))!;
+    expect(stored.path).not.toContain(':');
+    expect(stored.path).toMatch(/2026-04-26T00-11-01\.019Z/);
+  });
+
   it('listRecentLog returns entries newest-first', async () => {
     const h = makeFakeHandle();
     await appendLog(h, entry({ id: 'a', at: '2026-04-20T00:00:01Z' }));

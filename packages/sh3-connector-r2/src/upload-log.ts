@@ -28,7 +28,10 @@ function randomSuffix(): string {
 
 export async function appendLog(handle: DocumentHandle, entry: UploadLogEntry): Promise<void> {
   const folder = `${DIR}${monthFolder(entry.at)}/`;
-  const filename = `${entry.at}-${randomSuffix()}.json`;
+  // Colons in ISO timestamps break filesystem-backed storage on Windows.
+  // Replace them in the filename only; entry.at inside the JSON keeps the canonical ISO string.
+  const safeAt = entry.at.replace(/:/g, '-');
+  const filename = `${safeAt}-${randomSuffix()}.json`;
   await handle.write(`${folder}${filename}`, JSON.stringify(entry, null, 2));
 }
 

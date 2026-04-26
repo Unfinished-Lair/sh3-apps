@@ -118,26 +118,37 @@
     <Progress p={rt.progress} />
 
     <h3>Recent activity</h3>
-    {#if recent.length === 0}
-      <p class="muted">No uploads yet.</p>
-    {:else}
-      <ul class="r2-log">
-        {#each recent as entry}
-          <li class={`status-${entry.status}`}>
-            <span class="ts">{entry.at}</span>
-            <span class="path">{entry.shardId}/{entry.path}</span>
-            <span class="status">{entry.status}</span>
-            {#if entry.reason}<span class="reason">— {entry.reason}</span>{/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
+    <div class="log-wrap">
+      {#if recent.length === 0}
+        <p class="muted">No uploads yet.</p>
+      {:else}
+        <ul class="r2-log">
+          {#each recent as entry}
+            <li class={`status-${entry.status}`}>
+              <span class="ts">{entry.at}</span>
+              <span class="path">{entry.shardId}/{entry.path}</span>
+              <span class="status">{entry.status}</span>
+              {#if entry.reason}<span class="reason">— {entry.reason}</span>{/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   {/if}
 </div>
 
 <style>
-  .r2-backup { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; }
+  .r2-backup {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; flex: 0 0 auto; }
+  .log-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; border: 1px solid var(--sh3-border, #2a2a2a); border-radius: 3px; padding: 8px; }
   select {
     padding: var(--shell-pad-md) var(--shell-pad-lg);
     background: var(--shell-input-bg);

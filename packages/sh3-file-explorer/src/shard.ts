@@ -1,7 +1,10 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
-import { createExplorerStore } from './explorerShard.svelte';
+import { createExplorerStore, type ExplorerStore } from './explorerShard.svelte';
 import BrowserView from './browser/BrowserView.svelte';
+
+let activeStore: ExplorerStore | null = null;
+let stopWatch: (() => void) | null = null;
 
 export const shard: SourceShard = {
   manifest: {
@@ -15,13 +18,12 @@ export const shard: SourceShard = {
 
   activate(ctx: ShardContext) {
     const store = createExplorerStore(ctx);
+    activeStore = store;
 
-    let stopWatch: (() => void) | null = null;
     if (store.ready) {
       store.refreshDocuments();
       stopWatch = store.startWatch();
     }
-    void stopWatch;
 
     ctx.registerView('sh3-file-explorer-browser', {
       mount(container) {
@@ -29,5 +31,11 @@ export const shard: SourceShard = {
         return { unmount() { unmount(component); } };
       },
     });
+  },
+
+  deactivate() {
+    if (stopWatch) { stopWatch(); stopWatch = null; }
+    activeStore?.dispose();
+    activeStore = null;
   },
 };

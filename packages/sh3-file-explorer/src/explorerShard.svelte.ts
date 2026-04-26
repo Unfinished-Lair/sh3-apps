@@ -20,6 +20,7 @@ export type ExplorerStore =
       ctx: ShardContext;
       ready: false;
       error: PermissionMissingError;
+      dispose(): void;
     }
   | {
       ctx: ShardContext;
@@ -34,11 +35,12 @@ export type ExplorerStore =
       refreshDocuments(): Promise<void>;
       startWatch(): () => void;
       getBadgesFor(doc: BadgeDoc): Array<{ providerId: string; badge: Badge }>;
+      dispose(): void;
     };
 
 export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   if (!ctx.browse) {
-    return { ctx, ready: false, error: new PermissionMissingError() };
+    return { ctx, ready: false, error: new PermissionMissingError(), dispose: () => {} };
   }
 
   const browse = ctx.browse;
@@ -59,18 +61,23 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   let badgeTick = $state(0);
   let providersVersion = $state(0);
 
-  $effect(() => {
-    return ctx.contributions.onChange(DOCUMENT_BADGE_POINT, () => {
-      providersVersion++;
-      badgeTick++;
+  // createExplorerStore is called from the shard's activate(), not inside a
+  // component, so $effect would orphan. $effect.root creates an explicit
+  // tracking scope; the returned disposer is invoked from dispose() below.
+  const disposeBadgeEffects = $effect.root(() => {
+    $effect(() => {
+      return ctx.contributions.onChange(DOCUMENT_BADGE_POINT, () => {
+        providersVersion++;
+        badgeTick++;
+      });
     });
-  });
 
-  $effect(() => {
-    void providersVersion;
-    const providers = ctx.contributions.list<DocumentBadgeProvider>(DOCUMENT_BADGE_POINT);
-    const offs = providers.map((p) => p.onChange?.(() => { badgeTick++; }) ?? (() => {}));
-    return () => { for (const off of offs) off(); };
+    $effect(() => {
+      void providersVersion;
+      const providers = ctx.contributions.list<DocumentBadgeProvider>(DOCUMENT_BADGE_POINT);
+      const offs = providers.map((p) => p.onChange?.(() => { badgeTick++; }) ?? (() => {}));
+      return () => { for (const off of offs) off(); };
+    });
   });
 
   function getBadgesFor(doc: BadgeDoc) {
@@ -79,6 +86,10 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
     return iterateBadges(providers, doc, (id, err) => {
       console.error(`[sh3-file-explorer] badge provider "${id}" threw:`, err);
     });
+  }
+
+  function dispose() {
+    disposeBadgeEffects();
   }
 
   async function refreshDocuments() {
@@ -103,5 +114,6 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
     refreshDocuments,
     startWatch,
     getBadgesFor,
+    dispose,
   };
 }

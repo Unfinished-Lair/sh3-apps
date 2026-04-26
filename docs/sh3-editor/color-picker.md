@@ -17,7 +17,37 @@ The picker surface is an SV (saturation × value) square plus a vertical hue str
 
 ---
 
-## 2. Opening a picker (standalone)
+## 1.5 Cross-shard usage (external shards)
+
+External shards do **not** import sh3-editor's `getApi()` directly — bare cross-shard imports fail at install time under sh3-core 0.10.x+. Use sh3-core's `shell.color.pick()`, which transparently routes to sh3-editor when active and falls back to a native `<input type="color">` when not.
+
+```ts
+import { shell } from 'sh3-core';
+
+const hex = await shell.color.pick({
+  initial: '#ff8800',
+  anchor: triggerElement,    // optional; viewport-center if omitted
+  title: 'Background color', // optional
+});
+if (hex !== null) {
+  // user committed — hex is '#rrggbb'
+} else {
+  // user dismissed (Escape) or never interacted with the picker
+}
+```
+
+**Caveats:**
+
+- Always returns `#rrggbb` even when `alpha: true` is requested — sh3-editor V1 does not support alpha. Future versions (RGBA, HDR, Linear/Gamma control) will honor `opts.alpha`.
+- Outside-click commits the current value; Escape resolves `null`.
+- Promise resolves `null` if the user dismisses (Escape) or never interacts with the picker. If another popup supersedes ours mid-interaction, the promise resolves with the last touched color (or `null` if the user never touched it).
+- User palettes saved in this flow share storage with the inspector compact-mode picker.
+
+---
+
+## 2. Internal API (intra-shard only)
+
+> ⚠️ **Intra-shard only.** This API is exposed for sh3-editor's own internal use — the inspector renderer mounts the picker through this surface. External shards must use `shell.color.pick()` (see §1.5). Calling `getApi()` from another shard requires a bare cross-shard import that violates sh3-core's 0.10.x+ runtime model.
 
 ```ts
 import { getApi } from '@unfinished-lair/sh3-editor';

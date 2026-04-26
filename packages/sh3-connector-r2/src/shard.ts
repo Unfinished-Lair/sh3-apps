@@ -1,11 +1,12 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
-import type { SelectionAction } from 'sh3-file-explorer';
+import type { SelectionAction, DocumentBadgeProvider } from 'sh3-file-explorer';
 
 // Inlined to avoid a runtime import from sh3-file-explorer. The loader's
 // bare-specifier rewriter (sh3-core 0.10.1) only shims sh3-core and svelte;
 // a value import from another shard would fail at install time. Types are
-// erased at compile time, so `SelectionAction` is safe.
+// erased at compile time, so the imports are safe.
 const SELECTION_ACTION_POINT = 'sh3-file-explorer.selectionAction';
+const DOCUMENT_BADGE_POINT = 'sh3-file-explorer.documentBadge';
 import { mount, unmount } from 'svelte';
 import { createRuntime, type Runtime } from './runtime.svelte';
 import { upload } from './upload';
@@ -15,6 +16,7 @@ import TargetsView from './views/TargetsView.svelte';
 import BackupView from './views/BackupView.svelte';
 import ImportView from './views/ImportView.svelte';
 import { openFolderBackupDialog } from './folder-backup-dialog';
+import { buildR2Badge } from './badges';
 
 let runtime: Runtime | null = null;
 
@@ -38,6 +40,7 @@ export const shard: SourceShard = {
   async activate(ctx: ShardContext) {
     runtime = createRuntime(ctx);
     void runtime.refreshTargets();
+    void runtime.ensureBadgeIndex();
 
     ctx.registerView('sh3-connector-r2-targets', {
       mount(container) {
@@ -90,6 +93,7 @@ export const shard: SourceShard = {
           path: sel.path,
           sourceTenant: ctx.tenantId,
         });
+        if (result.status === 'uploaded' && result.entry) runtime.recordBadgeUpload(result.entry);
         const word =
           result.status === 'uploaded' ? 'Uploaded' :
           result.status === 'skipped-unchanged' ? 'Already up to date' :
@@ -112,6 +116,17 @@ export const shard: SourceShard = {
         });
       },
       kind: 'secondary',
+    });
+
+    ctx.contributions.register<DocumentBadgeProvider>(DOCUMENT_BADGE_POINT, {
+      id: 'sh3-connector-r2:backup-status',
+      getBadge: (doc) => {
+        if (!runtime) return null;
+        const ix = runtime.peekBadgeIndex();
+        if (!ix) return null;
+        return buildR2Badge(ix, doc);
+      },
+      onChange: (cb) => runtime?.subscribeBadgeChange(cb) ?? (() => {}),
     });
   },
 

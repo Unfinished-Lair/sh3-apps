@@ -73,15 +73,19 @@
       shardId,
       pathPrefix: prefix || undefined,
       recursive,
-      upload: async (item) => upload({
-        target,
-        client,
-        logHandle: rt.docs,
-        readForeign: read,
-        shardId: item.shardId,
-        path: item.path,
-        sourceTenant: rt.ctx.tenantId,
-      }),
+      upload: async (item) => {
+        const res = await upload({
+          target,
+          client,
+          logHandle: rt.docs,
+          readForeign: read,
+          shardId: item.shardId,
+          path: item.path,
+          sourceTenant: rt.ctx.tenantId,
+        });
+        if (res.status === 'uploaded' && res.entry) rt.recordBadgeUpload(res.entry);
+        return res;
+      },
       onProgress: (snap) => { progress = snap; },
     });
     summary = { uploaded: stats.uploaded, skipped: stats.skipped, failed: stats.failed, errors: stats.errors };

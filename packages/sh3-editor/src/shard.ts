@@ -6,6 +6,8 @@ import { createApi } from './model/api';
 import type { ApiInternals } from './model/api';
 import type { EditorApi, OpenDocumentOptions, InspectorMeta, ColorPalette } from './types';
 import { INSPECTOR_RENDERER_POINT, type InspectorRenderer } from './inspector/contributions';
+import { COLOR_PICKER_POINT, type ColorContribution } from 'sh3-core';
+import { openColorPickerPopup } from './color-picker/popup-pick';
 import { setRenderers } from './inspector/registry';
 import { setColorRendererDeps } from './inspector/color-renderer-deps';
 import {
@@ -25,6 +27,7 @@ let internalsRef: ApiInternals | null = null;
 let teardownRef: (() => void) | null = null;
 let unsubscribeContributions: (() => void) | null = null;
 let unregisterColorRenderer: (() => void) | null = null;
+let unregisterColorContribution: (() => void) | null = null;
 
 export function getApi(): EditorApi | null {
   return apiRef;
@@ -95,6 +98,21 @@ export const shard: SourceShard = {
     };
     unregisterColorRenderer =
       ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, colorRendererContribution);
+
+    // Register sh3-editor as the sh3.color-picker contributor. shell.color.pick()
+    // from any shard now routes here; falls back to native <input type="color">
+    // when sh3-editor is inactive.
+    const colorContribution: ColorContribution = {
+      id: 'sh3-editor:color-picker',
+      priority: 10,
+      open: (opts) => openColorPickerPopup(opts, {
+        userPalettes: userPaletteState.user.colorPickerPalettes,
+        onSaveUserPalette: handleSavePalette,
+        onDeleteUserPalette: handleDeletePalette,
+      }),
+    };
+    unregisterColorContribution =
+      ctx.contributions.register<ColorContribution>(COLOR_PICKER_POINT, colorContribution);
 
     const defaultOptions: OpenDocumentOptions = {
       content: 'Hello, World',
@@ -251,6 +269,8 @@ export const shard: SourceShard = {
   deactivate() {
     unregisterColorRenderer?.();
     unregisterColorRenderer = null;
+    unregisterColorContribution?.();
+    unregisterColorContribution = null;
     setColorRendererDeps(null);
     unsubscribeContributions?.();
     unsubscribeContributions = null;

@@ -282,7 +282,9 @@
 
     {#if nodes.length > 0}
       <p>{nodes.length} object{nodes.length === 1 ? '' : 's'} — {selected.size} selected</p>
-      <RemoteTree {nodes} {selected} onToggle={toggle} />
+      <div class="tree-wrap">
+        <RemoteTree {nodes} {selected} onToggle={toggle} />
+      </div>
 
       <div class="actions">
         <button disabled={importing || !canImportNew} onclick={() => runImport('new')}>
@@ -322,9 +324,18 @@
 </div>
 
 <style>
-  .r2-import { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; }
-  .warn { background: #5a3a1a; border: 1px solid #a77733; padding: 8px; color: #ffd; }
-  .summary { border: 1px solid var(--sh3-border, #2a2a2a); padding: 8px; border-radius: 3px; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .r2-import {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; flex: 0 0 auto; }
+  .warn { background: #5a3a1a; border: 1px solid #a77733; padding: 8px; color: #ffd; flex: 0 0 auto; }
+  .summary { border: 1px solid var(--sh3-border, #2a2a2a); padding: 8px; border-radius: 3px; flex: 0 0 auto; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; flex: 0 0 auto; }
+  .tree-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; border: 1px solid var(--sh3-border, #2a2a2a); border-radius: 3px; }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { shell } from 'sh3-core';
   import type { ColorPalette, ColorPickerPrefs } from '../types';
   import type { ApiInternals } from '../model/api';
@@ -171,6 +172,34 @@
       return;
     }
   }
+
+  // --- Descriptor-mode controller. Built once; calls `bind` after mount so
+  //     the host can store a stable ref. `controllerUnbound` flips on unmount
+  //     to make setValue a no-op after the picker tears down. ---
+  let controllerUnbound = false;
+
+  function setValueFromController(nextHex: string) {
+    if (controllerUnbound) return;
+    if (!descriptorBinding || entry) return;       // descriptor mode only
+    const normalized = normalizeHex(nextHex) ?? '#000000';
+    const prev = descriptorValue;
+    if (prev === normalized) return;
+    history.push({
+      apply: () => { descriptorValue = normalized; },
+      revert: () => { descriptorValue = prev; },
+      meta: { kind: 'color', timestamp: Date.now(), source: 'controller' },
+    });
+    descriptorValue = normalized;
+    // No onChange emit — host pushed this value in; echoing back would loop.
+  }
+
+  onMount(() => {
+    if (!descriptorBinding) return;
+    descriptorBinding.bind?.({ setValue: setValueFromController });
+    return () => {
+      controllerUnbound = true;
+    };
+  });
 </script>
 
 {#if compact}

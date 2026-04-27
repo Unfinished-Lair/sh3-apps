@@ -8,6 +8,8 @@ import type { EditorApi, OpenDocumentOptions, InspectorMeta, ColorPalette } from
 import { INSPECTOR_RENDERER_POINT, type InspectorRenderer } from './inspector/contributions';
 import { COLOR_PICKER_POINT, type ColorContribution } from 'sh3-core';
 import { openColorPickerPopup } from './color-picker/popup-pick';
+import { COLOR_PANEL_POINT, type ColorPanelDescriptor } from './color-panel/contributions';
+import { selectBindingSource } from './color-panel/select-binding';
 import { setRenderers } from './inspector/registry';
 import { setColorRendererDeps } from './inspector/color-renderer-deps';
 import {
@@ -168,18 +170,21 @@ export const shard: SourceShard = {
         const instanceId = context.slotId;
         const initialEntry = internals.colorPickers.get(instanceId);
         const ephemeral = context.meta as { value?: string; readonly?: boolean } | undefined;
+        const descriptors = ctx.contributions.list<ColorPanelDescriptor>(COLOR_PANEL_POINT);
+        const binding = selectBindingSource(instanceId, initialEntry, descriptors, ephemeral);
         const component = mount(ColorPicker, {
           target: container,
           props: {
             instanceId,
-            adHocValue: ephemeral?.value,
-            adHocReadonly: ephemeral?.readonly ?? false,
+            adHocValue: binding.kind === 'adhoc' ? binding.adHocValue : undefined,
+            adHocReadonly: binding.kind === 'adhoc' ? binding.adHocReadonly : false,
             internals: internalsRef!,
             prefs: initialEntry?.options.prefs ?? { mode: 'hsv' },
             compact: initialEntry?.options.compact ?? false,
             userPalettes: userPaletteState.user.colorPickerPalettes,
             onSaveUserPalette: handleSavePalette,
             onDeleteUserPalette: handleDeletePalette,
+            descriptorBinding: binding.kind === 'descriptor' ? binding.descriptor : undefined,
           },
         });
         return {

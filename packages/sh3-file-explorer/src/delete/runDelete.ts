@@ -33,8 +33,22 @@ export async function runDelete(
   const goStraightToDelete = ref.kind === 'file' && opts.skipConfirm;
 
   if (!goStraightToDelete) {
-    // Phase 5.3 fills modal flow.
-    return;
+    const preview = ref.kind === 'file'
+      ? await readPreview(browse, ref.shardId, ref.path)
+      : { state: 'text' as const, text: null };
+
+    const descendantCount = ref.kind === 'folder'
+      ? countDescendants(store, ref.shardId, ref.path)
+      : undefined;
+
+    const confirmed = await confirmDelete({
+      target: descendantCount === undefined
+        ? { shardId: ref.shardId, path: ref.path, kind: ref.kind }
+        : { shardId: ref.shardId, path: ref.path, kind: ref.kind, descendantCount },
+      previewText: preview.text,
+      previewState: preview.state,
+    });
+    if (!confirmed) return;
   }
 
   if (ref.kind === 'file') {
@@ -51,5 +65,8 @@ export async function runDelete(
     return;
   }
 
-  void readPreview; void confirmDelete;
+}
+
+function countDescendants(_store: ReadyStore, _shardId: string, _folderPath: string): number {
+  return 0;
 }

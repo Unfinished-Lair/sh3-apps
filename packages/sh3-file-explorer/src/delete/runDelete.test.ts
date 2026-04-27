@@ -107,3 +107,32 @@ describe('runDelete file path', () => {
     expect(store.setSelection).not.toHaveBeenCalled();
   });
 });
+
+describe('runDelete file modal path', () => {
+  it('skipConfirm=false on a file: opens modal with preview; on confirm deletes', async () => {
+    readPreview.mockResolvedValue({ state: 'text', text: 'hello' });
+    confirmDelete.mockResolvedValue(true);
+    const deleteFrom = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx(deleteFrom);
+    const store = makeStore();
+    await runDelete(ctx, store, dCtxFor(fileSel), { skipConfirm: false });
+
+    expect(readPreview).toHaveBeenCalledWith(ctx.browse, 'notes', 'a.md');
+    expect(confirmDelete).toHaveBeenCalledWith({
+      target: { shardId: 'notes', path: 'a.md', kind: 'file' },
+      previewText: 'hello',
+      previewState: 'text',
+    });
+    expect(deleteFrom).toHaveBeenCalledWith('notes', 'a.md');
+    expect(notify).toHaveBeenCalledWith('Deleted a.md', { level: 'success' });
+  });
+
+  it('skipConfirm=false on a file: cancel skips deleteFrom and toast', async () => {
+    readPreview.mockResolvedValue({ state: 'text', text: 'hello' });
+    confirmDelete.mockResolvedValue(false);
+    const deleteFrom = vi.fn();
+    await runDelete(makeCtx(deleteFrom), makeStore(), dCtxFor(fileSel), { skipConfirm: false });
+    expect(deleteFrom).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+});

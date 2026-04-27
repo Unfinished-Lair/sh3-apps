@@ -65,8 +65,37 @@ export async function runDelete(
     return;
   }
 
+  // Folder: fan out over the locally-known descendants.
+  const targets = collectFolderTargets(store, ref.shardId, ref.path);
+  const results = await Promise.allSettled(
+    targets.map((t) => browse.deleteFrom!(t.shardId, t.path)),
+  );
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  if (failed === 0) {
+    shell.toast.notify(
+      `Deleted folder /${ref.path} (${targets.length} files)`,
+      { level: 'success' },
+    );
+  } else {
+    shell.toast.notify(
+      `Deleted ${targets.length - failed}/${targets.length}; ${failed} failed`,
+      { level: 'error' },
+    );
+  }
+  store.setSelection(null);
 }
 
-function countDescendants(_store: ReadyStore, _shardId: string, _folderPath: string): number {
-  return 0;
+function collectFolderTargets(
+  store: ReadyStore,
+  shardId: string,
+  folderPath: string,
+): Array<{ shardId: string; path: string }> {
+  const prefix = folderPath ? `${folderPath}/` : '';
+  return store.documents
+    .filter((d) => d.shardId === shardId && (folderPath === '' ? true : d.path === folderPath || d.path.startsWith(prefix)))
+    .map((d) => ({ shardId: d.shardId, path: d.path }));
+}
+
+function countDescendants(store: ReadyStore, shardId: string, folderPath: string): number {
+  return collectFolderTargets(store, shardId, folderPath).length;
 }

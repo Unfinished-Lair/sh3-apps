@@ -136,3 +136,68 @@ describe('runDelete file modal path', () => {
     expect(notify).not.toHaveBeenCalled();
   });
 });
+
+const folderSel = {
+  type: SELECTION_TYPE,
+  ref: { shardId: 'notes', path: 'docs', kind: 'folder' },
+  ownerShardId: 'sh3-file-explorer',
+};
+
+describe('runDelete folder path', () => {
+  it('opens modal with descendantCount; on confirm fans out deleteFrom across descendants', async () => {
+    confirmDelete.mockResolvedValue(true);
+    const deleteFrom = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx(deleteFrom);
+    const store = makeStore([
+      { shardId: 'notes', path: 'docs/a.md' },
+      { shardId: 'notes', path: 'docs/sub/b.md' },
+      { shardId: 'notes', path: 'other/c.md' },
+      { shardId: 'other-shard', path: 'docs/d.md' },
+    ]);
+    await runDelete(ctx, store, dCtxFor(folderSel), { skipConfirm: false });
+
+    expect(confirmDelete).toHaveBeenCalledWith({
+      target: { shardId: 'notes', path: 'docs', kind: 'folder', descendantCount: 2 },
+      previewText: null,
+      previewState: 'text',
+    });
+    expect(readPreview).not.toHaveBeenCalled();
+    expect(deleteFrom).toHaveBeenCalledTimes(2);
+    expect(deleteFrom).toHaveBeenCalledWith('notes', 'docs/a.md');
+    expect(deleteFrom).toHaveBeenCalledWith('notes', 'docs/sub/b.md');
+    expect(notify).toHaveBeenCalledWith(
+      'Deleted folder /docs (2 files)',
+      { level: 'success' },
+    );
+    expect(store.setSelection).toHaveBeenCalledWith(null);
+  });
+
+  it('Shift+Delete on a folder still opens the modal (bypass-guard)', async () => {
+    confirmDelete.mockResolvedValue(false);
+    const deleteFrom = vi.fn();
+    const store = makeStore([{ shardId: 'notes', path: 'docs/a.md' }]);
+    await runDelete(makeCtx(deleteFrom), store, dCtxFor(folderSel), { skipConfirm: true });
+    expect(confirmDelete).toHaveBeenCalled();
+    expect(deleteFrom).not.toHaveBeenCalled();
+  });
+
+  it('partial folder failure: error toast reports n/total', async () => {
+    confirmDelete.mockResolvedValue(true);
+    const deleteFrom = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValueOnce(undefined);
+    const ctx = makeCtx(deleteFrom);
+    const store = makeStore([
+      { shardId: 'notes', path: 'docs/a.md' },
+      { shardId: 'notes', path: 'docs/b.md' },
+      { shardId: 'notes', path: 'docs/c.md' },
+    ]);
+    await runDelete(ctx, store, dCtxFor(folderSel), { skipConfirm: false });
+    expect(notify).toHaveBeenCalledWith(
+      'Deleted 2/3; 1 failed',
+      { level: 'error' },
+    );
+    expect(store.setSelection).toHaveBeenCalledWith(null);
+  });
+});

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+
+### Added
+
+- **Cross-shard live color panel.** New contribution point `'sh3-editor.color-panel'` lets external shards embed `sh3-editor:color-picker` as a live, bidirectionally-bound panel inside their own `App.initialLayout`. Hosts register a `ColorPanelDescriptor { slotId, initial, onChange, bind? }`; the picker emits `onChange(hex)` per user commit and history move, and the host pushes values back via the controller handed to `bind(ctrl)` (eyedropper, host-side undo). Complements `shell.color.pick()` (one-shot, §1.5). New module: `src/color-panel/` (`contributions.ts` + `select-binding.ts`). Picker mount dispatch now picks one binding source in priority order: intra-shard entry > descriptor > ad-hoc `meta`. See `docs/sh3-editor/color-picker.md` §1.6.
+
+### Changed
+
+- `ColorPicker.svelte` now accepts an optional `descriptorBinding` prop; the existing intra-shard `EditorApi.openColorPicker` path and ad-hoc `meta` path are unchanged. New `ColorPanelDescriptor` and `ColorPanelController` types re-exported from the package root.
+
 ## 0.6.3
 
 ### Added

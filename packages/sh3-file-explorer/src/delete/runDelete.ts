@@ -29,5 +29,27 @@ export async function runDelete(
     return;
   }
 
-  void store; void opts; void readPreview; void confirmDelete; void (sel.ref as DeleteTargetRef);
+  const ref = sel.ref as DeleteTargetRef;
+  const goStraightToDelete = ref.kind === 'file' && opts.skipConfirm;
+
+  if (!goStraightToDelete) {
+    // Phase 5.3 fills modal flow.
+    return;
+  }
+
+  if (ref.kind === 'file') {
+    try {
+      await browse.deleteFrom(ref.shardId, ref.path);
+      shell.toast.notify(`Deleted ${ref.path}`, { level: 'success' });
+      store.setSelection(null);
+    } catch (err) {
+      shell.toast.notify(
+        `Failed to delete ${ref.path}: ${err instanceof Error ? err.message : String(err)}`,
+        { level: 'error' },
+      );
+    }
+    return;
+  }
+
+  void readPreview; void confirmDelete;
 }

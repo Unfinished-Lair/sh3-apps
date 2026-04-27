@@ -81,3 +81,29 @@ describe('runDelete bail cases', () => {
     );
   });
 });
+
+describe('runDelete file path', () => {
+  it('skipConfirm=true on a file: calls deleteFrom once, success toast, clears selection', async () => {
+    const deleteFrom = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx(deleteFrom);
+    const store = makeStore();
+    await runDelete(ctx, store, dCtxFor(fileSel), { skipConfirm: true });
+    expect(confirmDelete).not.toHaveBeenCalled();
+    expect(deleteFrom).toHaveBeenCalledTimes(1);
+    expect(deleteFrom).toHaveBeenCalledWith('notes', 'a.md');
+    expect(notify).toHaveBeenCalledWith('Deleted a.md', { level: 'success' });
+    expect(store.setSelection).toHaveBeenCalledWith(null);
+  });
+
+  it('skipConfirm=true on a file: error during deleteFrom toasts error, does not clear selection', async () => {
+    const deleteFrom = vi.fn().mockRejectedValue(new Error('boom'));
+    const ctx = makeCtx(deleteFrom);
+    const store = makeStore();
+    await runDelete(ctx, store, dCtxFor(fileSel), { skipConfirm: true });
+    expect(notify).toHaveBeenCalledWith(
+      'Failed to delete a.md: boom',
+      { level: 'error' },
+    );
+    expect(store.setSelection).not.toHaveBeenCalled();
+  });
+});

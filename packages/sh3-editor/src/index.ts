@@ -5,4 +5,6 @@ export type {
   MatchingConfig,
   ToolbarAction,
   OpenDocumentOptions,
+  ColorPanelDescriptor,
+  ColorPanelController,
 } from './types';

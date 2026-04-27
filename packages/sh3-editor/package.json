@@ -1,6 +1,6 @@
 {
   "name": "@unfinished-lair/sh3-editor",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "Reusable text editor and object inspector shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",
@@ -23,6 +23,11 @@
       "types": "./dist/help/contributions.d.ts",
       "import": "./dist/help/contributions.js",
       "default": "./dist/help/contributions.js"
+    },
+    "./color-panel/contributions": {
+      "types": "./dist/color-panel/contributions.d.ts",
+      "import": "./dist/color-panel/contributions.js",
+      "default": "./dist/color-panel/contributions.js"
     }
   },
   "files": [
@@ -32,7 +37,9 @@
     "dist/settings/contributions.d.ts",
     "dist/settings/contributions.js",
     "dist/help/contributions.d.ts",
-    "dist/help/contributions.js"
+    "dist/help/contributions.js",
+    "dist/color-panel/contributions.d.ts",
+    "dist/color-panel/contributions.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.types.json && tsc -p tsconfig.runtime.json",

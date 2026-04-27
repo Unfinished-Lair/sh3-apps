@@ -229,3 +229,9 @@ export interface OpenColorPickerOptions {
   prefs?: ColorPickerPrefs;      // consumer-provided initial prefs from prior session
   compact?: boolean;             // tighter layout; inspector renderer sets true
 }
+
+// --- Cross-shard color-panel types (≥ 0.7.0) ---
+export type {
+  ColorPanelDescriptor,
+  ColorPanelController,
+} from './color-panel/contributions';

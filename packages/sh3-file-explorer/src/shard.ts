@@ -13,7 +13,7 @@ export const shard: SourceShard = {
     views: [
       { id: 'sh3-file-explorer-browser', label: 'Files', standalone: true },
     ],
-    permissions: ['documents:browse'],
+    permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
 
   activate(ctx: ShardContext) {

@@ -11,7 +11,7 @@ export const app: SourceApp = {
     label: 'File Explorer',
     requiredShards: ['sh3-file-explorer'],
     layoutVersion: 2,
-    permissions: ['documents:browse'],
+    permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
   initialLayout: {
     type: 'slot',

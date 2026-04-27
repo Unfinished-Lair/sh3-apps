@@ -6,6 +6,7 @@
   import { isModKey } from '../util/keybindings';
   import Toolbar from './Toolbar.svelte';
   import ColorPickerSurface from './ColorPickerSurface.svelte';
+  import type { ColorPanelDescriptor } from '../color-panel/contributions';
 
   interface Props {
     instanceId: string;
@@ -21,6 +22,11 @@
     /** When set, pushValue calls this instead of mutating entry.value + pushing history.
      *  Used by the inspector renderer to let the walker own the parent write + history. */
     onExternalCommit?: (hex: string) => void;
+    /** Cross-shard live panel binding. Resolved by shard.ts mount factory via
+     *  selectBindingSource; absent means no descriptor matched. Mutually exclusive
+     *  with the intra-shard entry path: when a descriptor is bound, `instanceId`
+     *  refers to a registry slot that has no entry (or is intentionally not opened). */
+    descriptorBinding?: ColorPanelDescriptor;
   }
 
   let {
@@ -34,14 +40,25 @@
     onSaveUserPalette,
     onDeleteUserPalette,
     onExternalCommit,
+    descriptorBinding,
   }: Props = $props();
 
   let entry = $derived(internals.colorPickers.get(instanceId));
   let toolbarActions = $derived(entry?.options.toolbarActions ?? []);
 
-  // --- Value source-of-truth: entry.value for standalone; adHocValue for ad-hoc. ---
+  // --- Descriptor-mode internal state ---
+  // When `descriptorBinding` is present (and no entry shadows it), the picker
+  // owns a transient $state seeded from descriptor.initial. User commits and
+  // history moves emit descriptor.onChange; controller.setValue mutates this
+  // state without echoing back through onChange.
+  let descriptorValue = $state(
+    descriptorBinding ? (normalizeHex(descriptorBinding.initial) ?? '#000000') : '#000000',
+  );
+
+  // --- Value source-of-truth: entry > descriptor > adHoc. ---
   let value = $derived.by(() => {
     if (entry) return entry.value;
+    if (descriptorBinding) return descriptorValue;
     return normalizeHex(adHocValue ?? '') ?? '#000000';
   });
   let readonly = $derived(entry ? Boolean(entry.options.readonly) : adHocReadonly);
@@ -61,6 +78,7 @@
     if (prev === normalized) return;
     const applyTarget = (h: string) => {
       if (entry) entry.value = h;
+      else if (descriptorBinding) descriptorValue = h;
     };
     history.push({
       apply: () => applyTarget(normalized),
@@ -69,12 +87,15 @@
     });
     applyTarget(normalized);
     internals.colorPickerValueChange.emit(instanceId, normalized);
+    if (descriptorBinding && !entry) descriptorBinding.onChange(normalized);
   }
 
-  // Emit on history movements (undo/redo mutates entry.value; fire the same event).
+  // Emit on history movements (undo/redo mutates entry.value or descriptorValue;
+  // fire both the internal bus and the descriptor's onChange so the host syncs).
   $effect(() => {
     const off = history.onChange(() => {
       internals.colorPickerValueChange.emit(instanceId, value);
+      if (descriptorBinding && !entry) descriptorBinding.onChange(value);
     });
     return () => off();
   });

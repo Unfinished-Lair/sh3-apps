@@ -28,10 +28,10 @@
       },
       "versions": [
         {
-          "version": "0.6.2",
+          "version": "0.7.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-editor-0.6.2.js",
-          "integrity": "sha384-dxPe36LGRlfY50EYiPDQ9TAV25utG2Dt/t/sYY87QvtW7dxiS5H8meK8974sMIUG"
+          "bundleUrl": "bundles/sh3-editor-0.7.0.js",
+          "integrity": "sha384-6Gw/G6MzxRoA9MrQh7uBOaDZUbX9jnm1R3uT4TyURZrNC1+dfQKURowFJg4KNch8"
         }
       ]
     },
@@ -97,10 +97,10 @@
       },
       "versions": [
         {
-          "version": "0.6.1",
+          "version": "0.7.0",
           "contractVersion": "1",
-          "bundleUrl": "bundles/sh3-file-explorer-app-0.6.1.js",
-          "integrity": "sha384-veXXIX6lzHQx3O1m47TlnrrUwq5i+HNroAZNsQl4hHbhIPjbc4cYJeN3f6bP9RHR"
+          "bundleUrl": "bundles/sh3-file-explorer-app-0.7.0.js",
+          "integrity": "sha384-FSRULHZBA3FnGYnvSAhfYLyCI8reRtLcg0Llff+fo3KLq1+XZiyqUnMhtsCGYq7S"
         }
       ]
     },

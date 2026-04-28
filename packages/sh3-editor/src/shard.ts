@@ -22,6 +22,13 @@ import ColorPicker from './views/ColorPicker.svelte';
 import ColorRenderer from './inspector/color-renderer.svelte';
 import Settings from './settings/Settings.svelte';
 import Help from './views/Help.svelte';
+import GraphHost from './graph/views/GraphHost.svelte';
+import { createDomainRegistry } from './graph/domain/registry';
+import {
+  GRAPH_DOMAIN_POINT, GRAPH_VIEW_POINT,
+  type GraphDomainContribution, type GraphViewDescriptor,
+} from './graph/contributions';
+import type { GraphAsset } from './graph/asset/types';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -30,6 +37,8 @@ let teardownRef: (() => void) | null = null;
 let unsubscribeContributions: (() => void) | null = null;
 let unregisterColorRenderer: (() => void) | null = null;
 let unregisterColorContribution: (() => void) | null = null;
+let domainRegistry: ReturnType<typeof createDomainRegistry> | null = null;
+let unsubscribeDomainContributions: (() => void) | null = null;
 
 export function getApi(): EditorApi | null {
   return apiRef;
@@ -45,6 +54,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
       { id: 'sh3-editor:help',         label: 'Help',         standalone: true },
+      { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
     ],
   },
 
@@ -194,6 +204,52 @@ export const shard: SourceShard = {
       },
     });
 
+    domainRegistry = createDomainRegistry();
+    const refreshDomainContributions = () => {
+      domainRegistry!.clear();
+      const contribs = ctx.contributions.list<GraphDomainContribution>(GRAPH_DOMAIN_POINT);
+      for (const c of contribs) domainRegistry!.register(c);
+    };
+    refreshDomainContributions();
+    unsubscribeDomainContributions = ctx.contributions.onChange(GRAPH_DOMAIN_POINT, refreshDomainContributions);
+
+    ctx.registerView('sh3-editor:graph', {
+      mount(container, context) {
+        const slotId = context.slotId;
+        const meta = context.meta as {
+          asset?: GraphAsset;
+          domainId?: string;
+          onChange?: (a: GraphAsset) => void;
+          readonly?: boolean;
+        } | undefined;
+
+        let component: ReturnType<typeof mount> | null = null;
+        const remount = () => {
+          if (component) { unmount(component); component = null; }
+          const descriptors = ctx.contributions.list<GraphViewDescriptor>(GRAPH_VIEW_POINT);
+          component = mount(GraphHost, {
+            target: container,
+            props: {
+              slotId,
+              meta,
+              descriptors,
+              domains: domainRegistry!,
+            },
+          });
+        };
+        remount();
+        const offDescChange = ctx.contributions.onChange(GRAPH_VIEW_POINT, remount);
+
+        return {
+          closable: true,
+          unmount() {
+            offDescChange();
+            if (component) { unmount(component); component = null; }
+          },
+        };
+      },
+    });
+
     ctx.registerView('sh3-editor:settings', {
       mount(container) {
         const component = mount(Settings, {
@@ -272,6 +328,10 @@ export const shard: SourceShard = {
   },
 
   deactivate() {
+    unsubscribeDomainContributions?.();
+    unsubscribeDomainContributions = null;
+    domainRegistry?.clear();
+    domainRegistry = null;
     unregisterColorRenderer?.();
     unregisterColorRenderer = null;
     unregisterColorContribution?.();

@@ -14,7 +14,17 @@
   "include": [
     "src/inspector/contributions.ts",
     "src/settings/contributions.ts",
-    "src/help/contributions.ts"
+    "src/help/contributions.ts",
+    "src/color-panel/contributions.ts",
+    "src/graph/contributions.ts",
+    "src/graph/types-export.ts",
+    "src/graph/history-export.ts",
+    "src/graph/asset/types.ts",
+    "src/graph/state/types.ts",
+    "src/graph/state/bridge.ts",
+    "src/graph/domain/types.ts",
+    "src/graph/domain/create.ts",
+    "src/graph/history/commands.ts"
   ],
   "exclude": ["**/*.svelte", "**/*.test.ts"]
 }

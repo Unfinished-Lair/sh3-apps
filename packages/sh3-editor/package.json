@@ -1,6 +1,6 @@
 {
   "name": "@unfinished-lair/sh3-editor",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Reusable text editor and object inspector shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",
@@ -28,6 +28,21 @@
       "types": "./dist/color-panel/contributions.d.ts",
       "import": "./dist/color-panel/contributions.js",
       "default": "./dist/color-panel/contributions.js"
+    },
+    "./graph/contributions": {
+      "types": "./dist/graph/contributions.d.ts",
+      "import": "./dist/graph/contributions.js",
+      "default": "./dist/graph/contributions.js"
+    },
+    "./graph/types": {
+      "types": "./dist/graph/types-export.d.ts",
+      "import": "./dist/graph/types-export.js",
+      "default": "./dist/graph/types-export.js"
+    },
+    "./graph/history": {
+      "types": "./dist/graph/history-export.d.ts",
+      "import": "./dist/graph/history-export.js",
+      "default": "./dist/graph/history-export.js"
     }
   },
   "files": [
@@ -39,7 +54,25 @@
     "dist/help/contributions.d.ts",
     "dist/help/contributions.js",
     "dist/color-panel/contributions.d.ts",
-    "dist/color-panel/contributions.js"
+    "dist/color-panel/contributions.js",
+    "dist/graph/contributions.d.ts",
+    "dist/graph/contributions.js",
+    "dist/graph/types-export.d.ts",
+    "dist/graph/types-export.js",
+    "dist/graph/history-export.d.ts",
+    "dist/graph/history-export.js",
+    "dist/graph/asset/types.d.ts",
+    "dist/graph/asset/types.js",
+    "dist/graph/state/types.d.ts",
+    "dist/graph/state/types.js",
+    "dist/graph/state/bridge.d.ts",
+    "dist/graph/state/bridge.js",
+    "dist/graph/domain/types.d.ts",
+    "dist/graph/domain/types.js",
+    "dist/graph/domain/create.d.ts",
+    "dist/graph/domain/create.js",
+    "dist/graph/history/commands.d.ts",
+    "dist/graph/history/commands.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.types.json && tsc -p tsconfig.runtime.json",

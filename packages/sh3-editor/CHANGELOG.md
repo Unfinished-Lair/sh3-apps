@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0 — 2026-04-28
+
+### Added
+- Graph Flow view (`sh3-editor:graph`).
+- `GraphDomain` contribution point (`sh3-editor.graph-domain`) — register a
+  domain via lazy factory; consumers ship templates, visuals, edge semantics,
+  and optional connection rules.
+- `GraphViewDescriptor` cross-shard binding (`sh3-editor.graph-view`) —
+  consumer supplies `slotId`, `domainId`, `initial: GraphAsset`, `onChange`,
+  optional `bind` callback receiving a `GraphController`.
+- New subpath exports: `./graph/contributions`, `./graph/types`,
+  `./graph/history`.
+- Inspector reuse — selected-node config edits flow through the existing
+  `INSPECTOR_RENDERER_POINT` via a `WalkerCommitOverride` that pushes
+  `set-node-config` commands onto the graph's `HistoryController`.
+
+### Notes
+- No execution Runner is bundled; consumers own execution semantics.
+- Domain providers must declare `autostart: true`.
+- `peerDependencies.sh3-core` unchanged at `^0.11.4`.
+
 ## 0.7.0
 
 ### Added

@@ -266,17 +266,47 @@
   const edgesArr = $derived(Array.from(props.state.edges.values()));
   const oriented = $derived(props.domain.edgeSemantics === 'oriented');
 
-  // Active-graph wiring. Keyboard shortcuts (Delete, Mod+Z/Y, Mod+Shift+Z)
-  // are registered as SH3 actions in shard.ts with scope
-  // 'focus:sh3-editor:graph'; their handlers read getActiveGraph() to find
-  // the focused instance. We publish ourselves as active on focusin and
-  // clear on unmount.
+  const ZOOM_STEP = 1.2;
+
+  function applyZoom(newZoom: number, focal?: { x: number; y: number }) {
+    const z = clampZoom(newZoom);
+    const f = focal ?? (canvasEl
+      ? { x: canvasEl.clientWidth / 2, y: canvasEl.clientHeight / 2 }
+      : { x: 0, y: 0 });
+    const gx = (f.x - viewport.x) / viewport.zoom;
+    const gy = (f.y - viewport.y) / viewport.zoom;
+    viewport = { x: f.x - gx * z, y: f.y - gy * z, zoom: z };
+  }
+
+  function zoomIn(focal?: { x: number; y: number })  { applyZoom(viewport.zoom * ZOOM_STEP, focal); }
+  function zoomOut(focal?: { x: number; y: number }) { applyZoom(viewport.zoom / ZOOM_STEP, focal); }
+  function zoomReset() { applyZoom(1); }
+  function doFitContent() {
+    if (!canvasEl) return;
+    const vp = fitToContent(
+      Array.from(props.state.nodes.values()),
+      { w: canvasEl.clientWidth, h: canvasEl.clientHeight },
+    );
+    viewport = vp;
+  }
+  function dismissPalette() { palette = null; paletteDropAt = null; }
+
+  // Active-graph wiring. Keyboard shortcuts (Delete, Mod+Z/Y, Mod+Shift+Z,
+  // viewport ops, Escape) are registered as SH3 actions in shard.ts with
+  // scope 'focus:sh3-editor:graph'; their handlers read getActiveGraph() to
+  // find the focused instance. We publish ourselves as active on focusin
+  // and clear on unmount.
   const activeRef: ActiveGraphRef = {
     get state() { return props.state; },
     get domain() { return props.domain; },
     get history() { return props.history; },
     onAssetChanged: () => props.onAssetChanged?.(),
     onSelectionChange: (ids) => props.onSelectionChange?.(ids),
+    zoomIn: (focal) => zoomIn(focal),
+    zoomOut: (focal) => zoomOut(focal),
+    zoomReset: () => zoomReset(),
+    fitContent: () => doFitContent(),
+    dismissPalette: () => dismissPalette(),
   };
 
   $effect(() => {

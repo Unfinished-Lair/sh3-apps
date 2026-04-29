@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.1 — 2026-04-30
+
+### Fixed
+- **`.viewport` wrapper swallowed pointer events.** The 0.9.0 viewport
+  introduced a full-canvas absolutely-positioned wrapper for pan/zoom
+  transforms; with default `pointer-events: auto`, its transformed bounds
+  intercepted clicks/drags meant for `.graph-canvas` (broke pan/empty-click
+  in panned regions) and routed pointermove targets in a way that broke
+  header drag. Now `pointer-events: none` on `.viewport`; `.graph-node` and
+  the SVG `g.edge` stroke opt back in.
+- **Clicking outside the open node-creation palette re-opened it.** The
+  canvas onclick handler now dismisses an open palette without calling
+  `onCanvasEmptyClick`.
+- **Bundling regression.** `vite.artifact.ts` external pattern
+  `/^svelte\//` externalized `svelte/reactivity` (introduced for SvelteMap/
+  SvelteSet in 0.9.0), but the SH3 host import map only resolves `svelte`
+  and `svelte/internal/client` (per `sh3-core/build` docs). Switched to an
+  explicit external list so SvelteMap/SvelteSet are bundled and call into
+  the host's externalized reactivity primitives at runtime.
+
 ## 0.9.0 — 2026-04-30
 
 ### Fixed

@@ -50,8 +50,9 @@ function recomputeNodeFields(state: GraphState, dom: GraphDomain, nodeId: NodeId
     if (e.targetNodeId === nodeId) connected.add(e.targetPortId);
   }
   const tmpl = dom.getTemplates().find((t) => t.type === n.type);
-  n.configFields = tmpl ? buildConfigFields(tmpl, n.config, connected) : [];
-  n.label = dom.resolveLabel(n.type, n.config);
+  const configFields = tmpl ? buildConfigFields(tmpl, n.config, connected) : [];
+  const label = dom.resolveLabel(n.type, n.config);
+  state.nodes.set(nodeId, { ...n, configFields, label });
 }
 
 export function makeAddNodeCommand(state: GraphState, dom: GraphDomain, asset: GraphAssetNode): GraphCommand {
@@ -130,8 +131,14 @@ export function makeMoveNodeCommand(
 ): GraphCommand {
   return {
     meta: { kind: 'move-node' },
-    apply() { const n = state.nodes.get(nodeId); if (n) n.position = { ...after }; },
-    revert() { const n = state.nodes.get(nodeId); if (n) n.position = { ...before }; },
+    apply() {
+      const n = state.nodes.get(nodeId);
+      if (n) state.nodes.set(nodeId, { ...n, position: { ...after } });
+    },
+    revert() {
+      const n = state.nodes.get(nodeId);
+      if (n) state.nodes.set(nodeId, { ...n, position: { ...before } });
+    },
   };
 }
 
@@ -139,24 +146,26 @@ export function makeSetNodeConfigCommand(
   state: GraphState, dom: GraphDomain, nodeId: NodeId,
   path: (string | number)[], before: unknown, after: unknown,
 ): GraphCommand {
-  function write(n: NodeState, value: unknown): void {
-    if (path.length === 0) return;
-    let cursor: any = n.config;
+  function withWrite(n: NodeState, value: unknown): NodeState {
+    if (path.length === 0) return n;
+    const newConfig = structuredClone(n.config) as Record<string, unknown>;
+    let cursor: any = newConfig;
     for (let i = 0; i < path.length - 1; i++) cursor = cursor[path[i] as any];
     cursor[path[path.length - 1] as any] = value;
+    return { ...n, config: newConfig };
   }
   return {
     meta: { kind: 'set-node-config' },
     apply() {
       const n = state.nodes.get(nodeId);
       if (!n) return;
-      write(n, after);
+      state.nodes.set(nodeId, withWrite(n, after));
       recomputeNodeFields(state, dom, nodeId);
     },
     revert() {
       const n = state.nodes.get(nodeId);
       if (!n) return;
-      write(n, before);
+      state.nodes.set(nodeId, withWrite(n, before));
       recomputeNodeFields(state, dom, nodeId);
     },
   };

@@ -2,6 +2,7 @@
   import GraphNode from './GraphNode.svelte';
   import GraphEdge from './GraphEdge.svelte';
   import GraphPalette from './GraphPalette.svelte';
+  import GraphToolbar from './GraphToolbar.svelte';
   import type { GraphState, NodeState, EdgeState, PortDefinition } from '../state/types';
   import type { GraphDomain, NodeVisuals, NodeTemplate } from '../domain/types';
   import type { HistoryController } from '../../types';
@@ -408,6 +409,13 @@
       onClose={() => palette = null}
     />
   {/if}
+  <GraphToolbar
+    zoom={viewport.zoom}
+    onZoomIn={() => zoomIn()}
+    onZoomOut={() => zoomOut()}
+    onZoomReset={() => zoomReset()}
+    onFit={() => doFitContent()}
+  />
 </div>
 
 <style>

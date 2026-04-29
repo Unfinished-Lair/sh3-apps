@@ -12,7 +12,12 @@ export default defineConfig({
     },
     outDir: 'dist/artifact',
     rollupOptions: {
-      external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
+      // Match SH3's documented external surface (sh3-core/build): only
+      // 'svelte' and 'svelte/internal/client' are guaranteed in the host's
+      // import map. Bundle other svelte subpaths (e.g. svelte/reactivity)
+      // — they're thin wrappers that still call into the externalized
+      // svelte/internal/client reactivity primitives at runtime.
+      external: ['sh3-core', /^sh3-core\//, 'svelte', 'svelte/internal/client'],
     },
   },
 });

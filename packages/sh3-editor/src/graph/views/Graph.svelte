@@ -359,8 +359,12 @@
      onclick={(ev) => {
        if (ev.target === ev.currentTarget) {
          clearSelection();
-         palette = null;
-         onCanvasEmptyClick(ev);
+         if (palette) {
+           palette = null;
+           paletteDropAt = null;
+         } else {
+           onCanvasEmptyClick(ev);
+         }
        }
      }}>
   <div class="viewport"
@@ -427,5 +431,11 @@
                   background-size: 20px 20px; outline: none; }
   .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
-  .viewport { position: absolute; inset: 0; transform-origin: 0 0; }
+  /* pointer-events:none lets clicks/drags inside the viewport's transformed
+     bounds fall through to .graph-canvas (for pan + empty-click + palette
+     dismiss). Children (.graph-node, g.edge stroke) opt back in via their
+     own pointer-events. Without this, a panned viewport "swallows" clicks
+     in any region the transformed div now covers, breaking pan, empty-click
+     and node interaction in those zones. */
+  .viewport { position: absolute; inset: 0; transform-origin: 0 0; pointer-events: none; }
 </style>

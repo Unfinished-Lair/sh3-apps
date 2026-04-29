@@ -74,6 +74,9 @@
     color: var(--text-color);
     user-select: none;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    /* Parent .viewport sets pointer-events:none so empty regions fall
+       through to .graph-canvas; nodes opt back in here. */
+    pointer-events: auto;
   }
   .graph-node.selected { outline: 2px solid var(--sh3-accent, #4a9eff); outline-offset: 1px; }
   .header { padding: 4px 8px; cursor: grab; font-weight: 600; border-bottom: 1px solid var(--border-color); display: flex; gap: 6px; align-items: center; }

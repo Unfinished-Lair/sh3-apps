@@ -91,8 +91,8 @@
     if (!dragState) return;
     const n = props.state.nodes.get(dragState.nodeId);
     if (!n) return;
-    const dx = ev.clientX - dragState.start.x;
-    const dy = ev.clientY - dragState.start.y;
+    const dx = (ev.clientX - dragState.start.x) / viewport.zoom;
+    const dy = (ev.clientY - dragState.start.y) / viewport.zoom;
     props.state.nodes.set(dragState.nodeId, {
       ...n,
       position: { x: dragState.origin.x + dx, y: dragState.origin.y + dy },
@@ -128,7 +128,10 @@
   function onCanvasPointerMove(ev: PointerEvent) {
     onHeaderPointerMove(ev);
     if (edgeDrag) {
-      edgeDrag.cursor = { x: ev.clientX, y: ev.clientY }; // graph-space conversion in Task 11
+      if (canvasEl) {
+        const rect = canvasEl.getBoundingClientRect();
+        edgeDrag.cursor = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+      }
     }
     if (panState && panState.pointerId === ev.pointerId) {
       const dx = ev.clientX - panState.startX;
@@ -214,19 +217,24 @@
     if (suppressNextEmptyClick) { suppressNextEmptyClick = false; return; }
     if (props.state.readonly) return;
     if (ev.target !== ev.currentTarget) return;
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
     if (props.domain.useNodePalette) {
-      const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+      // Keep palette anchor in screen-pixel space for layout (palette is outside .viewport),
+      // but stash the graph-space drop point for onPalettePick.
       palette = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      paletteDropAt = g;
     } else {
-      addFreeformAt(ev);
+      addFreeformAt(g);
     }
   }
 
-  function addFreeformAt(ev: MouseEvent) {
-    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+  let paletteDropAt: { x: number; y: number } | null = $state(null);
+
+  function addFreeformAt(g: { x: number; y: number }) {
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const node: GraphAssetNode = {
-      id, type: '', position: { x: ev.clientX - rect.left, y: ev.clientY - rect.top },
+      id, type: '', position: { x: g.x, y: g.y },
       config: {}, ports: [],
     };
     const cmd = makeAddNodeCommand(props.state, props.domain, node);
@@ -236,12 +244,13 @@
   }
 
   function onPalettePick(t: NodeTemplate) {
-    if (!palette) return;
+    const drop = paletteDropAt;
+    if (!drop) return;
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const ports: GraphAssetPort[] = t.ports.map((p) => ({ ...p, id: `${id}_${p.id}` }));
     const node: GraphAssetNode = {
       id, type: t.type,
-      position: { ...palette },
+      position: { ...drop },
       config: { ...t.defaultConfig },
       ports,
     };
@@ -250,6 +259,7 @@
     props.history.push(cmd);
     props.onAssetChanged?.();
     palette = null;
+    paletteDropAt = null;
   }
 
   const nodesArr = $derived(Array.from(props.state.nodes.values()));

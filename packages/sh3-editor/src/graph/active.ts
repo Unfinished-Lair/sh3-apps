@@ -8,6 +8,11 @@ export interface ActiveGraphRef {
   readonly history: HistoryController;
   onAssetChanged(): void;
   onSelectionChange(ids: string[]): void;
+  zoomIn(focal?: { x: number; y: number }): void;
+  zoomOut(focal?: { x: number; y: number }): void;
+  zoomReset(): void;
+  fitContent(): void;
+  dismissPalette(): void;
 }
 
 let active: ActiveGraphRef | null = null;

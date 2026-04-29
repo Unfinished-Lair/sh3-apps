@@ -11,6 +11,11 @@ function makeRef(): ActiveGraphRef {
     history: {} as ActiveGraphRef['history'],
     onAssetChanged() {},
     onSelectionChange() {},
+    zoomIn() {},
+    zoomOut() {},
+    zoomReset() {},
+    fitContent() {},
+    dismissPalette() {},
   };
 }
 
@@ -45,5 +50,25 @@ describe('graph/active', () => {
 
     clearActiveGraphIf(b);
     expect(getActiveGraph()).toBeNull();
+  });
+
+  it('forwards viewport calls to the active ref', () => {
+    const calls: string[] = [];
+    const ref: ActiveGraphRef = {
+      ...makeRef(),
+      zoomIn: () => calls.push('zoomIn'),
+      zoomOut: () => calls.push('zoomOut'),
+      zoomReset: () => calls.push('zoomReset'),
+      fitContent: () => calls.push('fitContent'),
+      dismissPalette: () => calls.push('dismissPalette'),
+    };
+    setActiveGraph(ref);
+    getActiveGraph()?.zoomIn();
+    getActiveGraph()?.zoomOut();
+    getActiveGraph()?.zoomReset();
+    getActiveGraph()?.fitContent();
+    getActiveGraph()?.dismissPalette();
+    expect(calls).toEqual(['zoomIn', 'zoomOut', 'zoomReset', 'fitContent', 'dismissPalette']);
+    clearActiveGraphIf(ref);
   });
 });

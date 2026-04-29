@@ -10,6 +10,7 @@
     makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand,
   } from '../history/commands';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
+  import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
 
   interface Props {
     state: GraphState;
@@ -164,6 +165,8 @@
   }
 
   let palette: { x: number; y: number } | null = $state(null);
+  let viewport: Viewport = $state({ x: 0, y: 0, zoom: 1 });
+  let canvasEl: HTMLDivElement | null = $state(null);
 
   function onCanvasEmptyClick(ev: MouseEvent) {
     if (props.state.readonly) return;
@@ -237,6 +240,7 @@
 </script>
 
 <div class="graph-canvas"
+     bind:this={canvasEl}
      tabindex="0"
      onfocusin={onCanvasFocusIn}
      onpointerdowncapture={onCanvasPointerDownCapture}
@@ -250,39 +254,43 @@
          onCanvasEmptyClick(ev);
        }
      }}>
-  <svg class="edge-overlay">
-    {#each edgesArr as e (e.id)}
-      <GraphEdge
-        id={e.id}
-        source={srcPoint(e)}
-        target={tgtPoint(e)}
-        color={edgeColor(e)}
-        oriented={oriented}
-        selected={props.state.selection.has(e.id)}
-        onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.ctrlKey || ev.metaKey); }}
+  <div class="viewport"
+       style:transform="translate({viewport.x}px, {viewport.y}px) scale({viewport.zoom})"
+       style:transform-origin="0 0">
+    <svg class="edge-overlay">
+      {#each edgesArr as e (e.id)}
+        <GraphEdge
+          id={e.id}
+          source={srcPoint(e)}
+          target={tgtPoint(e)}
+          color={edgeColor(e)}
+          oriented={oriented}
+          selected={props.state.selection.has(e.id)}
+          onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.ctrlKey || ev.metaKey); }}
+        />
+      {/each}
+      {#if edgeDrag}
+        {@const sourceNode = props.state.nodes.get(edgeDrag.source.nodeId)}
+        {#if sourceNode}
+          {@const start = endpointFor(sourceNode, edgeDrag.source.portId,
+                                      edgeDrag.source.direction === 'output' ? 'output' : 'input')}
+          <path class="edge-ghost" stroke="var(--sh3-accent, #4a9eff)" fill="none" stroke-dasharray="4 3"
+                d={`M ${start.x} ${start.y} L ${edgeDrag.cursor.x} ${edgeDrag.cursor.y}`} />
+        {/if}
+      {/if}
+    </svg>
+    {#each nodesArr as n (n.id)}
+      <GraphNode
+        node={n}
+        visuals={visualsFor(n)}
+        selected={props.state.selection.has(n.id)}
+        onSelectClick={(ev) => { ev.stopPropagation(); selectOne(n.id, ev.ctrlKey || ev.metaKey); }}
+        onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
+        onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}
+        onPortPointerUp={(p, ev) => onPortPointerUp(n, p, ev)}
       />
     {/each}
-    {#if edgeDrag}
-      {@const sourceNode = props.state.nodes.get(edgeDrag.source.nodeId)}
-      {#if sourceNode}
-        {@const start = endpointFor(sourceNode, edgeDrag.source.portId,
-                                    edgeDrag.source.direction === 'output' ? 'output' : 'input')}
-        <path class="edge-ghost" stroke="var(--sh3-accent, #4a9eff)" fill="none" stroke-dasharray="4 3"
-              d={`M ${start.x} ${start.y} L ${edgeDrag.cursor.x} ${edgeDrag.cursor.y}`} />
-      {/if}
-    {/if}
-  </svg>
-  {#each nodesArr as n (n.id)}
-    <GraphNode
-      node={n}
-      visuals={visualsFor(n)}
-      selected={props.state.selection.has(n.id)}
-      onSelectClick={(ev) => { ev.stopPropagation(); selectOne(n.id, ev.ctrlKey || ev.metaKey); }}
-      onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
-      onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}
-      onPortPointerUp={(p, ev) => onPortPointerUp(n, p, ev)}
-    />
-  {/each}
+  </div>
   {#if palette}
     <GraphPalette
       byCategory={props.domain.getTemplatesByCategory()}
@@ -303,4 +311,5 @@
                   background-size: 20px 20px; outline: none; }
   .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
+  .viewport { position: absolute; inset: 0; transform-origin: 0 0; }
 </style>

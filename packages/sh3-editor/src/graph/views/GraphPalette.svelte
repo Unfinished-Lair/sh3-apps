@@ -21,13 +21,7 @@
     }
     return m;
   });
-
-  function onKey(ev: KeyboardEvent) {
-    if (ev.key === 'Escape') props.onClose();
-  }
 </script>
-
-<svelte:window onkeydown={onKey} />
 
 <div class="palette" style:left="{props.x}px" style:top="{props.y}px">
   <input

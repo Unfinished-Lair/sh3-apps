@@ -280,6 +280,30 @@
     // (header, port, body) leave the canvas focused so shortcuts dispatch.
     (ev.currentTarget as HTMLElement).focus({ preventScroll: true });
   }
+
+  function onCanvasWheel(ev: WheelEvent) {
+    if (!canvasEl) return;
+    ev.preventDefault();
+    const rect = canvasEl.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    const gx = (mx - viewport.x) / viewport.zoom;
+    const gy = (my - viewport.y) / viewport.zoom;
+    const newZoom = clampZoom(viewport.zoom * (1 - ev.deltaY * 0.001));
+    viewport = {
+      x: mx - gx * newZoom,
+      y: my - gy * newZoom,
+      zoom: newZoom,
+    };
+  }
+
+  $effect(() => {
+    if (!canvasEl) return;
+    const el = canvasEl;
+    const handler = (ev: WheelEvent) => onCanvasWheel(ev);
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  });
 </script>
 
 <div class="graph-canvas"

@@ -128,7 +128,17 @@
   function onCanvasPointerMove(ev: PointerEvent) {
     onHeaderPointerMove(ev);
     if (edgeDrag) {
-      edgeDrag.cursor = { x: ev.clientX, y: ev.clientY };
+      edgeDrag.cursor = { x: ev.clientX, y: ev.clientY }; // graph-space conversion in Task 11
+    }
+    if (panState && panState.pointerId === ev.pointerId) {
+      const dx = ev.clientX - panState.startX;
+      const dy = ev.clientY - panState.startY;
+      if (!panState.panning && Math.abs(dx) + Math.abs(dy) > PAN_THRESHOLD_PX) {
+        panState.panning = true;
+      }
+      if (panState.panning) {
+        viewport = { ...viewport, x: panState.originVx + dx, y: panState.originVy + dy };
+      }
     }
   }
 
@@ -162,13 +172,46 @@
   function onCanvasPointerUp(ev: PointerEvent) {
     onHeaderPointerUp(ev);
     edgeDrag = null;
+    if (panState && panState.pointerId === ev.pointerId) {
+      const wasPanning = panState.panning;
+      panState = null;
+      if (wasPanning) {
+        // Suppress the synthetic click that would otherwise open the palette.
+        suppressNextEmptyClick = true;
+      }
+    }
   }
 
   let palette: { x: number; y: number } | null = $state(null);
   let viewport: Viewport = $state({ x: 0, y: 0, zoom: 1 });
   let canvasEl: HTMLDivElement | null = $state(null);
 
+  const PAN_THRESHOLD_PX = 4;
+
+  let panState: {
+    pointerId: number;
+    startX: number; startY: number;
+    originVx: number; originVy: number;
+    panning: boolean;
+  } | null = $state(null);
+
+  let suppressNextEmptyClick = $state(false);
+
+  function onCanvasPointerDown(ev: PointerEvent) {
+    // Pan only when the empty canvas itself was hit with primary button.
+    if (ev.target !== ev.currentTarget) return;
+    if (ev.button !== 0) return;
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+    panState = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX, startY: ev.clientY,
+      originVx: viewport.x, originVy: viewport.y,
+      panning: false,
+    };
+  }
+
   function onCanvasEmptyClick(ev: MouseEvent) {
+    if (suppressNextEmptyClick) { suppressNextEmptyClick = false; return; }
     if (props.state.readonly) return;
     if (ev.target !== ev.currentTarget) return;
     if (props.domain.useNodePalette) {
@@ -244,6 +287,7 @@
      tabindex="0"
      onfocusin={onCanvasFocusIn}
      onpointerdowncapture={onCanvasPointerDownCapture}
+     onpointerdown={onCanvasPointerDown}
      onpointermove={onCanvasPointerMove}
      onpointerup={onCanvasPointerUp}
      onpointercancel={onCanvasPointerUp}

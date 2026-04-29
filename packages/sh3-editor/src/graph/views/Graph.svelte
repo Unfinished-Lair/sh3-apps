@@ -60,14 +60,15 @@
       if (props.state.selection.has(id)) props.state.selection.delete(id);
       else props.state.selection.add(id);
     } else {
-      props.state.selection = new Set([id]);
+      props.state.selection.clear();
+      props.state.selection.add(id);
     }
     props.onSelectionChange?.(Array.from(props.state.selection));
   }
 
   function clearSelection() {
     if (props.state.selection.size === 0) return;
-    props.state.selection = new Set();
+    props.state.selection.clear();
     props.onSelectionChange?.([]);
   }
 

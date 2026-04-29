@@ -79,13 +79,14 @@ export function createGraphController(
     },
     select(ids) {
       if (!alive) return;
-      state.selection = new Set(ids);
+      state.selection.clear();
+      for (const id of ids) state.selection.add(id);
       emitSelection();
     },
     clearSelection() {
       if (!alive) return;
       if (state.selection.size === 0) { emitSelection(); return; }
-      state.selection = new Set();
+      state.selection.clear();
       emitSelection();
     },
     focus(target) { if (alive) focus?.focus(target); },

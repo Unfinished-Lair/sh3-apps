@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.9.0 — 2026-04-30
+
+### Fixed
+- **Node drag was unresponsive when the graph view was mounted by an external app.**
+  `GraphState` stored nodes/edges/selection in plain `Map`/`Set`, which Svelte 5
+  does not deeply proxy. `n.position = …` mutations during a drag did not
+  trigger re-renders; the moved node only repainted on incidental reactive
+  churn. Collections now use `SvelteMap` / `SvelteSet` from
+  `svelte/reactivity`, and all node-mutating commands (`make-move-node`,
+  `make-set-node-config`, internal `recomputeNodeFields`) replace the whole
+  value through the reactive `set()` instead of mutating in place.
+
+### Added
+- **Camera (pan + zoom)** for the graph view.
+  - Left-drag on empty canvas pans (4px click-vs-drag threshold; click still
+    opens the palette / freeform-adds a node).
+  - Mouse wheel zooms anchored at the cursor; clamped to `[0.2, 3]`.
+  - New helper module `src/graph/views/viewport.ts` (`clientToGraph`,
+    `fitToContent`, `clampZoom`) with unit tests.
+- **Floating viewport toolbar** (top-right of the graph canvas): zoom out,
+  current-zoom label that doubles as reset, zoom in, fit-content.
+- **Five new SH3 actions** under `scope: 'focus:sh3-editor:graph'`:
+  `sh3-editor:graph.zoom-in` (`Mod+=`), `…zoom-out` (`Mod+-`),
+  `…zoom-reset` (`Mod+0`), `…fit-content` (`Shift+1`),
+  `…dismiss-palette` (`Escape`, `allowInInputs: true`). Both the toolbar and
+  the keyboard share the same internal viewport ops, surfaced on
+  `ActiveGraphRef` (`zoomIn/Out/Reset`, `fitContent`, `dismissPalette`).
+
+### Changed
+- `GraphState.nodes`, `GraphState.edges`, `GraphState.selection` types
+  narrow from `Map`/`Set` to `SvelteMap`/`SvelteSet`. The public surface
+  (`get/set/delete/has/size/values/keys/iteration/clear`) is unchanged.
+- `GraphPalette` no longer registers `Escape` via `<svelte:window>`. The
+  graph subsystem now contains zero `<svelte:window>` instances — the same
+  `$.window`-undefined external-consumer crash class fixed for `Delete` /
+  undo / redo in 0.8.1.
+
 ## 0.8.1 — 2026-04-29
 
 ### Fixed

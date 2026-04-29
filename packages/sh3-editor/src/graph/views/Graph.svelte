@@ -90,10 +90,12 @@
     if (!dragState) return;
     const n = props.state.nodes.get(dragState.nodeId);
     if (!n) return;
-    n.position = {
-      x: dragState.origin.x + (ev.clientX - dragState.start.x),
-      y: dragState.origin.y + (ev.clientY - dragState.start.y),
-    };
+    const dx = ev.clientX - dragState.start.x;
+    const dy = ev.clientY - dragState.start.y;
+    props.state.nodes.set(dragState.nodeId, {
+      ...n,
+      position: { x: dragState.origin.x + dx, y: dragState.origin.y + dy },
+    });
   }
 
   function onHeaderPointerUp(_ev: PointerEvent) {

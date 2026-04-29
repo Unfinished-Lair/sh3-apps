@@ -7,8 +7,9 @@
   import type { HistoryController } from '../../types';
   import type { GraphAssetNode, GraphAssetPort } from '../asset/types';
   import {
-    makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand, makeRemoveSelectionCommand,
+    makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand,
   } from '../history/commands';
+  import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
 
   interface Props {
     state: GraphState;
@@ -202,35 +203,40 @@
     palette = null;
   }
 
-  function onKey(ev: KeyboardEvent) {
-    if (props.state.readonly) return;
-    if (ev.key === 'Delete' || ev.key === 'Backspace') {
-      if (props.state.selection.size === 0) return;
-      const ids = Array.from(props.state.selection);
-      const cmd = makeRemoveSelectionCommand(props.state, props.domain, ids);
-      cmd.apply();
-      props.history.push(cmd);
-      props.onSelectionChange?.([]);
-      props.onAssetChanged?.();
-    } else if ((ev.ctrlKey || ev.metaKey) && ev.key === 'z') {
-      if (ev.shiftKey) props.history.redo(); else props.history.undo();
-      props.onAssetChanged?.();
-      ev.preventDefault();
-    } else if ((ev.ctrlKey || ev.metaKey) && ev.key === 'y') {
-      props.history.redo();
-      props.onAssetChanged?.();
-      ev.preventDefault();
-    }
-  }
-
   const nodesArr = $derived(Array.from(props.state.nodes.values()));
   const edgesArr = $derived(Array.from(props.state.edges.values()));
   const oriented = $derived(props.domain.edgeSemantics === 'oriented');
+
+  // Active-graph wiring. Keyboard shortcuts (Delete, Mod+Z/Y, Mod+Shift+Z)
+  // are registered as SH3 actions in shard.ts with scope
+  // 'focus:sh3-editor:graph'; their handlers read getActiveGraph() to find
+  // the focused instance. We publish ourselves as active on focusin and
+  // clear on unmount.
+  const activeRef: ActiveGraphRef = {
+    get state() { return props.state; },
+    get domain() { return props.domain; },
+    get history() { return props.history; },
+    onAssetChanged: () => props.onAssetChanged?.(),
+    onSelectionChange: (ids) => props.onSelectionChange?.(ids),
+  };
+
+  $effect(() => {
+    return () => clearActiveGraphIf(activeRef);
+  });
+
+  function onCanvasFocusIn() { setActiveGraph(activeRef); }
+  function onCanvasPointerDownCapture(ev: PointerEvent) {
+    // Pointer events don't transfer focus by default, and child handlers
+    // call stopPropagation. Capture-phase focus ensures clicks anywhere
+    // (header, port, body) leave the canvas focused so shortcuts dispatch.
+    (ev.currentTarget as HTMLElement).focus({ preventScroll: true });
+  }
 </script>
 
-<svelte:window onkeydown={onKey} />
-
 <div class="graph-canvas"
+     tabindex="0"
+     onfocusin={onCanvasFocusIn}
+     onpointerdowncapture={onCanvasPointerDownCapture}
      onpointermove={onCanvasPointerMove}
      onpointerup={onCanvasPointerUp}
      onpointercancel={onCanvasPointerUp}
@@ -291,7 +297,7 @@
                   background-image:
                     linear-gradient(var(--sh3-grid, #2a2a2a) 1px, transparent 1px),
                     linear-gradient(90deg, var(--sh3-grid, #2a2a2a) 1px, transparent 1px);
-                  background-size: 20px 20px; }
+                  background-size: 20px 20px; outline: none; }
   .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
 </style>

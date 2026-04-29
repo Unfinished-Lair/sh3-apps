@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.1 — 2026-04-29
+
+### Fixed
+- **Graph view crashed at mount for external consumers.** `Graph.svelte` registered
+  `Delete` / `Mod+Z` / `Mod+Y` / `Mod+Shift+Z` via `<svelte:window onkeydown>`,
+  which compiled to `$.event('keydown', $.window, …)` and threw
+  `Cannot read properties of undefined (reading 'addEventListener')` whenever
+  the editor's compiled output ran against a Svelte runtime instance whose
+  `$.window` had not been initialised by the consumer's `mount()` path.
+- The graph view now registers its three shortcuts as SH3 actions
+  (`sh3-editor:graph.delete-selection`, `sh3-editor:graph.undo`,
+  `sh3-editor:graph.redo`, plus a hidden `…redo-alt` for `Mod+Y`) under
+  `scope: 'focus:sh3-editor:graph'`. The canvas is now `tabindex="0"` and
+  receives focus on capture-phase pointerdown so shortcuts dispatch reliably
+  regardless of which child element was clicked.
+
+### Internal
+- `src/graph/active.ts` — small module-level "active graph" registry. The
+  `Graph` component publishes itself on `focusin` and clears on unmount; the
+  shard-level action handlers read this registry to find the focused instance.
+  Multi-instance safe (LIFO swap-and-clear).
+
 ## 0.8.0 — 2026-04-28
 
 ### Added

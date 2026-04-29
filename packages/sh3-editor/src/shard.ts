@@ -29,6 +29,8 @@ import {
   type GraphDomainContribution, type GraphViewDescriptor,
 } from './graph/contributions';
 import type { GraphAsset } from './graph/asset/types';
+import { getActiveGraph } from './graph/active';
+import { makeRemoveSelectionCommand } from './graph/history/commands';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -323,6 +325,72 @@ export const shard: SourceShard = {
       run() {
         // Settings view is standalone-openable via the shell's view launcher.
         // Placeholder: full wiring belongs in a future task.
+      },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.delete-selection',
+      label: 'Delete Selection',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Delete',
+      paletteItem: true,
+      contextItem: true,
+      group: 'Graph',
+      run() {
+        const g = getActiveGraph();
+        if (!g || g.state.readonly || g.state.selection.size === 0) return;
+        const ids = Array.from(g.state.selection);
+        const cmd = makeRemoveSelectionCommand(g.state, g.domain, ids);
+        cmd.apply();
+        g.history.push(cmd);
+        g.onSelectionChange([]);
+        g.onAssetChanged();
+      },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.undo',
+      label: 'Undo',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+Z',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() {
+        const g = getActiveGraph();
+        if (!g || g.state.readonly) return;
+        if (g.history.undo()) g.onAssetChanged();
+      },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.redo',
+      label: 'Redo',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+Shift+Z',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() {
+        const g = getActiveGraph();
+        if (!g || g.state.readonly) return;
+        if (g.history.redo()) g.onAssetChanged();
+      },
+    });
+
+    // Windows-style alternate redo binding. Hidden from palette/context to
+    // avoid duplicate entries — primary redo action is above.
+    ctx.actions.register({
+      id: 'sh3-editor:graph.redo-alt',
+      label: 'Redo',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+Y',
+      paletteItem: false,
+      contextItem: false,
+      run() {
+        const g = getActiveGraph();
+        if (!g || g.state.readonly) return;
+        if (g.history.redo()) g.onAssetChanged();
       },
     });
   },

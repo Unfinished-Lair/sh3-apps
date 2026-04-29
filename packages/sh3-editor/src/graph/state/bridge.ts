@@ -1,7 +1,8 @@
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { GraphAsset, GraphAssetNode } from '../asset/types';
 import type { GraphDomain, NodeTemplate } from '../domain/types';
 import type {
-  EdgeState, FieldDescriptor, GraphState, NodeState, PortDefinition,
+  EdgeId, EdgeState, FieldDescriptor, GraphState, NodeId, NodeState, PortDefinition,
 } from './types';
 
 function shortPortId(nodeId: string, fullPortId: string): string {
@@ -54,13 +55,13 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
     set.add(shortPortId(e.targetNodeId, e.targetPortId));
   }
 
-  const nodes = new Map<string, NodeState>();
+  const nodes = new SvelteMap<string, NodeState>();
   for (const n of asset.nodes) {
     const conn = connectedByNode.get(n.id) ?? new Set<string>();
     nodes.set(n.id, nodeFromAsset(n, domain, conn));
   }
 
-  const edges = new Map<string, EdgeState>();
+  const edges = new SvelteMap<string, EdgeState>();
   for (const e of asset.edges) {
     const tgtPorts = portIds.get(e.targetNodeId);
     const srcPorts = portIds.get(e.sourceNodeId);
@@ -86,7 +87,7 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
     edges,
     metadata: { ...(asset.metadata ?? {}) },
     readonly: false,
-    selection: new Set(),
+    selection: new SvelteSet<NodeId | EdgeId>(),
   };
 }
 

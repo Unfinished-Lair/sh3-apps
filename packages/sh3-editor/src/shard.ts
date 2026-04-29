@@ -393,6 +393,62 @@ export const shard: SourceShard = {
         if (g.history.redo()) g.onAssetChanged();
       },
     });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.zoom-in',
+      label: 'Zoom In',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+=',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() { getActiveGraph()?.zoomIn(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.zoom-out',
+      label: 'Zoom Out',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+-',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() { getActiveGraph()?.zoomOut(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.zoom-reset',
+      label: 'Reset Zoom',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Mod+0',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() { getActiveGraph()?.zoomReset(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.fit-content',
+      label: 'Fit Content',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Shift+1',
+      paletteItem: true,
+      contextItem: false,
+      group: 'Graph',
+      run() { getActiveGraph()?.fitContent(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:graph.dismiss-palette',
+      label: 'Dismiss Palette',
+      scope: 'focus:sh3-editor:graph',
+      defaultShortcut: 'Escape',
+      allowInInputs: true,
+      paletteItem: false,
+      contextItem: false,
+      group: 'Graph',
+      run() { getActiveGraph()?.dismissPalette(); },
+    });
   },
 
   deactivate() {

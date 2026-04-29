@@ -1,3 +1,4 @@
+import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { GraphAssetPort } from '../asset/types';
 
 export type GraphId = string;
@@ -12,12 +13,12 @@ export interface GraphState {
   domainId: string;
   name: string;
   version: number;
-  nodes: Map<NodeId, NodeState>;
-  edges: Map<EdgeId, EdgeState>;
+  nodes: SvelteMap<NodeId, NodeState>;
+  edges: SvelteMap<EdgeId, EdgeState>;
   metadata: Record<string, unknown>;
   // editor-only
   readonly: boolean;
-  selection: Set<NodeId | EdgeId>;
+  selection: SvelteSet<NodeId | EdgeId>;
 }
 
 export interface PortDefinition extends GraphAssetPort {

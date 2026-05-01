@@ -1,7 +1,7 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
 import { shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
-import { InstanceRegistry } from './model/instance-registry';
+import { InstanceRegistry } from './model/instance-registry.svelte';
 import { createApi } from './model/api';
 import type { ApiInternals } from './model/api';
 import type { EditorApi, OpenDocumentOptions, InspectorMeta, ColorPalette } from './types';

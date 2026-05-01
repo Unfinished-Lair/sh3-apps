@@ -1,5 +1,5 @@
 import type { ContributionsApi } from 'sh3-core';
-import type { InstanceRegistry, RegistryEntry } from './model/instance-registry';
+import type { InstanceRegistry, RegistryEntry } from './model/instance-registry.svelte';
 import type { ApiInternals } from './model/api';
 import type { OpenDocumentOptions } from './types';
 import type {

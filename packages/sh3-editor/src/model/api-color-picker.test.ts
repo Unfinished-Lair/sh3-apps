@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createApi } from './api';
-import { InstanceRegistry } from './instance-registry';
+import { InstanceRegistry } from './instance-registry.svelte';
 import type { HistoryCommand } from '../types';
 
 function makeApi() {

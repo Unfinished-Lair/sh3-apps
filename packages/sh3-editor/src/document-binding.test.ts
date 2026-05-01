@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bindDocument } from './document-binding';
-import { InstanceRegistry } from './model/instance-registry';
+import { InstanceRegistry } from './model/instance-registry.svelte';
 import { createApi } from './model/api';
 import type { OpenDocumentOptions } from './types';
 

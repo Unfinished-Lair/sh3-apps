@@ -9,7 +9,7 @@ import type {
   ColorPickerPrefs,
   UserPrefs,
 } from '../types';
-import { InstanceRegistry } from './instance-registry';
+import { InstanceRegistry } from './instance-registry.svelte';
 import { InspectorRegistry } from './inspector-registry.svelte';
 import { ColorPickerRegistry } from './color-picker-registry.svelte';
 import { HistoryRegistry, createTextSwapCommand } from './history-registry';

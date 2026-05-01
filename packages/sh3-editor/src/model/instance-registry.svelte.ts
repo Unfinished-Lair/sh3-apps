@@ -29,7 +29,7 @@ export class InstanceRegistry {
       return this.entries.get(id)!;
     }
 
-    const document: EditorDocument = {
+    const document = $state<EditorDocument>({
       id,
       content: opts.content,
       filePath: opts.filePath ?? null,
@@ -39,7 +39,7 @@ export class InstanceRegistry {
       scrollLeft: 0,
       dirty: false,
       language: opts.language ?? null,
-    };
+    });
 
     const entry: RegistryEntry = {
       document,

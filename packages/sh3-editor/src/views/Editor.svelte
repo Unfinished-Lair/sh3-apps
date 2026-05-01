@@ -1,7 +1,7 @@
 <script lang="ts">
   import { shell } from 'sh3-core';
   import type { MatchingConfig, ToolbarAction, UserPrefs } from '../types';
-  import type { RegistryEntry } from '../model/instance-registry';
+  import type { RegistryEntry } from '../model/instance-registry.svelte';
   import type { ApiInternals } from '../model/api';
   import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
   import { createTextSwapCommand } from '../model/history-registry';

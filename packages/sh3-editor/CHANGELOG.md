@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.10.0 — 2026-05-01
+
+### Added
+- **`'sh3-editor.document'` contribution point.** Cross-shard consumers
+  bind a document to an editor slot by registering an
+  `EditorDocumentContribution` (slotId-keyed descriptor with `seed`,
+  optional `bind(replace)` push channel, optional per-slot
+  `onContentChange` / `onDirtyChange` / `onSave` / `onPrefsChange`
+  callbacks). Replaces `editor.openDocument(slotId, opts)` for new
+  consumers and adds a swap-without-remount story that the imperative
+  API never had.
+- **`@unfinished-lair/sh3-editor/contributions` subpath export.** Public
+  types (`EditorDocumentContribution`, `EditorDocumentSeed`) plus the
+  `EDITOR_DOCUMENT_POINT` string constant. Matches the existing
+  inspector / graph / color-panel idiom; consumers `import type` for the
+  descriptor types.
+
+### Changed
+- Editor view mount handler now resolves the slot's `RegistryEntry`
+  through the contribution lookup chain — contribution match → existing
+  imperative-API entry → lazy default. Both paths share the same
+  `InstanceRegistry`; no behavior change for existing consumers.
+
+### Deprecated
+- `EditorApi.openDocument`, `closeDocument`, `updateContent`,
+  `onContentChange`, `onDirtyChange`, `onSave`, `onPrefsChange`.
+  Replacement guidance in JSDoc and `docs/sh3-editor/editor.md`. Kept
+  for in-tree shards that have not migrated; will be removed in a
+  future major.
+
+### Notes
+- Reads (`getContent`, `isDirty`, `getDocument`, `listInstances`) and
+  `markClean` / `history(id)` are intentionally NOT deprecated — no
+  contribution equivalent in v1.
+- Contribution lookup is mount-time only. Late-bound contributions
+  (registered after the editor view has already mounted at that slotId)
+  are not adopted at runtime; register before the layout mounts (the
+  natural order, since `requiredShards` activate before `initialLayout`).
+- `replace({ content })` clears the slot's history. Cross-doc undo is
+  meaningless on a true document swap.
+
+## 0.9.3 — 2026-05-01
+
+### Fixed
+- **Editor view crashed when mounted directly via `initialLayout`.** Mounting
+  `sh3-editor:editor` at a slot before any `editor.openDocument(slotId, …)`
+  call left the registry entry undefined, and `Editor.svelte` threw
+  `Cannot read properties of undefined (reading 'document')` from the
+  `$derived(entry.document)` line. The mount handler now lazy-opens an
+  entry with the internal default options when one is missing, matching
+  the fallback behavior already documented in `docs/sh3-editor/editor.md`.
+
 ## 0.9.1 — 2026-04-30
 
 ### Fixed

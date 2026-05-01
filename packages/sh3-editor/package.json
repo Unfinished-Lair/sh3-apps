@@ -1,6 +1,6 @@
 {
   "name": "@unfinished-lair/sh3-editor",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Reusable text editor and object inspector shard for SH3",
   "author": "@unfinished-lair",
   "type": "module",
@@ -8,6 +8,11 @@
   "exports": {
     ".": {
       "types": "./dist/types.d.ts"
+    },
+    "./contributions": {
+      "types": "./dist/contributions.d.ts",
+      "import": "./dist/contributions.js",
+      "default": "./dist/contributions.js"
     },
     "./inspector/contributions": {
       "types": "./dist/inspector/contributions.d.ts",
@@ -47,6 +52,8 @@
   },
   "files": [
     "dist/types.d.ts",
+    "dist/contributions.d.ts",
+    "dist/contributions.js",
     "dist/inspector/contributions.d.ts",
     "dist/inspector/contributions.js",
     "dist/settings/contributions.d.ts",

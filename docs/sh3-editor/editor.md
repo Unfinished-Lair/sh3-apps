@@ -1,51 +1,121 @@
 # sh3-editor — Editor View
 
-**Package:** `@unfinished-lair/sh3-editor` (≥ 0.3.0)
-**Peer:** `sh3-core` ^0.10.4
+**Package:** `@unfinished-lair/sh3-editor` (≥ 0.10.0)
+**Peer:** `sh3-core` ^0.11.4
 **View id:** `sh3-editor:editor`
+**Contribution point:** `'sh3-editor.document'` (via `@unfinished-lair/sh3-editor/contributions`)
 
 ---
 
 ## 1. What it is
 
-`sh3-editor` is a reusable text-editor shard. It exposes a standalone Svelte view (`sh3-editor:editor`) and a programmatic `EditorApi` consumers reach via `getApi()` on the shard, or via `registeredShards` lookup. A single activation services any number of editor instances — each instance is keyed by the `slotId` of its mount.
+`sh3-editor` is a reusable text-editor shard. It exposes a standalone
+Svelte view (`sh3-editor:editor`) and binds documents to slots via the
+`'sh3-editor.document'` contribution point. A single activation services
+any number of editor instances — each instance is keyed by the `slotId` of
+its mount and bound to one `EditorDocumentContribution` descriptor.
 
-The editor is deliberately minimal: single-file text buffer with gutter line numbers, syntax-highlight hook, tab/brace/indent auto-editing, and undo/redo via a generic history bus (see §6).
+The editor is deliberately minimal: single-file text buffer with gutter
+line numbers, syntax-highlight hook, tab/brace/indent auto-editing, and
+undo/redo via a generic history bus (see §6).
 
 ---
 
-## 2. Opening a document
+## 2. Binding a document via contribution
+
+In your shard's `activate(ctx)`:
 
 ```ts
-import { getApi } from '@unfinished-lair/sh3-editor';
+import {
+  EDITOR_DOCUMENT_POINT,
+  type EditorDocumentContribution,
+} from '@unfinished-lair/sh3-editor/contributions';
 
-const api = getApi();
-api?.openDocument('my-slot-id', {
-  content: 'fn main() {\n  println!("hello");\n}',
-  language: 'rust',
-  filePath: 'src/main.rs',
-  matchingConfig: { indentType: 'brace', indentUnit: 2, braceStyle: 'inline' },
-  toolbarActions: [
-    { id: 'my:save', label: 'Save', onAction: () => { /* ... */ } },
-  ],
-});
+let currentNote = loadInitialNote();
+
+const binding: EditorDocumentContribution = {
+  slotId: 'scribe-main',                        // matches your initialLayout slot
+  seed: {
+    content: currentNote.text,
+    language: 'markdown',
+    filePath: currentNote.path,
+    matchingConfig: { indentType: 'indent', indentUnit: 2 },
+  },
+  bind(replace) {
+    handleToReplace = replace;                  // stash for later swaps (§2.1)
+    return () => { handleToReplace = null; };
+  },
+  onContentChange(content) {
+    currentNote.text = content;
+    queueAutosave();
+  },
+  onSave() {
+    persistNow(currentNote);
+  },
+};
+
+ctx.contributions.register<EditorDocumentContribution>(
+  EDITOR_DOCUMENT_POINT,
+  binding,
+);
 ```
 
-The `id` argument MUST match the `slotId` the view is mounted at; the view's `mount` callback looks the entry up via `registry.get(slotId)`. If the slot is mounted before `openDocument` is called, the view falls back to an internal default (`"Hello, World"`), so production usage should always open first.
+When the editor view mounts at `slotId === 'scribe-main'` (i.e. anywhere
+in the active app's layout), it walks `ctx.contributions.list(EDITOR_DOCUMENT_POINT)`,
+picks the descriptor whose `slotId` matches, and:
 
-### `OpenDocumentOptions`
+- builds the slot's `RegistryEntry` from `seed`,
+- calls `bind(replace)` once with a fresh closure scoped to that mount,
+- subscribes the `onContentChange` / `onDirtyChange` / `onSave` /
+  `onPrefsChange` callbacks to the matching slot's events.
+
+On slot unmount, the editor invokes the disposer returned from `bind` and
+unsubscribes every forwarder.
+
+### 2.1 Swapping the document
+
+Call the `replace` you stashed inside `bind`:
+
+```ts
+function openNote(next: Note) {
+  currentNote = next;
+  handleToReplace?.({
+    content: next.text,
+    filePath: next.path,
+    language: detectLanguage(next.path),
+  });
+}
+```
+
+Behavior:
+
+- `replace({ content })` clears the slot's history (cross-doc undo would
+  be meaningless), resets cursor and dirty state, and fires
+  `onContentChange` + `onDirtyChange(false)`. Same-content replaces are
+  silent.
+- `replace({ filePath, language, matchingConfig, prefs, fontSize,
+  showSettings, toolbarActions, highlight })` updates fields on the live
+  entry without mutating the buffer. No content events fire.
+- The Svelte component is **not** remounted — cursor / scroll / textarea
+  identity survive across swaps.
+
+If you need to gate a swap on dirty state, mirror the dirty flag via
+`onDirtyChange` and check it before calling `replace`. The editor itself
+performs no "unsaved changes?" UX — that's the contributor's call.
+
+### 2.2 `EditorDocumentSeed` fields
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `content` | `string` | *(required)* | Initial buffer text. |
-| `filePath` | `string` | `null` | Shown in the toolbar as the file chip; informational only — the editor does not read or write this path. |
-| `language` | `string` | `null` | Forwarded to `highlight(text, language)`. |
-| `highlight` | `(text, language) => string` | `escapeHtml` | Syntax-highlight hook. Returns HTML which is rendered in the background layer. The textarea stays transparent and sits on top. |
-| `matchingConfig` | `MatchingConfig` | `{ indentType: 'none' }` | Indent + brace auto-edit config (see §3). |
-| `toolbarActions` | `ToolbarAction[]` | `[]` | Caller-supplied actions that merge with the built-in settings gear (see §8). |
+| `filePath` | `string \| null` | `null` | Toolbar file chip; informational. |
+| `language` | `string \| null` | `null` | Forwarded to `highlight(text, language)`. |
+| `highlight` | `(text, language) => string` | `escapeHtml` | Syntax-highlight hook. Returns HTML rendered in the background layer. |
+| `matchingConfig` | `MatchingConfig` | `{ indentType: 'none' }` | Indent + brace auto-edit config (§3). |
+| `prefs` | `UserPrefs` | *(inherited from `matchingConfig`)* | User-owned overrides. Shallow-merged. |
 | `fontSize` | `number` | `13` | Editor font size in px. |
-| `prefs` | `UserPrefs` | *(inherited from `matchingConfig`)* | User-owned overrides loaded from a prior session. Shallow-merged over `matchingConfig`. |
-| `showSettings` | `boolean` | `true` when sub-options exist | Hides the built-in settings gear entirely when `false`. |
+| `showSettings` | `boolean` | auto | Hide the built-in settings gear when sub-options exist. |
+| `toolbarActions` | `ToolbarAction[]` | `[]` | Caller-supplied actions merged with the built-in gear. |
 
 ---
 
@@ -80,16 +150,22 @@ interface MatchingConfig {
 
 ---
 
-## 5. Events
+## 5. Per-slot callbacks
 
-All event subscribers return a `() => void` unsubscriber. Subscribers observe all instances; filter by `id` in the callback.
+Every callback on `EditorDocumentContribution` runs only for events
+targeting the descriptor's `slotId`. There is no cross-instance leakage
+to filter for. Multi-pane editors register one descriptor per pane.
 
-| Event | Fires when |
+| Callback | Fires when |
 |---|---|
-| `onContentChange((id, content) => …)` | `updateContent` commits a new buffer value, including undo/redo paths. |
-| `onDirtyChange((id, dirty) => …)` | Dirty flag flips after a user edit or after `markClean(id)`. |
-| `onSave((id) => …)` | User presses Ctrl+S with focus on the editor textarea. The editor does NOT do I/O — consumers handle persistence. |
-| `onPrefsChange((id, prefs) => …)` | User changes an indent or brace-style pref via the settings gear. |
+| `onContentChange(content)` | An edit (or a `replace({ content })`) commits a new buffer value. |
+| `onDirtyChange(dirty)` | Dirty flag flips after a user edit or after `replace({ content })` resets it. |
+| `onSave()` | User presses Ctrl/Cmd+S with focus on the editor textarea. The editor does no I/O. |
+| `onPrefsChange(prefs)` | User changes an indent or brace-style pref via the settings gear. |
+
+The legacy `EditorApi.onContentChange / onDirtyChange / onSave /
+onPrefsChange` global subscribers continue to fire alongside these
+callbacks — see "Legacy" at the bottom.
 
 ---
 
@@ -136,34 +212,76 @@ All shortcuts fire only when the editor textarea holds keyboard focus; the edito
 
 ## 8. Toolbar actions
 
-`ToolbarAction[]` supplied in `OpenDocumentOptions.toolbarActions` render as buttons above the gutter. The editor automatically appends a built-in settings gear (id `sh3-editor:settings`, group `_editor_builtin`) when `showSettings` is truthy and `MatchingConfig` exposes sub-options. Actions are grouped by their `group` field; adjacent actions with different groups get a separator.
-
-Example — opening a doc and subscribing to save:
+`toolbarActions` on the descriptor's `seed` (or replaced via
+`replace({ toolbarActions })`) render as buttons above the gutter. The
+editor automatically appends a built-in settings gear (id
+`sh3-editor:settings`, group `_editor_builtin`) when `showSettings` is
+truthy and `MatchingConfig` exposes sub-options.
 
 ```ts
-activate(ctx: ShardContext) {
-  const editor = ctx.registeredShards['sh3-editor']?.api as EditorApi | undefined;
-  if (!editor) return;
-
-  editor.openDocument('my-slot', {
+const binding: EditorDocumentContribution = {
+  slotId: 'scribe-main',
+  seed: {
     content: loadedText,
     language: 'javascript',
     matchingConfig: { indentType: 'brace', indentUnit: 2 },
-  });
-
-  const off = editor.onSave(async (id) => {
-    if (id !== 'my-slot') return;
-    const text = editor.getContent(id);
-    await persist(text);
-    editor.markClean(id);
-  });
-
-  // Remember to call `off()` on deactivate.
-}
+    toolbarActions: [
+      { id: 'scribe:save', label: 'Save', onAction: () => persist(currentNote) },
+    ],
+  },
+  onSave: () => persist(currentNote),
+};
 ```
+
+---
+
+## Type-only subpath
+
+Public types ship at `@unfinished-lair/sh3-editor/contributions`:
+
+```ts
+import type {
+  EditorDocumentContribution,
+  EditorDocumentSeed,
+} from '@unfinished-lair/sh3-editor/contributions';
+
+import { EDITOR_DOCUMENT_POINT } from '@unfinished-lair/sh3-editor/contributions';
+```
+
+The runtime file ships exactly one symbol — the `EDITOR_DOCUMENT_POINT`
+string constant. Bare specifiers from other shards do not reach the SH3
+runtime rewriter, so always `import type` for the descriptor types — see
+[Shard Authoring → Type exports](https://github.com/Unfinished-Lair/sh3/blob/main/docs/shard-authoring.md#type-exports)
+for the rationale.
 
 ---
 
 ## 9. See also
 
 - [inspector.md](./inspector.md) — object inspector view shipped by the same shard.
+
+---
+
+## Legacy: imperative `EditorApi.openDocument` (deprecated, ≥ 0.10.0)
+
+> Deprecated since 0.10.0; kept for in-tree shards that have not migrated.
+> New consumers should bind via the contribution point above.
+
+```ts
+import { getApi } from '@unfinished-lair/sh3-editor';
+
+const api = getApi();
+api?.openDocument('my-slot-id', {
+  content: 'fn main() {\n  println!("hello");\n}',
+  language: 'rust',
+});
+```
+
+The imperative path is a `getApi()` accessor on the shard plus
+`EditorApi.openDocument(id, opts)`. It populates the same internal
+`InstanceRegistry` the contribution path uses — so behavior at the slot
+is identical. Deprecated methods: `openDocument`, `closeDocument`,
+`updateContent`, `onContentChange`, `onDirtyChange`, `onSave`,
+`onPrefsChange`. Reads (`getContent`, `isDirty`, `getDocument`,
+`listInstances`) and `markClean` / `history(id)` remain on `EditorApi`
+as the canonical surface.

@@ -151,13 +151,40 @@ export interface EditorApi {
   isDirty(instanceId: string): boolean;
   getDocument(instanceId: string): EditorDocument | null;
   listInstances(): string[];
+  /**
+   * @deprecated since 0.10.0 — register an `EditorDocumentContribution`
+   *   under `EDITOR_DOCUMENT_POINT` from `@unfinished-lair/sh3-editor/contributions`
+   *   instead. Kept for in-tree shards that haven't migrated; will be
+   *   removed in a future major.
+   */
   openDocument(id: string, opts: OpenDocumentOptions): void;
+  /**
+   * @deprecated since 0.10.0 — dispose the contribution registration
+   *   (the disposer returned from `ctx.contributions.register`) instead.
+   */
   closeDocument(id: string): void;
+  /**
+   * @deprecated since 0.10.0 — call the `replace` callback handed to your
+   *   `EditorDocumentContribution.bind(replace)` hook with `{ content }`.
+   */
   updateContent(id: string, content: string, cursorStart: number, cursorEnd: number): void;
   markClean(id: string): void;
+  /**
+   * @deprecated since 0.10.0 — set `EditorDocumentContribution.onContentChange`
+   *   on the descriptor for the slot you care about; per-slot, no id-filter.
+   */
   onContentChange(callback: (id: string, content: string) => void): () => void;
+  /**
+   * @deprecated since 0.10.0 — use `EditorDocumentContribution.onDirtyChange`.
+   */
   onDirtyChange(callback: (id: string, dirty: boolean) => void): () => void;
+  /**
+   * @deprecated since 0.10.0 — use `EditorDocumentContribution.onSave`.
+   */
   onSave(callback: (id: string) => void): () => void;
+  /**
+   * @deprecated since 0.10.0 — use `EditorDocumentContribution.onPrefsChange`.
+   */
   onPrefsChange(callback: (id: string, prefs: UserPrefs) => void): () => void;
 
   // Inspector additions

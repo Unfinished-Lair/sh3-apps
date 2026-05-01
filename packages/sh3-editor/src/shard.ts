@@ -31,6 +31,7 @@ import {
 import type { GraphAsset } from './graph/asset/types';
 import { getActiveGraph } from './graph/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
+import { bindDocument } from './document-binding';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -134,9 +135,15 @@ export const shard: SourceShard = {
 
     ctx.registerView('sh3-editor:editor', {
       mount(container, context) {
-        const instanceId = context.slotId;
-        const entry = registry!.get(instanceId);
-        const opts = entry?.options || defaultOptions;
+        const slotId = context.slotId;
+        const { entry, cleanup } = bindDocument({
+          slotId,
+          contributions: ctx.contributions,
+          registry: registry!,
+          internals: internalsRef!,
+          defaultOptions,
+        });
+        const opts = entry.options;
         const component = mount(Editor, {
           target: container,
           props: {
@@ -151,7 +158,10 @@ export const shard: SourceShard = {
         });
         return {
           closable: true,
-          unmount() { unmount(component); },
+          unmount() {
+            cleanup();
+            unmount(component);
+          },
         };
       },
     });

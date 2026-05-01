@@ -12,6 +12,7 @@
     "isolatedModules": true
   },
   "include": [
+    "src/contributions.ts",
     "src/inspector/contributions.ts",
     "src/settings/contributions.ts",
     "src/help/contributions.ts",

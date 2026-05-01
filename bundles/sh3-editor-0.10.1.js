@@ -34,7 +34,7 @@ class Oi {
     if (this.entries.has(t))
       return this.entries.get(t);
     const s = {
-      document: {
+      document: e.proxy({
         id: t,
         content: r.content,
         filePath: r.filePath ?? null,
@@ -44,7 +44,7 @@ class Oi {
         scrollLeft: 0,
         dirty: !1,
         language: r.language ?? null
-      },
+      }),
       options: r,
       prefs: Ni(r.matchingConfig, r.prefs)
     };

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.1 — 2026-05-01
+
+### Fixed
+- **Editor view did not repaint when `replace()` updated content via
+  `EDITOR_DOCUMENT_POINT`.** `EditorDocument` fields were stored as plain
+  object properties, so `replace({ content })` mutations from the
+  contribution descriptor were not tracked by Svelte 5's reactivity
+  system. The document is now a `$state`-wrapped object inside
+  `InstanceRegistry`. `Editor.svelte`'s existing `$effect` against
+  `doc.content` now fires on field mutation as designed. Reads-only API
+  and intra-editor typing were unaffected; this regression only surfaced
+  when an external producer pushed content through the contribution
+  point's `replace` channel.
+
 ## 0.10.0 — 2026-05-01
 
 ### Added

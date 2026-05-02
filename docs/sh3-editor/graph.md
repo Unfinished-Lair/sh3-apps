@@ -646,8 +646,8 @@ The same rule governs `INSPECTOR_RENDERER_POINT`, `'sh3-editor.color-panel'`, et
 - [editor.md](./editor.md) — the text editor shipped by the same shard.
 - [inspector.md](./inspector.md) — the generic object inspector and `INSPECTOR_RENDERER_POINT`. The graph view reuses this surface for selected-node config edits.
 - [color-picker.md](./color-picker.md) — companion view; analogous descriptor + controller pattern at `'sh3-editor.color-panel'`.
-- `packages/sh3-editor/docs/graph-flow.md` — package-internal quick-start mirror of this doc.
-- `packages/sh3-editor/docs/authoring-graph-domains.md` — recipe-style guide for domain authors.
+- [`./graph/flow.md`](./graph/flow.md) — quick-start mirror of this doc.
+- [`./graph/authoring-domains.md`](./graph/authoring-domains.md) — recipe-style guide for domain authors.
 
 ---
 

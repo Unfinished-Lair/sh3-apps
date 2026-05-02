@@ -7,4 +7,5 @@ export type {
   OpenDocumentOptions,
   ColorPanelDescriptor,
   ColorPanelController,
+  PreviewLinkEvent,
 } from './types';

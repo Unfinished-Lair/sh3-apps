@@ -17,6 +17,7 @@ import {
   type HelpTabContribution,
 } from './help/contributions';
 import Editor from './views/Editor.svelte';
+import Reader from './views/Reader.svelte';
 import Inspector from './views/Inspector.svelte';
 import ColorPicker from './views/ColorPicker.svelte';
 import ColorRenderer from './inspector/color-renderer.svelte';
@@ -53,6 +54,7 @@ export const shard: SourceShard = {
     label: 'Editor',
     views: [
       { id: 'sh3-editor:editor',       label: 'Editor',       standalone: true },
+      { id: 'sh3-editor:reader',       label: 'Reader',       standalone: true },
       { id: 'sh3-editor:inspector',    label: 'Inspector',    standalone: true },
       { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
@@ -136,13 +138,14 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:editor', {
       mount(container, context) {
         const slotId = context.slotId;
-        const { entry, cleanup } = bindDocument({
+        const bindResult = bindDocument({
           slotId,
           contributions: ctx.contributions,
           registry: registry!,
           internals: internalsRef!,
           defaultOptions,
         });
+        const { entry, cleanup } = bindResult;
         const opts = entry.options;
         const component = mount(Editor, {
           target: container,
@@ -154,6 +157,42 @@ export const shard: SourceShard = {
             fontSize: opts.fontSize,
             toolbarActions: opts.toolbarActions,
             showSettings: opts.showSettings,
+            render: opts.render,
+            transform: opts.transform,
+            startInPreview: opts.startInPreview,
+            onLinkClick: bindResult.onLinkClick,
+          },
+        });
+        return {
+          closable: true,
+          unmount() {
+            cleanup();
+            unmount(component);
+          },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-editor:reader', {
+      mount(container, context) {
+        const slotId = context.slotId;
+        const bindResult = bindDocument({
+          slotId,
+          contributions: ctx.contributions,
+          registry: registry!,
+          internals: internalsRef!,
+          defaultOptions,
+        });
+        const { entry, cleanup } = bindResult;
+        const opts = entry.options;
+        const component = mount(Reader, {
+          target: container,
+          props: {
+            entry,
+            toolbarActions: opts.toolbarActions,
+            render: opts.render,
+            transform: opts.transform,
+            onLinkClick: bindResult.onLinkClick,
           },
         });
         return {

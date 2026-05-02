@@ -293,3 +293,75 @@ describe('bindDocument — edit-flow-back forwarders', () => {
     expect(onContentChange).toHaveBeenCalledWith('swapped');
   });
 });
+
+describe('document-binding — preview additions (0.11.0)', () => {
+  it('threads seed.render and seed.startInPreview into the resolved options', () => {
+    const customRender = (t: string) => `<x>${t}</x>`;
+    const ctx = makeContextWithContributions([{
+      slotId: 'p1',
+      seed: { content: 'hello', render: customRender, startInPreview: true },
+    }]);
+    const { entry } = bindDocument({ slotId: 'p1', ...ctx });
+    expect(entry.options.render).toBe(customRender);
+    expect(entry.options.startInPreview).toBe(true);
+  });
+
+  it('makeReplace updates seed.render at runtime', () => {
+    const r1 = (t: string) => `<a>${t}</a>`;
+    const r2 = (t: string) => `<b>${t}</b>`;
+    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 'p2',
+      seed: { content: '', render: r1 },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry, cleanup } = bindDocument({ slotId: 'p2', ...ctx });
+    expect(entry.options.render).toBe(r1);
+    captured({ render: r2 });
+    expect(entry.options.render).toBe(r2);
+    cleanup();
+  });
+
+  it('exposes the bound contribution onLinkClick on the result', () => {
+    const onLinkClick = () => 'handled' as const;
+    const ctx = makeContextWithContributions([{
+      slotId: 'p3',
+      seed: { content: '' },
+      onLinkClick,
+    }]);
+    const result = bindDocument({ slotId: 'p3', ...ctx });
+    expect(result.onLinkClick).toBe(onLinkClick);
+  });
+
+  it('result.onLinkClick is undefined when no contribution is bound', () => {
+    const ctx = makeContextWithContributions([]);
+    const result = bindDocument({ slotId: 'p4', ...ctx });
+    expect(result.onLinkClick).toBeUndefined();
+  });
+
+  it('threads seed.transform into the resolved options', () => {
+    const customTransform = (t: string) => `T:${t}`;
+    const ctx = makeContextWithContributions([{
+      slotId: 'p5',
+      seed: { content: 'hello', transform: customTransform },
+    }]);
+    const { entry } = bindDocument({ slotId: 'p5', ...ctx });
+    expect(entry.options.transform).toBe(customTransform);
+  });
+
+  it('makeReplace updates seed.transform at runtime', () => {
+    const t1 = (t: string) => `1:${t}`;
+    const t2 = (t: string) => `2:${t}`;
+    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 'p6',
+      seed: { content: '', transform: t1 },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry, cleanup } = bindDocument({ slotId: 'p6', ...ctx });
+    expect(entry.options.transform).toBe(t1);
+    captured({ transform: t2 });
+    expect(entry.options.transform).toBe(t2);
+    cleanup();
+  });
+});

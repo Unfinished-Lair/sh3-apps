@@ -3,6 +3,7 @@ import {
   EDITOR_DOCUMENT_POINT,
   type EditorDocumentSeed,
   type EditorDocumentContribution,
+  type PreviewLinkEvent,
 } from './contributions';
 
 describe('contributions module', () => {
@@ -25,5 +26,38 @@ describe('contributions module', () => {
       filePath?: string | null;
       language?: string | null;
     }>();
+  });
+});
+
+describe('contributions module — preview additions (0.11.0)', () => {
+  it('seed accepts optional render and startInPreview', () => {
+    const seed: EditorDocumentSeed = {
+      content: '# md',
+      render: (t, _l) => `<custom>${t}</custom>`,
+      startInPreview: true,
+    };
+    expect(typeof seed.render).toBe('function');
+    expect(seed.startInPreview).toBe(true);
+  });
+
+  it('contribution accepts optional onLinkClick', () => {
+    const contrib: EditorDocumentContribution = {
+      slotId: 'x',
+      seed: { content: '' },
+      onLinkClick(e) {
+        return e.kind === 'external' ? 'handled' : 'default';
+      },
+    };
+    expect(typeof contrib.onLinkClick).toBe('function');
+  });
+
+  it('PreviewLinkEvent has the documented shape', () => {
+    const e: PreviewLinkEvent = {
+      href: '#x',
+      kind: 'anchor',
+      event: {} as MouseEvent,
+      slotId: 's',
+    };
+    expect(e.kind).toBe('anchor');
   });
 });

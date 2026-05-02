@@ -18,5 +18,8 @@ export default defineConfig({
       '**/*.{test,spec}.?(c|m)[jt]s?(x)',
       '**/*.{test,spec}.svelte.?(c|m)[jt]s?(x)',
     ],
+    environmentMatchGlobs: [
+      ['src/preview/**', 'jsdom'],
+    ],
   },
 });

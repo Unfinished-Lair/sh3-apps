@@ -69,3 +69,105 @@ The Help view is also a registered standalone view (`sh3-editor:help`) — pin i
 Help aggregates tabs from any shard that registers against the `sh3-editor:help.tabs` contribution point. Use this to ship integrated guides, changelogs, cheatsheets, or any read-only reference content.
 
 See [`docs/authoring-help-tabs.md`](./docs/authoring-help-tabs.md) for the full authoring guide.
+
+## Markdown / richtext preview
+
+The editor supports a rendered preview of the buffer. Two ways to use it:
+
+### In-editor preview toggle
+
+`sh3-editor:editor` shows a 👁 toolbar button when the document is renderable
+(language === `'markdown'`, filePath ends in `.md`, or the contribution provides
+its own `render`). Click to switch to a rendered view; click again to return to
+edit mode. `Ctrl+Shift+V` is the same toggle. The textarea state (cursor,
+selection, undo) is preserved across toggles.
+
+To start a document directly in preview mode:
+
+```typescript
+ctx.contributions.register<EditorDocumentContribution>(EDITOR_DOCUMENT_POINT, {
+  slotId: 'my-slot',
+  seed: {
+    content: '# Hello\n\nMarkdown here.',
+    language: 'markdown',
+    startInPreview: true,
+  },
+});
+```
+
+### Standalone reader view
+
+`sh3-editor:reader` is a read-only view registered as a standalone shard view.
+Hosts mount it via `SlotNode { viewId: 'sh3-editor:reader', slotId: '<slot>' }`
+and feed it documents through the same `EDITOR_DOCUMENT_POINT`. Use it for
+docs-folder browsers, changelog viewers, anywhere edit isn't needed.
+
+### Custom renderers
+
+By default, markdown is rendered with the bundled `marked`-based renderer.
+Override per slot with the `render` field on the seed:
+
+```typescript
+{
+  slotId: 'my-slot',
+  seed: {
+    content,
+    language: 'asciidoc',
+    render: (text, language) => myAsciidocToHtml(text),
+  },
+}
+```
+
+### Pre-render transform
+
+For small text rewrites that should still feed the bundled markdown renderer
+(wiki-link sugar, footnote stubs, etc.), use `transform` instead of replacing
+the renderer entirely. The transform receives the raw buffer and runs before
+sh3-editor's resolved renderer:
+
+```typescript
+{
+  slotId: 'my-slot',
+  seed: {
+    content,
+    language: 'markdown',
+    // [[uuid|Label]] → [Label](wiki:uuid)
+    transform: (text) => text.replace(
+      /\[\[([^\]|]+)\|([^\]]+)\]\]/g,
+      (_m, target, label) => `[${label}](wiki:${target})`,
+    ),
+  },
+  onLinkClick(e) {
+    if (e.href.startsWith('wiki:')) {
+      myRouter.openByUuid(e.href.slice('wiki:'.length));
+      return 'handled';
+    }
+  },
+}
+```
+
+`transform` composes with `render`: if both are set, `transform` runs first.
+If `render` is omitted and the document is markdown, the transformed text
+flows into the bundled `marked`-based renderer — no extra dependency needed.
+
+### Link clicks
+
+Anchors inside rendered content are intercepted. The contribution receives an
+`onLinkClick` callback for in-app navigation:
+
+```typescript
+{
+  slotId: 'my-slot',
+  seed: { content, language: 'markdown' },
+  onLinkClick(e) {
+    if (e.kind === 'internal') {
+      navigateTo(e.href);
+      return 'handled';
+    }
+    // 'default' (or void) lets sh3-editor apply default behavior:
+    //  - 'anchor' → scroll to matching id
+    //  - 'external' → shell.openExternal or window.open
+    //  - 'internal' → no-op
+  },
+}
+```

@@ -5,4 +5,5 @@ export type {
   MatchingConfig,
   ToolbarAction,
   OpenDocumentOptions,
+  PreviewLinkEvent,
 } from './types';

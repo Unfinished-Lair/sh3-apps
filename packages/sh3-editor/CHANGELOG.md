@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.11.1 — 2026-05-02
+
+### Added
+- **`EditorDocumentSeed.transform`** — optional `(text, language) => text`
+  pre-render hook that runs before the resolved renderer. Lets contributors
+  do small rewrites (wiki-link sugar, footnote stubs) without bundling their
+  own markdown parser; the transformed text still flows into the bundled
+  `marked`-based renderer when `render` is omitted and the document is
+  markdown. Composes with `render` when both are set (`transform` runs
+  first).
+
+## 0.11.0 — 2026-05-01
+
+### Added
+- **Markdown / richtext preview surface.** A new `Preview` component
+  renders HTML produced by either the bundled `marked`-based default
+  markdown renderer or a contribution-supplied `render(text, language)`
+  hook. Used in two places:
+  - **In-editor toggle.** `sh3-editor:editor` gains a 👁 toolbar button
+    and `Ctrl+Shift+V` hotkey that swap between the textarea and a
+    rendered preview of the same buffer. Textarea state (cursor,
+    selection, undo) is preserved across toggles.
+  - **Standalone reader view.** New shard view `sh3-editor:reader`,
+    a read-only surface hosts can place via `SlotNode`. Driven by the
+    same `EDITOR_DOCUMENT_POINT` contribution; swap documents through
+    `replace()` to navigate.
+- **`EditorDocumentSeed.render`** — optional `(text, language) => HTML`
+  override per slot. Falls back to bundled markdown when absent and the
+  document looks like markdown (language === `'markdown'` or filePath
+  ends in `.md`); otherwise falls back to escaped `<pre>`.
+- **`EditorDocumentSeed.startInPreview`** — editor-only initial-state
+  flag; the toggle defaults to `false` when omitted.
+- **`EditorDocumentContribution.onLinkClick(e)`** — intercept anchor
+  clicks inside rendered content. Receives `{ href, kind, event, slotId }`
+  where `kind` is `'anchor' | 'external' | 'internal'`. Return
+  `'handled'` to suppress default behavior; default behavior scrolls
+  on `anchor`, opens via `shell.openExternal` (or `window.open`) on
+  `external`, no-ops on `internal`.
+- **`PreviewLinkEvent` exported type.** Available from
+  `@unfinished-lair/sh3-editor` and `@unfinished-lair/sh3-editor/contributions`.
+
+### Internal
+- New runtime dependency: `marked` ^15.0.0.
+- New helpers under `src/preview/`: `link-classify`, `link-delegation`,
+  `markdown`, `render-resolve`. All pure modules with unit tests.
+- `bindDocument` now exposes `onLinkClick` on its result for the editor
+  and reader mounts to forward into `<Preview/>`.
+
 ## 0.10.1 — 2026-05-01
 
 ### Fixed

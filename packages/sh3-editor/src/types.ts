@@ -87,6 +87,12 @@ export interface OpenDocumentOptions {
   prefs?: UserPrefs;
   /** When false, hides the built-in settings gear even if sub-options exist. Default auto. */
   showSettings?: boolean;
+  /** Preview/reader render hook. See contributions.ts for full semantics. */
+  render?: (text: string, language: string | null) => string;
+  /** Preview/reader pre-render hook. See contributions.ts for full semantics. */
+  transform?: (text: string, language: string | null) => string;
+  /** Editor-only: start the editor in preview mode. Default false. */
+  startInPreview?: boolean;
 }
 
 /** Recursive meta tree — per-field hints keyed alongside the inspected value. */
@@ -262,3 +268,6 @@ export type {
   ColorPanelDescriptor,
   ColorPanelController,
 } from './color-panel/contributions';
+
+// --- Preview / Reader (≥ 0.11.0) ---
+export type { PreviewLinkEvent } from './contributions';

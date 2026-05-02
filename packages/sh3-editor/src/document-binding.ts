@@ -23,6 +23,9 @@ export interface BindDocumentResult {
   /** Run on slot unmount. Releases bind disposer + edit-flow-back
    *  forwarders. Idempotent. */
   cleanup(): void;
+  /** Forwarded from the bound contribution, if any. Preview/Reader call this
+   *  on rendered-link clicks. */
+  onLinkClick?: EditorDocumentContribution['onLinkClick'];
 }
 
 /** Mount-time helper for `sh3-editor:editor`. Resolves the slot to a
@@ -90,6 +93,7 @@ export function bindDocument(opts: BindDocumentOptions): BindDocumentResult {
       }
       offs.length = 0;
     },
+    onLinkClick: bound?.onLinkClick,
   };
 }
 
@@ -116,6 +120,9 @@ function makeReplace(
     if (next.showSettings !== undefined) entry.options.showSettings = next.showSettings;
     if (next.toolbarActions !== undefined) entry.options.toolbarActions = next.toolbarActions;
     if (next.highlight !== undefined) entry.options.highlight = next.highlight;
+    if (next.render !== undefined) entry.options.render = next.render;
+    if (next.transform !== undefined) entry.options.transform = next.transform;
+    if (next.startInPreview !== undefined) entry.options.startInPreview = next.startInPreview;
   };
 }
 
@@ -129,5 +136,8 @@ function seedToOpenOpts(seed: EditorDocumentSeed): OpenDocumentOptions {
   if (seed.showSettings !== undefined) opts.showSettings = seed.showSettings;
   if (seed.toolbarActions !== undefined) opts.toolbarActions = seed.toolbarActions;
   if (seed.highlight !== undefined) opts.highlight = seed.highlight;
+  if (seed.render !== undefined) opts.render = seed.render;
+  if (seed.transform !== undefined) opts.transform = seed.transform;
+  if (seed.startInPreview !== undefined) opts.startInPreview = seed.startInPreview;
   return opts;
 }

@@ -7,6 +7,9 @@
   import { createTextSwapCommand } from '../model/history-registry';
   import Toolbar from './Toolbar.svelte';
   import TextEditorSettings from './TextEditorSettings.svelte';
+  import Preview from './Preview.svelte';
+  import { resolveRender } from '../preview/render-resolve';
+  import type { PreviewLinkEvent } from '../contributions';
 
   interface Props {
     entry: RegistryEntry;
@@ -16,6 +19,10 @@
     fontSize?: number;
     toolbarActions?: ToolbarAction[];
     showSettings?: boolean;
+    render?: (text: string, language: string | null) => string;
+    transform?: (text: string, language: string | null) => string;
+    startInPreview?: boolean;
+    onLinkClick?: (e: PreviewLinkEvent) => 'handled' | 'default' | void;
   }
 
   let {
@@ -26,10 +33,34 @@
     fontSize = 13,
     toolbarActions = [],
     showSettings,
+    render,
+    transform,
+    startInPreview = false,
+    onLinkClick,
   }: Props = $props();
 
   let doc = $derived(entry.document);
   let local = $state(doc.content);
+
+  let previewActive = $state(startInPreview);
+
+  let resolvedRender = $derived(
+    resolveRender({
+      render,
+      transform,
+      language: doc.language,
+      filePath: doc.filePath,
+    }),
+  );
+
+  let previewHtml = $derived(
+    previewActive ? resolvedRender(local, doc.language) : '',
+  );
+
+  let previewSupported = $derived(
+    !!render || doc.language === 'markdown' ||
+      (doc.language == null && typeof doc.filePath === 'string' && doc.filePath.endsWith('.md')),
+  );
 
   let indentType = $derived(
     matchingConfig?.indentType ?? (matchingConfig?.indentBased ? 'indent' : 'none'),
@@ -63,16 +94,41 @@
   }
 
   let mergedToolbarActions = $derived.by(() => {
-    if (!gearVisible) return toolbarActions;
-    const gear: ToolbarAction = {
-      id: 'sh3-editor:toolbar',
-      label: 'Settings',
-      icon: '⚙',
-      onAction: openSettingsModal,
-      group: '_editor_builtin',
-    };
-    return [...toolbarActions, gear];
+    const out: ToolbarAction[] = [...toolbarActions];
+
+    if (previewSupported) {
+      const toggle: ToolbarAction = {
+        id: 'sh3-editor:preview-toggle',
+        label: previewActive ? 'Edit' : 'Preview',
+        icon: previewActive ? '✎' : '👁',
+        shortcut: 'Ctrl+Shift+V',
+        onAction: togglePreview,
+        accent: previewActive,
+        group: '_editor_builtin',
+      };
+      out.push(toggle);
+    }
+
+    if (gearVisible) {
+      const gear: ToolbarAction = {
+        id: 'sh3-editor:toolbar',
+        label: 'Settings',
+        icon: '⚙',
+        onAction: openSettingsModal,
+        group: '_editor_builtin',
+      };
+      out.push(gear);
+    }
+
+    return out;
   });
+
+  function togglePreview() {
+    previewActive = !previewActive;
+    if (!previewActive) {
+      requestAnimationFrame(() => textareaEl?.focus());
+    }
+  }
 
   function handlePrefsChange(next: UserPrefs) {
     entry.prefs = { ...entry.prefs, ...next } as typeof entry.prefs;
@@ -158,6 +214,13 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
+    if (e.key.toLowerCase() === 'v' && isModKey(e) && e.shiftKey) {
+      if (!previewSupported) return;
+      e.preventDefault();
+      togglePreview();
+      return;
+    }
+
     if (e.key === 's' && isModKey(e)) {
       e.preventDefault();
       internals.emitSave(doc.id);
@@ -245,8 +308,8 @@
 <div class="editor-container">
   <Toolbar actions={mergedToolbarActions} filePath={doc.filePath} />
 
-  <div class="editor-wrap" style:--editor-font-size="{fontSize}px">
-    <div class="gutter">
+  <div class="editor-wrap" style:--editor-font-size="{fontSize}px" class:preview-mode={previewActive}>
+    <div class="gutter" class:gutter-hidden={previewActive}>
       <div class="gutter-inner" style:transform="translateY(-{scrollTop}px)">
         {#each lineNumbers as n (n)}
           <div class="line-num">{n}</div>
@@ -257,6 +320,7 @@
     <div class="editor-body">
       <pre
         class="highlight-layer"
+        class:layer-hidden={previewActive}
         aria-hidden="true"
         style:top="-{scrollTop}px"
         style:left="-{scrollLeft}px"
@@ -265,6 +329,7 @@
       <textarea
         bind:this={textareaEl}
         class="input-layer"
+        class:layer-hidden={previewActive}
         value={local}
         spellcheck={false}
         autocapitalize="off"
@@ -273,6 +338,12 @@
         onscroll={handleScroll}
         onselect={handleSelect}
       ></textarea>
+
+      {#if previewActive}
+        <div class="preview-layer">
+          <Preview html={previewHtml} slotId={doc.id} {onLinkClick} />
+        </div>
+      {/if}
     </div>
   </div>
 </div>
@@ -367,6 +438,15 @@
 
   .input-layer::selection {
     background: rgba(97, 175, 239, 0.25);
+  }
+
+  .layer-hidden { display: none; }
+  .gutter-hidden { display: none; }
+  .preview-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    overflow: hidden;
   }
 
   /* Syntax token colors */

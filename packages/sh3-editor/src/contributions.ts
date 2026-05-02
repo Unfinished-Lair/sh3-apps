@@ -1,3 +1,4 @@
+import type { LinkKind } from './preview/link-classify';
 import type { MatchingConfig, ToolbarAction, UserPrefs } from './types';
 
 /**
@@ -28,6 +29,20 @@ export interface EditorDocumentSeed {
   toolbarActions?: ToolbarAction[];
   /** Syntax-highlight hook returning HTML. Default escapes the buffer. */
   highlight?: (text: string, language: string) => string;
+  /** Preview/reader render hook. Receives buffer + language, returns HTML.
+   *  When absent and language === 'markdown' (or filePath ends in .md and
+   *  language is null), the bundled default markdown renderer is used.
+   *  When absent for any other language, Preview falls back to escaped
+   *  <pre>{content}</pre>. */
+  render?: (text: string, language: string | null) => string;
+  /** Pre-render text→text hook. Runs before the resolved renderer
+   *  (the explicit `render`, the bundled markdown renderer, or the
+   *  `<pre>` fallback). Use for small text rewrites — wiki-link sugar,
+   *  footnote stubs — without bundling a markdown parser yourself. */
+  transform?: (text: string, language: string | null) => string;
+  /** Editor-only: whether the editor toggle starts in preview mode. Ignored
+   *  by the Reader view (which is always preview). Default false. */
+  startInPreview?: boolean;
 }
 
 /** Descriptor registered under EDITOR_DOCUMENT_POINT. One descriptor binds
@@ -55,4 +70,25 @@ export interface EditorDocumentContribution {
   onSave?(): void;
   /** Editor → contributor: settings gear changed prefs. */
   onPrefsChange?(prefs: UserPrefs): void;
+
+  /** Preview/reader → contributor: user clicked an <a> in rendered content.
+   *  Return 'handled' to suppress all default behavior; return 'default' (or
+   *  void) to apply sh3-editor's default behavior for the link kind. */
+  onLinkClick?(e: PreviewLinkEvent): 'handled' | 'default' | void;
+}
+
+/** Payload delivered to `EditorDocumentContribution.onLinkClick` when a
+ *  Preview surface intercepts an anchor click. */
+export interface PreviewLinkEvent {
+  /** Raw href from the <a> element, unmodified. */
+  href: string;
+  /** Best-effort classification — 'anchor' (#fragment), 'external' (any
+   *  scheme: prefix), or 'internal' (everything else). Contributors can
+   *  override semantics by returning 'handled' and acting on `href` directly. */
+  kind: LinkKind;
+  /** The original click event. preventDefault() has already been called by
+   *  sh3-editor; provided for modifier-key inspection. */
+  event: MouseEvent;
+  /** slotId of the contribution that owns this preview surface. */
+  slotId: string;
 }

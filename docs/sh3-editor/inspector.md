@@ -1,51 +1,136 @@
 # sh3-editor — Inspector View
 
-**Package:** `@unfinished-lair/sh3-editor` (≥ 0.3.0)
-**Peer:** `sh3-core` ^0.10.4
+**Package:** `@unfinished-lair/sh3-editor` (≥ 0.3.0; instance contribution since 0.12.0)
+**Peer:** `sh3-core` ^0.11.4
 **View id:** `sh3-editor:inspector`
 
 ---
 
 ## 1. What it is
 
-A generic object inspector shipped by `sh3-editor`. The view renders any JavaScript value and dispatches on a type tag to consumer-supplied renderers; when no renderer matches, a fallback walker descends into plain objects and arrays and exposes primitive leaves as editable `<input>`s. Edits are reversible through the same per-instance history bus used by the text editor (see [editor.md §6](./editor.md#6-history)), so Ctrl+Z / Ctrl+Y work out of the box and external shards can call `api.history(instanceId).undo()` programmatically.
+A generic object inspector shipped by `sh3-editor`. The view renders any JavaScript value and dispatches on a type tag to consumer-supplied renderers; when no renderer matches, a fallback walker descends into plain objects and arrays and exposes primitive leaves as editable `<input>`s. Edits are reversible through the same per-instance history bus used by the text editor (see [editor.md §6](./editor.md#6-history)), so Ctrl+Z / Ctrl+Y work out of the box.
+
+Cross-shard consumers seed inspector slots and observe edits via the
+**`INSPECTOR_INSTANCE_POINT`** contribution (since 0.12.0). The legacy
+`EditorApi.openInspector` / `closeInspector` / `getInspectorValue` /
+`listInspectorInstances` / `onInspectorValueChange` surface remains for
+in-tree shards but is `@deprecated` — see §11.
 
 ---
 
-## 2. Open API
+## 2. Binding an inspector via contribution
 
-Programmatic use mirrors `openDocument`:
+The canonical cross-shard path. A host shard registers an
+`InspectorInstanceContribution` against the slot id of the inspector view it
+mounts in its app's `initialLayout`:
 
 ```ts
-api.openInspector('my-inspector-slot', {
-  value: myState,
-  meta: { label: 'My Config', fields: { secret: { hidden: true } } },
-  readonly: false,
-  toolbarActions: [],
-});
+import {
+  INSPECTOR_INSTANCE_POINT,
+  type InspectorInstanceContribution,
+} from '@unfinished-lair/sh3-editor/inspector/contributions';
 
-api.getInspectorValue('my-inspector-slot');    // the same `value` reference
-api.listInspectorInstances();                  // ['my-inspector-slot', …]
-api.closeInspector('my-inspector-slot');       // releases the entry + its history
+activate(ctx) {
+  const state = $state({ name: 'Salepate', count: 0, fg: '#ff0000' });
 
-const off = api.onInspectorValueChange((id, value) => { /* … */ });
+  let bindHandle: { replace: (next: any) => void; history: any } | null = null;
+
+  ctx.contributions.register<InspectorInstanceContribution>(
+    INSPECTOR_INSTANCE_POINT,
+    {
+      slotId: 'my-app:inspector',
+      seed: {
+        value: state,
+        meta: { fields: { fg: { type: 'color' } } },
+        readonly: false,
+        toolbarActions: [],
+      },
+      bind(handle) {
+        bindHandle = handle;
+        return () => { bindHandle = null; };
+      },
+      onValueChange(value) {
+        // fires on walker commits, custom-renderer push, undo/redo
+        console.log('inspector edited', value);
+      },
+    },
+  );
+}
 ```
 
-### `OpenInspectorOptions`
+The descriptor's `slotId` field matches at mount time. The first matching
+descriptor wins; a second descriptor for the same `slotId` logs a
+`console.warn` and is ignored.
 
-| Field | Type | Default | Meaning |
-|---|---|---|---|
-| `value` | `unknown` | *(required)* | The value to inspect. Most use cases wrap this in `$state(…)` so that walker mutations re-render the view. Non-reactive values still render, but you must subscribe to `onInspectorValueChange` to observe edits. |
-| `meta` | `InspectorMeta` | — | Per-field hint tree (see §4). |
-| `readonly` | `boolean` | `false` | Forces all fields read-only regardless of per-field meta. |
-| `toolbarActions` | `ToolbarAction[]` | `[]` | Optional toolbar rendered above the body. |
-| `onCommit` | `WalkerCommitOverride` | — | **0.4.1+.** Route walker field commits through a consumer-owned sink (e.g. the caller's own `editor.dispatch`). See §8.1. |
+### Swapping the inspected value
 
-> **Rebinding a mounted inspector (0.4.2+).** `Inspector.svelte` tracks the registry reactively. Calling `closeInspector(id)` followed by `openInspector(id, newOpts)` re-renders the live view with the new value, meta, and `onCommit`. History is released on `close` (fresh undo stack per rebinding) — wrap the value in a stable reference if you want undo to carry across rebinds.
+`bind` is the push channel. The inspector calls it once at mount with a
+handle scoped to that mount; the contributor stashes it and calls
+`handle.replace({ value: nextRef })` to swap the inspected object without
+remounting the view.
+
+```ts
+// Later, when the user selects a different node:
+bindHandle?.replace({ value: nextNode });
+```
+
+**Semantics:**
+
+- `replace({ value: nextRef })` — value-swap. Clears the slot's history
+  (commands captured against the previous object hold dead references),
+  fires `onValueChange`. No-op when `nextRef === entry.value`.
+- `replace({ meta })`, `replace({ readonly })`, `replace({ toolbarActions })`
+  — field-only swaps. Silent (no events, no history clear). Property-presence
+  semantics (`'value' in next`) so passing `undefined` or `null` is treated
+  as an explicit clear, not as "skip this field."
+
+### Outside-the-slot undo / redo
+
+`handle.history` is a `HistoryController` keyed to the slot — the same
+controller `EditorApi.history(slotId)` returns. Contributors call
+`.undo()` / `.redo()` / `.onChange(...)` / `.peek()` from anywhere without
+needing the editor's `getApi()`:
+
+```ts
+bindHandle?.history.undo();
+bindHandle?.history.onChange(() => { /* re-render some external mirror */ });
+```
+
+### Routing field commits through your own editor
+
+`onCommit` on the descriptor (top-level — set at register time, NOT
+swappable via `replace`) intercepts walker field commits before the default
+in-place mutation + history push. Useful when the host owns its own editor
+with its own undo stack and wants walker edits to join that stack:
+
+```ts
+ctx.contributions.register<InspectorInstanceContribution>(
+  INSPECTOR_INSTANCE_POINT,
+  {
+    slotId: 'my-app:inspector',
+    seed: { value: selectedNode, meta: { fields: { fill: { type: 'color' } } } },
+    onCommit(path, next) {
+      // path: ['fill'] | ['children', 3, 'opacity']
+      myEditor.dispatch({ type: 'updateNode', id: selectedNode.id, path, value: next });
+      return true;   // "I handled it — don't mutate, don't push to inspector history"
+    },
+  },
+);
+```
+
+Return `true` to suppress the default commit; return `false` / `undefined`
+to let the walker commit as usual (useful for observe-only). Throwing is
+propagated to the caller. Not invoked when a custom renderer is mounted at
+the **root** (no walker path).
 
 ---
 
 ## 3. Ad-hoc mounts
+
+> When both a contribution and an ad-hoc `meta.value` apply at the same
+> slot id, the contribution wins. Ad-hoc mounts are the third fallback —
+> after contribution lookup and registry lookup — useful when no
+> contribution is registered for the slot.
 
 The inspector view also supports ephemeral mounts with no prior `openInspector` call — useful for "inspect this right now" affordances. Pass the value through `MountContext.meta`:
 
@@ -273,3 +358,40 @@ type WalkerCommitOverride =
 ## 10. See also
 
 - [editor.md](./editor.md) — the text editor shipped by the same shard.
+
+---
+
+## 11. Legacy: imperative `openInspector` API
+
+> **Deprecated since 0.12.0.** New cross-shard consumers should register an
+> `InspectorInstanceContribution` (see §2). The imperative methods continue
+> to work for in-tree shards and will be removed in a future major. Both
+> paths share the same `InspectorRegistry` and `internals` event buses, so
+> coexistence is transparent.
+
+```ts
+api.openInspector('my-inspector-slot', {
+  value: myState,
+  meta: { label: 'My Config', fields: { secret: { hidden: true } } },
+  readonly: false,
+  toolbarActions: [],
+  onCommit: (path, next) => { /* see §2 'Routing field commits' */ },
+});
+
+api.getInspectorValue('my-inspector-slot');    // the same `value` reference
+api.listInspectorInstances();                  // ['my-inspector-slot', …]
+api.closeInspector('my-inspector-slot');       // releases the entry + its history
+
+const off = api.onInspectorValueChange((id, value) => { /* … */ });
+```
+
+Migration:
+
+| Imperative call | Contribution replacement |
+|---|---|
+| `openInspector(id, opts)` | Register `InspectorInstanceContribution` with `seed: { value, meta, readonly, toolbarActions }`. |
+| `closeInspector(id)` | Stop registering / call disposer returned from `ctx.contributions.register`. |
+| `getInspectorValue(id)` | Contributor already holds `seed.value`; observes mutations via `onValueChange`. |
+| `listInspectorInstances()` | Contributors only know their own slots; no replacement (intra-shard reads only). |
+| `onInspectorValueChange(cb)` | `InspectorInstanceContribution.onValueChange` (per-slot, no id-filter). |
+| `OpenInspectorOptions.onCommit` | Top-level `onCommit` on the descriptor. |

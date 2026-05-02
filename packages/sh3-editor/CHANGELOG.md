@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.12.0 — 2026-05-02
+
+### Added
+- **`INSPECTOR_INSTANCE_POINT` contribution.** New cross-shard surface for
+  binding inspector slots without reaching into `EditorApi`. Additional
+  exports on the existing
+  `@unfinished-lair/sh3-editor/inspector/contributions` subpath:
+  - `INSPECTOR_INSTANCE_POINT` constant.
+  - `InspectorInstanceContribution` descriptor with `slotId`, `seed`,
+    optional `bind({ replace, history })`, optional `onCommit`, optional
+    `onValueChange`.
+  - `InspectorInstanceSeed` (`value`, `meta?`, `readonly?`, `toolbarActions?`).
+  - `InspectorBindHandle` (`replace`, `history`).
+  - Re-exports of `WalkerCommitOverride` and `HistoryController` so
+    descriptor authors get every type from a single import.
+- **`bind({ replace, history })` push-style swap.** `replace({ value })`
+  swaps the inspected object without remounting the view; clears the slot's
+  history (commands captured against the previous object are dead) and
+  fires `onValueChange`. Field-only swaps (`meta` / `readonly` /
+  `toolbarActions`) are silent. `handle.history` is the same
+  `HistoryController` `EditorApi.history(slotId)` returns — contributors
+  drive undo/redo from outside the slot without `getApi()`.
+- **Per-slot `onValueChange` descriptor callback.** Fires only for the
+  bound `slotId`; replaces the global id-filter on
+  `EditorApi.onInspectorValueChange`.
+- **Descriptor-level `onCommit`** (replaces `OpenInspectorOptions.onCommit`).
+  Same `WalkerCommitOverride` semantics; lives on the contribution.
+- **Reactive `value` / `meta` fields on `InspectorEntry`.** Mirrors the
+  `EditorDocument` reactivity fix in 66b467e — swaps via `replace` repaint
+  the live view through Svelte's `$state` graph instead of requiring a
+  remount. New `InspectorRegistry.bumpVersion()` method as a defensive
+  signal for consumers keying off `inspectors.get(id)` identity.
+
+### Deprecated
+- `EditorApi.openInspector` / `closeInspector` / `getInspectorValue` /
+  `listInspectorInstances` / `onInspectorValueChange`. Replacement guidance
+  in JSDoc and `docs/sh3-editor/inspector.md §11`.
+- `OpenInspectorOptions.onCommit`. Use the descriptor's top-level `onCommit`.
+
+### Notes
+- Both paths share the same `InspectorRegistry` and `internals` event
+  buses; no behavior change for existing consumers.
+- The contribution lookup runs first at mount time; legacy
+  `openInspector` slots and ad-hoc `meta.value` mounts remain as the
+  second and third fallback paths respectively (see `inspector.md §3`).
+- Renderer contribution surface (`INSPECTOR_RENDERER_POINT`,
+  `InspectorRenderer`) is unchanged.
+- Color-picker has the same imperative shape on `EditorApi`
+  (`openColorPicker` / `closeColorPicker` / `onColorPickerValueChange` /
+  `onColorPickerPrefsChange`) — the inspector design is deliberately
+  copy-paste-ready for a follow-up lift.
+
 ## 0.11.1 — 2026-05-02
 
 ### Added

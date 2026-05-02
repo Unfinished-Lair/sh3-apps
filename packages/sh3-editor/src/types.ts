@@ -127,9 +127,16 @@ export interface OpenInspectorOptions {
   meta?: InspectorMeta;
   readonly?: boolean;
   toolbarActions?: ToolbarAction[];
-  /** Route walker field commits through a consumer-owned sink (e.g. the caller's own
-   *  editor.dispatch) so edits join the caller's coalesce window, autosave stream, and
-   *  undo stack. See `WalkerCommitOverride` for semantics. */
+  /**
+   * @deprecated since 0.12.0 — set `InspectorInstanceContribution.onCommit`
+   *   on the descriptor for the slot instead. Top-level on the descriptor;
+   *   not swappable via `replace`. Kept for in-tree shards that haven't
+   *   migrated; will be removed in a future major.
+   *
+   * Routes walker field commits through a consumer-owned sink so edits join
+   * the caller's coalesce window, autosave stream, and undo stack. See
+   * `WalkerCommitOverride` for semantics.
+   */
   onCommit?: WalkerCommitOverride;
 }
 
@@ -194,10 +201,35 @@ export interface EditorApi {
   onPrefsChange(callback: (id: string, prefs: UserPrefs) => void): () => void;
 
   // Inspector additions
+  /**
+   * @deprecated since 0.12.0 — register an `InspectorInstanceContribution`
+   *   under `INSPECTOR_INSTANCE_POINT` from
+   *   `@unfinished-lair/sh3-editor/inspector/contributions` instead. Kept
+   *   for in-tree shards that haven't migrated; will be removed in a
+   *   future major.
+   */
   openInspector(id: string, opts: OpenInspectorOptions): void;
+  /**
+   * @deprecated since 0.12.0 — dispose the contribution registration
+   *   (the disposer returned from `ctx.contributions.register`) instead.
+   */
   closeInspector(id: string): void;
+  /**
+   * @deprecated since 0.12.0 — the contributor already owns `seed.value`
+   *   and observes mutations via `InspectorInstanceContribution.onValueChange`;
+   *   no replacement on the public surface. Kept for intra-shard reads.
+   */
   getInspectorValue(id: string): unknown | null;
+  /**
+   * @deprecated since 0.12.0 — contributors only know their own slots; no
+   *   cross-shard use case. Kept for intra-shard enumeration.
+   */
   listInspectorInstances(): string[];
+  /**
+   * @deprecated since 0.12.0 — set
+   *   `InspectorInstanceContribution.onValueChange` on the descriptor for
+   *   the slot you care about; per-slot, no id-filter.
+   */
   onInspectorValueChange(callback: (id: string, value: unknown) => void): () => void;
 
   // Color picker

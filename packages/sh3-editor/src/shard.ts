@@ -33,6 +33,7 @@ import type { GraphAsset } from './graph/asset/types';
 import { getActiveGraph } from './graph/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
+import { bindInspector } from './inspector-binding';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -208,6 +209,12 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:inspector', {
       mount(container, context) {
         const instanceId = context.slotId;
+        const bindResult = bindInspector({
+          slotId: instanceId,
+          contributions: ctx.contributions,
+          registry: registry!,
+          internals: internalsRef!,
+        });
         const ephemeral = context.meta as { value?: unknown; meta?: InspectorMeta; readonly?: boolean } | undefined;
         const component = mount(Inspector, {
           target: container,
@@ -221,7 +228,10 @@ export const shard: SourceShard = {
         });
         return {
           closable: true,
-          unmount() { unmount(component); },
+          unmount() {
+            bindResult.cleanup();
+            unmount(component);
+          },
         };
       },
     });

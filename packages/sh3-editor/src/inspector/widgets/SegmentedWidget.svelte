@@ -33,10 +33,23 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <Segmented
-    bind:value={local}
-    options={widget!.options}
-    disabled={api.readonly || meta?.readonly}
-    onchange={commit}
-  />
+  <div class="iw">
+    <Segmented
+      bind:value={local}
+      options={widget!.options}
+      disabled={api.readonly || meta?.readonly}
+      onchange={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

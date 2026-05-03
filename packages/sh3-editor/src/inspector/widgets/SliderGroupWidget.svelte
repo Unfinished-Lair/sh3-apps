@@ -49,7 +49,7 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <div onpointercancel={onAnyPointerCancel}>
+  <div class="iw" onpointercancel={onAnyPointerCancel}>
     <SliderGroup
       bind:value={local}
       spec={widget!.spec}
@@ -60,3 +60,14 @@
     />
   </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

@@ -32,13 +32,26 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <NumberInput
-    bind:value={local}
-    min={widget?.min}
-    max={widget?.max}
-    step={widget?.step ?? 1}
-    precision={widget?.precision}
-    disabled={api.readonly || meta?.readonly}
-    onblur={commit}
-  />
+  <div class="iw">
+    <NumberInput
+      bind:value={local}
+      min={widget?.min}
+      max={widget?.max}
+      step={widget?.step ?? 1}
+      precision={widget?.precision}
+      disabled={api.readonly || meta?.readonly}
+      onblur={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

@@ -35,11 +35,24 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <IconToggleGroup
-    bind:value={local}
-    options={widget!.options}
-    multiple={multiple}
-    disabled={api.readonly || meta?.readonly}
-    onchange={commit}
-  />
+  <div class="iw">
+    <IconToggleGroup
+      bind:value={local}
+      options={widget!.options}
+      multiple={multiple}
+      disabled={api.readonly || meta?.readonly}
+      onchange={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

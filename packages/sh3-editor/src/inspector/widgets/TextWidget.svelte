@@ -32,11 +32,24 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <Textarea
-    bind:value={local}
-    placeholder={widget?.placeholder}
-    rows={widget?.rows ?? 3}
-    disabled={api.readonly || meta?.readonly}
-    onblur={commit}
-  />
+  <div class="iw">
+    <Textarea
+      bind:value={local}
+      placeholder={widget?.placeholder}
+      rows={widget?.rows ?? 3}
+      disabled={api.readonly || meta?.readonly}
+      onblur={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

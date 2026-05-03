@@ -33,11 +33,24 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <FilePicker
-    bind:value={local}
-    accept={widget!.accept}
-    multiple={widget!.multiple}
-    disabled={api.readonly || meta?.readonly}
-    onchange={commit}
-  />
+  <div class="iw">
+    <FilePicker
+      bind:value={local}
+      accept={widget!.accept}
+      multiple={widget!.multiple}
+      disabled={api.readonly || meta?.readonly}
+      onchange={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

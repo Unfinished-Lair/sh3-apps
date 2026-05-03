@@ -35,12 +35,25 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <Select
-    bind:value={local}
-    options={widget!.options}
-    multiple={multiple}
-    searchable={widget!.searchable}
-    disabled={api.readonly || meta?.readonly}
-    onchange={commit}
-  />
+  <div class="iw">
+    <Select
+      bind:value={local}
+      options={widget!.options}
+      multiple={multiple}
+      searchable={widget!.searchable}
+      disabled={api.readonly || meta?.readonly}
+      onchange={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

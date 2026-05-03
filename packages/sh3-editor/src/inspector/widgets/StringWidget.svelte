@@ -32,13 +32,26 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <!-- TODO(0.13.1): wire prefix/suffix snippets -->
-  <Field
-    bind:value={local}
-    placeholder={widget?.placeholder}
-    helper={widget?.helper}
-    size={widget?.size ?? 'sm'}
-    disabled={api.readonly || meta?.readonly}
-    onblur={commit}
-  />
+  <div class="iw">
+    <!-- TODO(0.13.1): wire prefix/suffix snippets -->
+    <Field
+      bind:value={local}
+      placeholder={widget?.placeholder}
+      helper={widget?.helper}
+      size={widget?.size ?? 'sm'}
+      disabled={api.readonly || meta?.readonly}
+      onblur={commit}
+    />
+  </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

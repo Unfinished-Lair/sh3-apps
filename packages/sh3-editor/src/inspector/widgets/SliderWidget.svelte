@@ -38,7 +38,7 @@
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <div onpointerdown={onPointerDown} onpointerup={onPointerUp} onpointercancel={onPointerUp}>
+  <div class="iw" onpointerdown={onPointerDown} onpointerup={onPointerUp} onpointercancel={onPointerUp}>
     <Slider
       bind:value={local}
       min={widget!.min}
@@ -52,3 +52,14 @@
     />
   </div>
 {/if}
+
+<style>
+  .iw {
+    display: block;
+    width: 100%;
+  }
+  .iw > :global(*) {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>

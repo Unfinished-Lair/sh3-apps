@@ -75,11 +75,12 @@ export const STARTER_META: InspectorMeta = {
       type:  'slider-group',
       widget: {
         type: 'slider-group',
-        spec: {
-          bass:    { min: -10, max: 10, step: 1, label: 'Bass' },
-          mid:     { min: -10, max: 10, step: 1, label: 'Mid' },
-          treble:  { min: -10, max: 10, step: 1, label: 'Treble' },
-        },
+        showValues: true,
+        channels: [
+          { id: 'bass',   label: 'Bass',   min: -10, max: 10, step: 1 },
+          { id: 'mid',    label: 'Mid',    min: -10, max: 10, step: 1 },
+          { id: 'treble', label: 'Treble', min: -10, max: 10, step: 1 },
+        ],
       },
     },
 

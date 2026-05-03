@@ -5,7 +5,7 @@
   import { warnOnce } from './warn';
   import ReadOnlyLeaf from '../primitives/ReadOnlyLeaf.svelte';
 
-  let { value, meta, api, onCommit, onCommitCoalesced }: InspectorRendererProps = $props();
+  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
 
   const widget = $derived(
     meta?.widget?.type === 'slider-group' ? meta.widget : undefined,
@@ -17,46 +17,33 @@
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!isNumberRecord(value)) warnOnce(warnKey, 'slider-group', 'expected Record<string, number>');
-    else if (!widget) warnOnce(warnKey, 'slider-group', 'meta.widget required (with spec)');
+    else if (!widget) warnOnce(warnKey, 'slider-group', 'meta.widget required (with channels)');
   });
 
   let local: Record<string, number> = $state(ok ? { ...(value as Record<string, number>) } : {});
   $effect(() => { if (ok) local = { ...(value as Record<string, number>) }; });
 
-  // One drag key per sub-slider per gesture: keyed by sub-key + uuid.
-  let dragKeys: Record<string, string | null> = {};
-
-  function onSubChange(subKey: string, next: number) {
-    if (api.readonly) return;
-    const prev = (value as Record<string, number>)[subKey];
-    if (next === prev) return;
-    const merged = { ...(value as Record<string, number>), [subKey]: next };
-    const dk = dragKeys[subKey];
-    if (dk) onCommitCoalesced?.(merged, dk);
-    else    onCommit?.(merged);
-  }
-  function onSubPointerDown(subKey: string) {
-    dragKeys[subKey] = `slider-group:${subKey}:${crypto.randomUUID()}`;
-  }
-  function onSubPointerUp(subKey: string) {
-    dragKeys[subKey] = null;
-  }
-  function onAnyPointerCancel() {
-    for (const k of Object.keys(dragKeys)) dragKeys[k] = null;
+  function commit(next: Record<string, number>) {
+    if (api.readonly || !onCommit) return;
+    const v = value as Record<string, number>;
+    if (v && typeof v === 'object'
+        && Object.keys(next).length === Object.keys(v).length
+        && Object.keys(next).every(k => next[k] === v[k])) return;
+    onCommit(next);
   }
 </script>
 
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <div class="iw" onpointercancel={onAnyPointerCancel}>
+  <div class="iw">
     <SliderGroup
-      bind:value={local}
-      spec={widget!.spec}
+      bind:values={local}
+      channels={widget!.channels}
+      orientation={widget!.orientation ?? 'horizontal'}
+      showValues={widget!.showValues ?? false}
       disabled={api.readonly || meta?.readonly}
-      onsubchange={onSubChange}
-      onsubpointerdown={onSubPointerDown}
-      onsubpointerup={onSubPointerUp}
+      onchange={commit}
     />
   </div>
 {/if}

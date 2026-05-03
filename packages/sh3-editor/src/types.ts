@@ -124,7 +124,11 @@ export type InspectorWidget =
       min: number; max: number; step?: number;
     }
   | { type: 'slider-group';
-      spec: Record<string, { min: number; max: number; step?: number; label?: string }>;
+      /** Each channel renders one Slider; `id` is the key in the inspected
+       *  `Record<string, number>` value. */
+      channels: { id: string; label: string; min?: number; max?: number; step?: number }[];
+      showValues?: boolean;
+      orientation?: 'horizontal' | 'vertical';
     }
   | { type: 'segmented';
       options: SegmentedOption[];
@@ -136,7 +140,7 @@ export type InspectorWidget =
       options: { value: string; icon: Snippet; tooltip?: string }[]; multiple?: boolean;
     }
   | { type: 'select';
-      options: SelectOption[]; multiple?: boolean; searchable?: boolean;
+      options: SelectOption[]; multiple?: boolean;
     }
   | { type: 'file';
       accept?: string; multiple?: boolean;

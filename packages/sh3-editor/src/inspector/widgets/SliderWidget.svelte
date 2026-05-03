@@ -5,7 +5,7 @@
   import { warnOnce } from './warn';
   import ReadOnlyLeaf from '../primitives/ReadOnlyLeaf.svelte';
 
-  let { value, meta, api, onCommit, onCommitCoalesced }: InspectorRendererProps = $props();
+  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
 
   const widget = $derived(
     meta?.widget?.type === 'slider' ? meta.widget : undefined,
@@ -23,22 +23,17 @@
   let local: number = $state(ok ? (value as number) : 0);
   $effect(() => { if (ok) local = value as number; });
 
-  let dragKey: string | null = null;
-
   function commit(next: number) {
-    if (api.readonly) return;
+    if (api.readonly || !onCommit) return;
     if (next === value) return;
-    if (dragKey !== null) onCommitCoalesced?.(next, dragKey);
-    else                  onCommit?.(next);
+    onCommit(next);
   }
-  function onPointerDown() { dragKey = `slider:${crypto.randomUUID()}`; }
-  function onPointerUp()   { dragKey = null; }
 </script>
 
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <div class="iw" onpointerdown={onPointerDown} onpointerup={onPointerUp} onpointercancel={onPointerUp}>
+  <div class="iw">
     <Slider
       bind:value={local}
       min={widget!.min}

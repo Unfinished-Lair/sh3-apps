@@ -40,7 +40,6 @@
       bind:value={local}
       options={widget!.options}
       multiple={multiple}
-      searchable={widget!.searchable}
       disabled={api.readonly || meta?.readonly}
       onchange={commit}
     />

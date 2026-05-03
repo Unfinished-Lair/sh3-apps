@@ -5,7 +5,7 @@
   import { warnOnce } from './warn';
   import ReadOnlyLeaf from '../primitives/ReadOnlyLeaf.svelte';
 
-  let { value, meta, api, onCommit, onCommitCoalesced }: InspectorRendererProps = $props();
+  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
 
   const widget = $derived(
     meta?.widget?.type === 'range' ? meta.widget : undefined,
@@ -23,23 +23,18 @@
   let local: [number, number] = $state(ok ? (value as [number, number]) : [0, 1]);
   $effect(() => { if (ok) local = value as [number, number]; });
 
-  let dragKey: string | null = null;
-
   function commit(next: [number, number]) {
-    if (api.readonly) return;
+    if (api.readonly || !onCommit) return;
     const v = value as [number, number];
-    if (next[0] === v[0] && next[1] === v[1]) return;
-    if (dragKey !== null) onCommitCoalesced?.(next, dragKey);
-    else                  onCommit?.(next);
+    if (Array.isArray(v) && next[0] === v[0] && next[1] === v[1]) return;
+    onCommit(next);
   }
-  function onPointerDown() { dragKey = `range:${crypto.randomUUID()}`; }
-  function onPointerUp()   { dragKey = null; }
 </script>
 
 {#if !ok}
   <ReadOnlyLeaf {value} />
 {:else}
-  <div class="iw" onpointerdown={onPointerDown} onpointerup={onPointerUp} onpointercancel={onPointerUp}>
+  <div class="iw">
     <RangeSlider
       bind:value={local}
       min={widget!.min}

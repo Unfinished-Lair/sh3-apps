@@ -15,18 +15,18 @@
   let local = $state(ok ? (value as number) : 0);
   $effect(() => { if (ok) local = value as number; });
 
-  function commit() {
-    if (api.readonly || !onCommit) return;
-    if (local === value) return;
-    onCommit(local);
-  }
-
   // Slot id isn't directly available — synthetic key based on field label.
   // TODO(later): thread real slotId through InspectorRendererProps.
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!ok) warnOnce(warnKey, 'number', `expected finite number, got ${typeof value}`);
   });
+
+  function commit(next: number) {
+    if (api.readonly || !onCommit) return;
+    if (next === value) return;
+    onCommit(next);
+  }
 </script>
 
 {#if !ok}
@@ -40,7 +40,7 @@
       step={widget?.step ?? 1}
       precision={widget?.precision}
       disabled={api.readonly || meta?.readonly}
-      onblur={commit}
+      onchange={commit}
     />
   </div>
 {/if}

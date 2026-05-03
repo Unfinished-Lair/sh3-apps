@@ -1,18 +1,5 @@
 # Changelog
 
-## 0.13.2
-
-### Fixed
-
-- `InspectorWidget` `'icon-toggle'` variant now types `options[].icon` as
-  Svelte `Snippet` (matching sh3-core's `IconToggleGroup` contract) and
-  renames the secondary field from `label` to `tooltip`. Passing a plain
-  string for `icon` previously crashed the renderer at `@render
-  opt.icon()`.
-- All built-in widget renderers now stretch to fill the field's value
-  column instead of rendering at intrinsic widths, matching the legacy
-  `EditablePrimitive` behavior.
-
 ## 0.13.0
 
 ### Added

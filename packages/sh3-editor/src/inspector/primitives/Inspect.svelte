@@ -13,12 +13,15 @@
      *  Used as the fallback when walkerOnCommit is absent or returns false. Absent at
      *  root-level mounts. */
     onCommit?: (next: unknown) => void;
+    /** Coalesced commit channel from the walker; passed through to custom
+     *  renderers that opt into gesture coalescing. */
+    onCommitCoalesced?: (next: unknown, key: string) => void;
     /** Consumer override, threaded from the root inspector mount. */
     walkerOnCommit?: WalkerCommitOverride;
     /** Path from the root inspected value to this node. Empty at root. */
     basePath?: (string | number)[];
   }
-  let { value, meta, api, onCommit, walkerOnCommit, basePath = [] }: Props = $props();
+  let { value, meta, api, onCommit, onCommitCoalesced, walkerOnCommit, basePath = [] }: Props = $props();
 
   let resolution = $derived(resolveRenderer(value, meta));
 
@@ -38,7 +41,7 @@
   <!-- hidden by meta; render nothing -->
 {:else if resolution.kind === 'custom'}
   {@const Renderer = resolution.component}
-  <Renderer {value} {meta} {api} onCommit={customRendererCommit} />
+  <Renderer {value} {meta} {api} onCommit={customRendererCommit} {onCommitCoalesced} />
 {:else if resolution.kind === 'walker'}
   <FallbackWalker {value} {meta} {api} {walkerOnCommit} {basePath} />
 {:else}

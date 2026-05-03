@@ -1,0 +1,44 @@
+<script lang="ts">
+  import { NumberInput } from 'sh3-core';
+  import type { InspectorRendererProps } from '../contributions';
+  import { isNumber } from './match';
+  import { warnOnce } from './warn';
+  import ReadOnlyLeaf from '../primitives/ReadOnlyLeaf.svelte';
+
+  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
+
+  const widget = $derived(
+    meta?.widget?.type === 'number' ? meta.widget : undefined,
+  );
+  const ok = $derived(isNumber(value));
+
+  let local = $state(ok ? (value as number) : 0);
+  $effect(() => { if (ok) local = value as number; });
+
+  function commit() {
+    if (api.readonly || !onCommit) return;
+    if (local === value) return;
+    onCommit(local);
+  }
+
+  // Slot id isn't directly available — synthetic key based on field label.
+  // TODO(later): thread real slotId through InspectorRendererProps.
+  const warnKey = $derived(meta?.label ?? '<unlabeled>');
+  $effect(() => {
+    if (!ok) warnOnce(warnKey, 'number', `expected finite number, got ${typeof value}`);
+  });
+</script>
+
+{#if !ok}
+  <ReadOnlyLeaf {value} />
+{:else}
+  <NumberInput
+    bind:value={local}
+    min={widget?.min}
+    max={widget?.max}
+    step={widget?.step ?? 1}
+    precision={widget?.precision}
+    disabled={api.readonly || meta?.readonly}
+    onblur={commit}
+  />
+{/if}

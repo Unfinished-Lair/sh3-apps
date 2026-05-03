@@ -34,6 +34,7 @@ import { getActiveGraph } from './graph/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
 import { bindInspector } from './inspector-binding';
+import { registerBuiltinWidgets } from './inspector/widgets/register';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -41,6 +42,7 @@ let internalsRef: ApiInternals | null = null;
 let teardownRef: (() => void) | null = null;
 let unsubscribeContributions: (() => void) | null = null;
 let unregisterColorRenderer: (() => void) | null = null;
+let unregisterBuiltinWidgets: (() => void) | null = null;
 let unregisterColorContribution: (() => void) | null = null;
 let domainRegistry: ReturnType<typeof createDomainRegistry> | null = null;
 let unsubscribeDomainContributions: (() => void) | null = null;
@@ -116,6 +118,10 @@ export const shard: SourceShard = {
     };
     unregisterColorRenderer =
       ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, colorRendererContribution);
+
+    // Register built-in widget renderers (priority 10); user shards override
+    // by registering at priority > 10.
+    unregisterBuiltinWidgets = registerBuiltinWidgets(ctx);
 
     // Register sh3-editor as the sh3.color-picker contributor. shell.color.pick()
     // from any shard now routes here; falls back to native <input type="color">
@@ -515,6 +521,8 @@ export const shard: SourceShard = {
     unsubscribeDomainContributions = null;
     domainRegistry?.clear();
     domainRegistry = null;
+    unregisterBuiltinWidgets?.();
+    unregisterBuiltinWidgets = null;
     unregisterColorRenderer?.();
     unregisterColorRenderer = null;
     unregisterColorContribution?.();

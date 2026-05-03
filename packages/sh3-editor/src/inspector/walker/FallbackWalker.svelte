@@ -4,6 +4,7 @@
   import EditablePrimitive from '../primitives/EditablePrimitive.svelte';
   import Inspect from '../primitives/Inspect.svelte';
   import { attemptCommit } from './commit';
+  import { makeCoalesceState, decideCoalesce } from './coalesce';
 
   interface Props {
     value: unknown;    // always plain object or array (enforced by Inspect dispatch)
@@ -13,6 +14,12 @@
     basePath?: (string | number)[];
   }
   let { value, meta, api, walkerOnCommit, basePath = [] }: Props = $props();
+
+  const coalesce = makeCoalesceState();
+
+  function pathString(p: (string | number)[]): string {
+    return p.map((s) => String(s)).join('\0');   // NUL separator → never collides
+  }
 
   function isPrimitive(v: unknown): v is string | number | boolean | null | undefined {
     return v === null || v === undefined
@@ -52,6 +59,36 @@
     return (next) => commitPrimitive(value as any, key, next as any);
   }
 
+  function coalescedCommitForField(
+    key: string | number,
+  ): (next: unknown, gestureKey: string) => void {
+    return (next, gestureKey) => {
+      const fullPath = [...basePath, key];
+      const ps = pathString(fullPath);
+      const container = value as Record<string | number, unknown> | unknown[];
+      const currentBefore = (container as any)[key];
+
+      const fallback = () => {
+        const decision = decideCoalesce(coalesce, ps, gestureKey, currentBefore);
+        const captured = decision.before;
+        const cmd: HistoryCommand = {
+          apply()  { (container as any)[key] = next; },
+          revert() { (container as any)[key] = captured; },
+          meta: { kind: 'walker-edit-coalesced', label: String(key) },
+        };
+        if (decision.action === 'push') api.push(cmd);
+        else                            api.history.replaceTop(cmd);
+        (container as any)[key] = next;
+      };
+
+      attemptCommit(walkerOnCommit, fullPath, next, fallback);
+    };
+  }
+
+  function clearGestureForField(key: string | number): void {
+    coalesce.clear(pathString([...basePath, key]));
+  }
+
   let entries = $derived.by<Array<{ key: string | number; child: unknown; fieldMeta: InspectorMeta | undefined }>>(() => {
     if (Array.isArray(value)) {
       return value.map((child, i) => ({
@@ -85,7 +122,8 @@
             value={entry.child}
             meta={entry.fieldMeta}
             {api}
-            onCommit={isReadOnly ? undefined : defaultCommitForField(entry.key)}
+            onCommit={isReadOnly ? undefined : (next: unknown) => { clearGestureForField(entry.key); defaultCommitForField(entry.key)(next); }}
+            onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
             walkerOnCommit={walkerOnCommit}
             basePath={[...basePath, entry.key]}
           />
@@ -104,7 +142,8 @@
             value={entry.child}
             meta={entry.fieldMeta}
             {api}
-            onCommit={isReadOnly ? undefined : defaultCommitForField(entry.key)}
+            onCommit={isReadOnly ? undefined : (next: unknown) => { clearGestureForField(entry.key); defaultCommitForField(entry.key)(next); }}
+            onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
             walkerOnCommit={walkerOnCommit}
             basePath={[...basePath, entry.key]}
           />

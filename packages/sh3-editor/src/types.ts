@@ -95,6 +95,49 @@ export interface OpenDocumentOptions {
   startInPreview?: boolean;
 }
 
+import type { SegmentedOption, SelectOption } from 'sh3-core';
+
+/** Widget config carried alongside `InspectorMeta.type` when a built-in widget
+ *  renderer claims the dispatch. The renderer narrows on `widget.type`; the
+ *  outer `meta.type` remains the registry's dispatch key. Convention is that
+ *  the two `type` strings match — runtime mismatch falls back to a leaf with
+ *  one console.warn per slot. */
+export type InspectorWidget =
+  | { type: 'string';
+      placeholder?: string; helper?: string;
+      prefix?: string; suffix?: string;
+      size?: 'sm' | 'md';
+    }
+  | { type: 'text';
+      placeholder?: string; rows?: number;
+    }
+  | { type: 'number';
+      min?: number; max?: number; step?: number; precision?: number;
+      prefix?: string; suffix?: string;
+    }
+  | { type: 'slider';
+      min: number; max: number; step?: number; ticks?: number[];
+      orientation?: 'horizontal' | 'vertical'; showValue?: boolean;
+    }
+  | { type: 'range';
+      min: number; max: number; step?: number;
+    }
+  | { type: 'slider-group';
+      spec: Record<string, { min: number; max: number; step?: number; label?: string }>;
+    }
+  | { type: 'segmented';
+      options: SegmentedOption[];
+    }
+  | { type: 'icon-toggle';
+      options: { value: string; icon: string; label?: string }[]; multiple?: boolean;
+    }
+  | { type: 'select';
+      options: SelectOption[]; multiple?: boolean; searchable?: boolean;
+    }
+  | { type: 'file';
+      accept?: string; multiple?: boolean;
+    };
+
 /** Recursive meta tree — per-field hints keyed alongside the inspected value. */
 export interface InspectorMeta {
   /** Renderer dispatch tag. Wins over value.__type when both are present. */
@@ -109,6 +152,10 @@ export interface InspectorMeta {
   fields?: { [key: string]: InspectorMeta };
   /** For array values: default meta applied to every item. */
   item?: InspectorMeta;
+  /** Optional widget config consumed by built-in widget renderers. Discriminator
+   *  is `widget.type`; should match `meta.type` for the field to dispatch to a
+   *  widget renderer. See InspectorWidget. */
+  widget?: InspectorWidget;
 }
 
 /** Consumer-supplied commit sink for the inspector's fallback walker. Called by the
@@ -156,6 +203,13 @@ export interface InspectorRendererProps {
    *  apply/revert history command and writes back to the inspected object. Absent for
    *  root-level mounts, in which case the renderer has no parent to write to. */
   onCommit?: (next: unknown) => void;
+  /** Coalesces consecutive commits with the same `key` into a single undo
+   *  step. First call with a fresh key → push. Subsequent calls with the
+   *  same key → replaceTop (apply mutates to `next`, revert keeps the
+   *  original pre-gesture value). End the gesture by calling onCommit
+   *  (no key) or by starting a new gesture with a different key. Absent
+   *  at root-level mounts (same as onCommit). */
+  onCommitCoalesced?: (next: unknown, key: string) => void;
 }
 
 /** The public API surface exposed to consuming shards. */

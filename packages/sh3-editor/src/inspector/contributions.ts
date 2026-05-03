@@ -10,6 +10,7 @@ import type {
 
 export {
   type InspectorMeta,
+  type InspectorWidget,
   type InspectorApi,
   type InspectorRendererProps,
   type WalkerCommitOverride,

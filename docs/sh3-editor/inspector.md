@@ -14,7 +14,7 @@ Cross-shard consumers seed inspector slots and observe edits via the
 **`INSPECTOR_INSTANCE_POINT`** contribution (since 0.12.0). The legacy
 `EditorApi.openInspector` / `closeInspector` / `getInspectorValue` /
 `listInspectorInstances` / `onInspectorValueChange` surface remains for
-in-tree shards but is `@deprecated` — see §11.
+in-tree shards but is `@deprecated` — see §12.
 
 ---
 
@@ -154,8 +154,11 @@ interface InspectorMeta {
   readonly?: boolean;                         // render as read-only leaf
   fields?: { [key: string]: InspectorMeta };  // per-field meta for object values
   item?: InspectorMeta;                       // default meta for every array element
+  widget?: InspectorWidget;                   // typed config for built-in widget renderers (≥ 0.13.0)
 }
 ```
+
+The `widget?: InspectorWidget` field carries typed config for the built-in widget renderers introduced in 0.13.0 (see §7). The discriminator is `widget.type`; convention is that it matches `meta.type`. A mismatch falls back to a read-only leaf with one console.warn per slot.
 
 Example applied to a nested shape:
 
@@ -194,7 +197,9 @@ An **unmatched** `meta.type` falls through to step 2 rather than forcing a leaf 
 
 Top-level primitives are read-only by design: a raw string or number has no container the inspector can mutate on the caller's behalf. Wrap primitives in an object (`{ value: 42 }`) if you need editability.
 
-### Built-in renderer for `type: 'color'`
+### Built-in renderers
+
+`sh3-editor` (≥ 0.4.0) auto-registers a color-picker renderer for `type: 'color'`. Since 0.13.0, ten additional built-in widget renderers auto-register at priority 10 — see §7 below.
 
 `sh3-editor` (≥ 0.4.0) auto-registers a color-picker renderer on activate. Any field tagged `meta: { type: 'color' }` with a hex-string value renders the full picker inline; non-string values fall through to a read-only leaf. Consumers can override by registering their own renderer for the `color` type tag with `priority > 10` (the built-in's priority).
 
@@ -285,7 +290,42 @@ Renderers see the same `api` for the lifetime of the inspector instance — reco
 
 ---
 
-## 7. Primitives subpath
+## 7. Built-in widget renderers (≥ 0.13.0)
+
+`sh3-editor` auto-registers ten built-in renderers wrapping the controllable widget primitives shipped by `sh3-core 0.13.0` (ADR-022). All register at priority 10 and are overridable by user contributions at priority > 10 — same escape hatch as the color renderer.
+
+| `meta.type` | sh3-core widget | Bound value | Required `meta.widget` |
+|---|---|---|---|
+| `'string'` | `Field` | `string` | optional |
+| `'text'` | `Textarea` | `string` | optional |
+| `'number'` | `NumberInput` | `number` | optional |
+| `'slider'` | `Slider` | `number` | required (`min`, `max`) |
+| `'range'` | `RangeSlider` | `[number, number]` | required (`min`, `max`) |
+| `'slider-group'` | `SliderGroup` | `Record<string, number>` | required (`spec`) |
+| `'segmented'` | `Segmented` | `string` | required (`options`) |
+| `'icon-toggle'` | `IconToggleGroup` | `string \| string[]` | required (`options`) |
+| `'select'` | `Select` | `string \| string[]` | required (`options`) |
+| `'file'` | `FilePicker` | `File \| File[] \| null` | optional |
+
+Example:
+
+```ts
+const meta: InspectorMeta = {
+  fields: {
+    angle: { type: 'slider', widget: { type: 'slider', min: 0, max: 360, step: 1 } },
+    mode:  { type: 'segmented', widget: {
+      type: 'segmented',
+      options: [{ value: 'edit', label: 'Edit' }, { value: 'view', label: 'View' }],
+    }},
+  },
+};
+```
+
+When `meta.type` matches a built-in widget but `value` is the wrong shape, the renderer falls back to a read-only leaf and emits one `console.warn` per slot.
+
+---
+
+## 8. Primitives subpath
 
 The following building blocks ship under the inspector's `primitives/` folder. They are used internally by the fallback walker and are available to renderer authors who want a consistent look-and-feel (the published subpath d.ts is pending — workspace consumers can import them by direct path today).
 
@@ -301,7 +341,7 @@ Renderers are free to use arbitrary DOM — the primitives are optional helpers,
 
 ---
 
-## 8. Mutation and history model
+## 9. Mutation and history model
 
 The fallback walker mutates `value` in place and then pushes a reversible command via `api.push`. Custom renderers are expected to do the same — mutate first (via the `apply` body or directly) and push the command — or push a command whose `apply` does the mutation and invoke it manually.
 
@@ -312,7 +352,7 @@ The fallback walker mutates `value` in place and then pushes a reversible comman
 
 Undo/redo shortcuts (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) trigger only when the inspector's root element holds focus. Programmatic undo via `getApi().history(id).undo()` works regardless of focus.
 
-### 8.1. Routing field commits through your own editor (`onCommit`, 0.4.1+)
+### 9.1. Routing field commits through your own editor (`onCommit`, 0.4.1+)
 
 By default the fallback walker commits each field edit by (a) mutating the inspected object in place and (b) pushing a `HistoryCommand` onto the inspector instance's own history stack. Consumers who own an editor with its own history — and want walker edits to join that history for coalesce, autosave, or unified undo/redo — can supply an `onCommit` callback on `OpenInspectorOptions`:
 
@@ -344,24 +384,43 @@ type WalkerCommitOverride =
   (path: (string | number)[], next: unknown) => boolean | void;
 ```
 
+### 9.2. Gesture coalescing for slider widgets (≥ 0.13.0)
+
+Slider, RangeSlider, and SliderGroup commit through a coalesced channel so a drag from 0 to 100 collapses to a single undo step. The walker exposes an additional optional callback to renderers:
+
+```ts
+interface InspectorRendererProps {
+  value: unknown;
+  meta?: InspectorMeta;
+  api: InspectorApi;
+  onCommit?: (next: unknown) => void;
+  onCommitCoalesced?: (next: unknown, key: string) => void;
+}
+```
+
+Renderers mint a fresh `key` per gesture (e.g. on `pointerdown`) and call `onCommitCoalesced(next, key)` for every value update. The walker pushes the first call and `replaceTop`s subsequent same-key calls. A plain `onCommit(next)` with no key ends the gesture (the next gesture's first coalesced call starts a fresh undo step).
+
+Custom renderers that don't need coalescing ignore the new prop — existing renderers keep working unchanged.
+
 ---
 
-## 9. Known limitations
+## 10. Known limitations
 
 - **Circular references** are not handled — a walker recursion into a cycle will overflow. Expose `__type` + a custom renderer for anything with back-pointers.
 - **`Map`, `Set`, class instances** without a registered renderer render as read-only stringified leaves. Add a renderer keyed on `__type` (or shim `__type` into the class) to edit them.
 - **Per-index array meta** is deferred in V1. Use `meta.item` for a uniform override across all indices; switch to a custom renderer if you need heterogeneous array editing.
 - The **primitives subpath d.ts** export is deferred in 0.3.0 — workspace-local consumers can still import by direct path; external npm consumers wait on the subpath publication. See CHANGELOG follow-ups.
+- **`File` objects don't survive a document round-trip.** The `'file'` widget commits the live `File` handle; consumers who need durable storage must read the picked `File` from `onValueChange` and store a serialisable reference (path, blob URL, server-side handle ID) themselves.
 
 ---
 
-## 10. See also
+## 11. See also
 
 - [editor.md](./editor.md) — the text editor shipped by the same shard.
 
 ---
 
-## 11. Legacy: imperative `openInspector` API
+## 12. Legacy: imperative `openInspector` API
 
 > **Deprecated since 0.12.0.** New cross-shard consumers should register an
 > `InspectorInstanceContribution` (see §2). The imperative methods continue

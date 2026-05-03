@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.13.0
+
+### Added
+
+- Ten built-in inspector widget renderers wrapping `sh3-core 0.13`
+  primitives: `'string'`, `'text'`, `'number'`, `'slider'`, `'range'`,
+  `'slider-group'`, `'segmented'`, `'icon-toggle'`, `'select'`, `'file'`.
+  All auto-register at priority 10 and are overridable by user
+  contributions at priority > 10.
+- `InspectorMeta.widget?: InspectorWidget` discriminated union for
+  per-tag widget config.
+- `InspectorRendererProps.onCommitCoalesced(next, key)` for
+  gesture-coalesced commits — drives the slider family's "one undo
+  step per drag" behavior. Walker plumbing additive; existing custom
+  renderers ignore the new prop and keep working.
+
+### Changed
+
+- Peer `sh3-core` bumped from `^0.11.4` to `^0.13.0`. The widget
+  imports throw at module load against older cores.
+
 ## 0.12.0 — 2026-05-02
 
 ### Added
@@ -36,7 +57,7 @@
 ### Deprecated
 - `EditorApi.openInspector` / `closeInspector` / `getInspectorValue` /
   `listInspectorInstances` / `onInspectorValueChange`. Replacement guidance
-  in JSDoc and `docs/sh3-editor/inspector.md §11`.
+  in JSDoc and `docs/sh3-editor/inspector.md §12`.
 - `OpenInspectorOptions.onCommit`. Use the descriptor's top-level `onCommit`.
 
 ### Notes
@@ -379,7 +400,7 @@
 ## 0.4.1
 
 ### Added
-- `OpenInspectorOptions.onCommit?: (path, next) => boolean | void` — consumer-supplied hook to route walker-dispatched field commits (primitives and custom renderers mounted at field sites) through the caller's own editor history instead of the inspector's built-in per-slot history. Enables coalesce, autosave, and unified undo/redo across consumer-owned scene ops and inspector edits. Resolves [sh3-apps#1](https://github.com/Unfinished-Lair/sh3-apps/issues/1). See `docs/sh3-editor/inspector.md` §8.1.
+- `OpenInspectorOptions.onCommit?: (path, next) => boolean | void` — consumer-supplied hook to route walker-dispatched field commits (primitives and custom renderers mounted at field sites) through the caller's own editor history instead of the inspector's built-in per-slot history. Enables coalesce, autosave, and unified undo/redo across consumer-owned scene ops and inspector edits. Resolves [sh3-apps#1](https://github.com/Unfinished-Lair/sh3-apps/issues/1). See `docs/sh3-editor/inspector.md` §9.1.
 - New public type: `WalkerCommitOverride`.
 
 ### Notes

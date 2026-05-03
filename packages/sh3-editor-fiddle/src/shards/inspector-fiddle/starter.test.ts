@@ -38,4 +38,34 @@ describe('starter content', () => {
     // nested object meta
     expect(STARTER_META.fields?.nested?.fields?.x?.label).toBe('X');
   });
+
+  it('STARTER_VALUE includes one field per 0.13 widget', () => {
+    expect(typeof STARTER_VALUE.displayName).toBe('string');
+    expect(typeof STARTER_VALUE.description).toBe('string');
+    expect(typeof STARTER_VALUE.age).toBe('number');
+    expect(typeof STARTER_VALUE.angle).toBe('number');
+    expect(Array.isArray(STARTER_VALUE.bounds)).toBe(true);
+    expect(STARTER_VALUE.bounds).toHaveLength(2);
+    expect(typeof STARTER_VALUE.levels).toBe('object');
+    expect(STARTER_VALUE.levels).toMatchObject({ bass: 0, mid: 0, treble: 0 });
+    expect(typeof STARTER_VALUE.theme).toBe('string');
+    expect(Array.isArray(STARTER_VALUE.tools)).toBe(true);
+    expect(typeof STARTER_VALUE.category).toBe('string');
+    expect(STARTER_VALUE.attachment).toBeNull();
+  });
+
+  it('STARTER_META declares meta.widget for every new field', () => {
+    const tags = [
+      'displayName', 'description', 'age',
+      'angle', 'bounds', 'levels',
+      'theme', 'tools', 'category', 'attachment',
+    ] as const;
+    for (const k of tags) {
+      const m = STARTER_META.fields?.[k];
+      expect(m, `field ${k} has meta`).toBeDefined();
+      expect(m!.type, `field ${k} has meta.type`).toBeDefined();
+      expect(m!.widget, `field ${k} has meta.widget`).toBeDefined();
+      expect(m!.widget!.type, `field ${k} widget.type matches meta.type`).toBe(m!.type);
+    }
+  });
 });

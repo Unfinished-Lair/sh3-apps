@@ -95,6 +95,7 @@ export interface OpenDocumentOptions {
   startInPreview?: boolean;
 }
 
+import type { Snippet } from 'svelte';
 import type { SegmentedOption, SelectOption } from 'sh3-core';
 
 /** Widget config carried alongside `InspectorMeta.type` when a built-in widget
@@ -129,7 +130,10 @@ export type InspectorWidget =
       options: SegmentedOption[];
     }
   | { type: 'icon-toggle';
-      options: { value: string; icon: string; label?: string }[]; multiple?: boolean;
+      /** Each option's `icon` is a Svelte Snippet (matching sh3-core's
+       *  IconToggleGroup contract); plain-TS callers must declare the
+       *  snippet in a `.svelte` host and pass the function reference. */
+      options: { value: string; icon: Snippet; tooltip?: string }[]; multiple?: boolean;
     }
   | { type: 'select';
       options: SelectOption[]; multiple?: boolean; searchable?: boolean;

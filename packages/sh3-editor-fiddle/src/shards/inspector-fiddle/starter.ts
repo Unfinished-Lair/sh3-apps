@@ -22,9 +22,10 @@ export const STARTER_VALUE = {
   levels: { bass: 0, mid: 0, treble: 0 },              // 'slider-group'  → SliderGroup
 
   // Structured-value family
-  theme: 'dark',                                       // 'segmented'   → Segmented
-  tools: ['select', 'pan'],                            // 'icon-toggle' → IconToggleGroup (multi)
-  category: 'docs',                                    // 'select'      → Select
+  // (icon-toggle omitted from the JSON-driven showcase: its `icon` field is
+  // a Svelte Snippet, which can only be declared in a .svelte host.)
+  theme: 'dark',                                       // 'segmented' → Segmented
+  category: 'docs',                                    // 'select'    → Select
 
   // File family
   attachment: null as File | File[] | null,            // 'file' → FilePicker
@@ -92,19 +93,6 @@ export const STARTER_META: InspectorMeta = {
           { value: 'light', label: 'Light' },
           { value: 'dark',  label: 'Dark' },
           { value: 'auto',  label: 'Auto' },
-        ],
-      },
-    },
-    tools: {
-      label: 'Tools (IconToggleGroup, multi)',
-      type:  'icon-toggle',
-      widget: {
-        type: 'icon-toggle',
-        multiple: true,
-        options: [
-          { value: 'select', icon: 'cursor', label: 'Select' },
-          { value: 'pan',    icon: 'hand',   label: 'Pan' },
-          { value: 'zoom',   icon: 'search', label: 'Zoom' },
         ],
       },
     },

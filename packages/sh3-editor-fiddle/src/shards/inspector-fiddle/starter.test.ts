@@ -39,7 +39,7 @@ describe('starter content', () => {
     expect(STARTER_META.fields?.nested?.fields?.x?.label).toBe('X');
   });
 
-  it('STARTER_VALUE includes one field per 0.13 widget', () => {
+  it('STARTER_VALUE includes one field per 0.13 widget (icon-toggle omitted — Snippet-only)', () => {
     expect(typeof STARTER_VALUE.displayName).toBe('string');
     expect(typeof STARTER_VALUE.description).toBe('string');
     expect(typeof STARTER_VALUE.age).toBe('number');
@@ -49,7 +49,6 @@ describe('starter content', () => {
     expect(typeof STARTER_VALUE.levels).toBe('object');
     expect(STARTER_VALUE.levels).toMatchObject({ bass: 0, mid: 0, treble: 0 });
     expect(typeof STARTER_VALUE.theme).toBe('string');
-    expect(Array.isArray(STARTER_VALUE.tools)).toBe(true);
     expect(typeof STARTER_VALUE.category).toBe('string');
     expect(STARTER_VALUE.attachment).toBeNull();
   });
@@ -58,7 +57,7 @@ describe('starter content', () => {
     const tags = [
       'displayName', 'description', 'age',
       'angle', 'bounds', 'levels',
-      'theme', 'tools', 'category', 'attachment',
+      'theme', 'category', 'attachment',
     ] as const;
     for (const k of tags) {
       const m = STARTER_META.fields?.[k];

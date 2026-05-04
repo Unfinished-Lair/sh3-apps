@@ -86,7 +86,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--shell-bg-sunken);
+    background: var(--shell-bg);
     color: var(--shell-fg);
     font-family: var(--shell-font-mono);
     font-size: 13px;

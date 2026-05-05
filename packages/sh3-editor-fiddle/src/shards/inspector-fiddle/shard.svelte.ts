@@ -303,6 +303,12 @@ export const inspectorFiddleShard: SourceShard & {
       onAction() {
         if (!valueReplace) return;
         const text = JSON.stringify(state.liveValue, null, 2);
+        // Suppress the parser pass that would otherwise fire when
+        // valueReplace's onContentChange echoes back. Without this, the
+        // parser re-feeds, calls inspectorHandle.replace({ value: parsed })
+        // ~150ms later, and overwrites any inspector edit the user made
+        // during the debounce window with the snapshot we just pushed.
+        suppressNextEditorParse = true;
         valueReplace({ content: text });
         state.inspectorTouched = false;
         refreshSnapshot();

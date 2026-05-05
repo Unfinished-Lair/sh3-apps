@@ -336,6 +336,39 @@ describe('inspectorFiddleShard — sync-to-json toolbar action', () => {
     const snap = (inspectorFiddleShard as any).__test_snapshot();
     expect(snap.inspectorTouched).toBe(false);
   });
+
+  it('suppresses the parser when sync triggers a content-change echo', () => {
+    // Regression: without the suppress flag, the parser would fire ~150ms
+    // after the sync click, run inspectorHandle.replace({ value: parsed }),
+    // and overwrite any inspector edit the user made during the debounce.
+    vi.useFakeTimers();
+    const { ctx, registered } = makeCtx();
+    inspectorFiddleShard.activate!(ctx);
+
+    const valueDesc = registered.find(r =>
+      (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
+    )!.descriptor as EditorDocumentContribution;
+    // Echo the editor's onContentChange synchronously after every replace,
+    // matching the real editor view's behavior.
+    valueDesc.bind?.((next) => {
+      if (typeof next.content === 'string') valueDesc.onContentChange!(next.content);
+    });
+
+    const inspectorDesc = findInspectorDesc(registered);
+    const handle = fakeBindHandle();
+    inspectorDesc.bind?.(handle);
+
+    // Mark inspector dirty so the sync button is enabled.
+    inspectorDesc.onValueChange?.({ name: 'edited' });
+
+    findInspectorAction(registered, 'sync-to-json').onAction();
+    vi.advanceTimersByTime(200);
+
+    // Sync echoed onContentChange but the suppress flag must have prevented
+    // the parser from re-feeding — so inspectorHandle.replace was NOT called.
+    expect(handle.replaceCalls).toEqual([]);
+    vi.useRealTimers();
+  });
 });
 
 describe('inspectorFiddleShard — live-sync toggle', () => {

@@ -37,8 +37,12 @@
       revert() { (container as any)[key] = before; },
       meta: { kind: 'walker-edit', label: String(key) },
     };
+    // Mutate before push so the inspectorValueChange emit fired downstream
+    // sees post-mutation state. push() does NOT call apply() per HistoryCommand
+    // contract — the caller is responsible for putting the world in the
+    // post-apply state before recording.
+    (container as any)[key] = next;
     api.push(cmd);
-    (container as any)[key] = next;   // caller mutates after push; push doesn't apply
   }
 
   // For primitives: walker is the commit site — consult override directly.
@@ -76,9 +80,11 @@
           revert() { (container as any)[key] = captured; },
           meta: { kind: 'walker-edit-coalesced', label: String(key) },
         };
+        // Mutate before push/replaceTop so the inspectorValueChange emit
+        // fired downstream sees post-mutation state.
+        (container as any)[key] = next;
         if (decision.action === 'push') api.push(cmd);
         else                            api.history.replaceTop(cmd);
-        (container as any)[key] = next;
       };
 
       attemptCommit(walkerOnCommit, fullPath, next, fallback);

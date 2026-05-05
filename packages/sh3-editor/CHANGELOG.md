@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.13.9 — 2026-05-05
+
+Inspector typed-widget commit chain made live and consistent against
+sh3-core 0.13.2's new `oninput`/`onchange` contract
+([Unfinished-Lair/sh3#29](https://github.com/Unfinished-Lair/sh3/issues/29)).
+Coalesced patch covering 0.13.4 → 0.13.9.
+
+### Changed
+
+- **All ten widget renderers rewritten to consume sh3-core's
+  `LiveInputEvents`/`CommitOnlyEvents` contract.** `StringWidget`,
+  `TextWidget`, `NumberWidget`, `SliderWidget`, `RangeWidget`,
+  `SliderGroupWidget` now drive commits via `oninput` (live, coalesced
+  per typing/drag session) + `onchange` (final, ends the gesture).
+  `SegmentedWidget`, `SelectWidget`, `IconToggleWidget`, `FileWidget`
+  drop their `bind:value`+local-buffer pattern in favor of a one-way
+  `value=` prop + `onchange={commit}`. The `bind:value={getter, setter}`
+  workaround used in earlier patches is gone.
+- **`SliderWidget` / `RangeWidget` / `SliderGroupWidget` layout** is now
+  `Label [Slider] [Field]` — companion `NumberInput` next to every slider
+  (per channel for `SliderGroupWidget`) for direct manual editing. The
+  `showValue` / `showValues` indicators from sh3-core are no longer used.
+- **`FallbackWalker.commitPrimitive` and the coalesced fallback now
+  mutate before `api.push` / `replaceTop`.** Aligns with the documented
+  `HistoryCommand` contract and ensures `inspectorValueChange` emits with
+  post-mutation state, so consumers reading the value during the emit
+  (live-sync paths, etc.) see the current state, not the previous one.
+- **Inspector container normalizes `--shell-input-bg`** to
+  `var(--shell-bg-sunken)` so Field/Textarea/NumberInput/Select share the
+  surface colour Segmented and the walker primitives already use. Cosmetic
+  override; sh3-core untouched.
+- Peer `sh3-core` tightened from `^0.13.1` to `^0.13.2`. The new widget
+  shape requires the `oninput` channel landed in 0.13.2.
+
+### Fixed
+
+- **Segmented widget active-state styling visible inside the inspector.**
+  Workaround for sh3-core CSS specificity miss
+  ([Unfinished-Lair/sh3#30](https://github.com/Unfinished-Lair/sh3/issues/30))
+  where `.sh3-seg button` (0,1,1) was outranking `.sh3-seg__btn--active`
+  (0,1,0) and forcing the accent background back to transparent. Local
+  override scoped to `.inspector-container` until sh3-core ships the fix.
+
 ## 0.13.0
 
 ### Added

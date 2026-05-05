@@ -5,27 +5,36 @@
   import { warnOnce } from './warn';
   import ReadOnlyLeaf from '../primitives/ReadOnlyLeaf.svelte';
 
-  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
+  let { value, meta, api, onCommit, onCommitCoalesced }: InspectorRendererProps = $props();
 
   const widget = $derived(
     meta?.widget?.type === 'string' ? meta.widget : undefined,
   );
   const ok = $derived(isString(value));
 
-  let local = $state(ok ? (value as string) : '');
-  $effect(() => { if (ok) local = value as string; });
-
-  // Slot id isn't directly available — synthetic key based on field label.
-  // TODO(later): thread real slotId through InspectorRendererProps.
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!ok) warnOnce(warnKey, 'string', `expected string, got ${typeof value}`);
   });
 
-  function commit(next: string) {
+  // gestureKey is non-null while the user is in a typing session — coalesces
+  // every keystroke commit into one undo entry. Cleared on blur (onchange).
+  let gestureKey: string | null = null;
+
+  function commitLive(next: string) {
     if (api.readonly || !onCommit) return;
     if (next === value) return;
-    onCommit(next);
+    gestureKey ??= `string:${crypto.randomUUID()}`;
+    onCommitCoalesced?.(next, gestureKey);
+  }
+
+  function commitFinal(next: string) {
+    if (api.readonly || !onCommit) return;
+    if (next !== value) {
+      if (gestureKey !== null) onCommitCoalesced?.(next, gestureKey);
+      else                     onCommit(next);
+    }
+    gestureKey = null;
   }
 </script>
 
@@ -33,14 +42,14 @@
   <ReadOnlyLeaf {value} />
 {:else}
   <div class="iw">
-    <!-- TODO(0.13.1): wire prefix/suffix snippets -->
     <Field
-      bind:value={local}
+      value={value as string}
       placeholder={widget?.placeholder}
       helper={widget?.helper}
       size={widget?.size ?? 'sm'}
       disabled={api.readonly || meta?.readonly}
-      onchange={commit}
+      oninput={commitLive}
+      onchange={commitFinal}
     />
   </div>
 {/if}

@@ -12,16 +12,11 @@
   );
   const ok = $derived(isFileOrFileArrayOrNull(value) && !!widget);
 
-  // Slot id isn't directly available — synthetic key based on field label.
-  // TODO(later): thread real slotId through InspectorRendererProps.
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!isFileOrFileArrayOrNull(value)) warnOnce(warnKey, 'file', 'expected File | File[] | null');
     else if (!widget) warnOnce(warnKey, 'file', 'meta.widget required');
   });
-
-  let local: File | File[] | null = $state(ok ? (value as File | File[] | null) : null);
-  $effect(() => { if (ok) local = value as File | File[] | null; });
 
   function commit(next: File | File[] | null) {
     if (api.readonly || !onCommit) return;
@@ -35,7 +30,7 @@
 {:else}
   <div class="iw">
     <FilePicker
-      bind:value={local}
+      value={value as File | File[] | null}
       accept={widget!.accept}
       multiple={widget!.multiple}
       disabled={api.readonly || meta?.readonly}

@@ -91,10 +91,27 @@
     font-family: var(--shell-font-mono);
     font-size: 13px;
     outline: none;
+    /* Normalize widget background tokens across sh3-core primitives.
+       Field/Textarea/NumberInput/Select default to --shell-input-bg while
+       Segmented/EditablePrimitive default to --shell-bg-sunken. Override
+       --shell-input-bg locally so every input-style widget inherits the
+       same sunken surface used elsewhere in the inspector. */
+    --shell-input-bg: var(--shell-bg-sunken);
   }
   .inspector-body {
     flex: 1;
     overflow: auto;
     padding: 0.5em 0;
+  }
+
+  /* sh3-core CSS specificity miss: `.sh3-seg button` (0,1,1) overrides
+     `.sh3-seg__btn--active` (0,1,0), so the active state's accent background
+     never paints. Bump specificity locally with `button.sh3-seg__btn--active`
+     to win source-of-truth for the active appearance. Filed upstream;
+     remove once sh3-core ships the fix. */
+  .inspector-container :global(.sh3-seg button.sh3-seg__btn--active) {
+    background: var(--shell-accent);
+    color: var(--shell-fg-on-accent);
+    font-weight: 600;
   }
 </style>

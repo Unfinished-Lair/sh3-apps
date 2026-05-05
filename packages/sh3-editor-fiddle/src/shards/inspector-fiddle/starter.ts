@@ -63,7 +63,7 @@ export const STARTER_META: InspectorMeta = {
     angle: {
       label: 'Angle (Slider)',
       type:  'slider',
-      widget: { type: 'slider', min: 0, max: 360, step: 1, showValue: true },
+      widget: { type: 'slider', min: 0, max: 360, step: 1 },
     },
     bounds: {
       label: 'Bounds (RangeSlider)',
@@ -75,7 +75,6 @@ export const STARTER_META: InspectorMeta = {
       type:  'slider-group',
       widget: {
         type: 'slider-group',
-        showValues: true,
         channels: [
           { id: 'bass',   label: 'Bass',   min: -10, max: 10, step: 1 },
           { id: 'mid',    label: 'Mid',    min: -10, max: 10, step: 1 },

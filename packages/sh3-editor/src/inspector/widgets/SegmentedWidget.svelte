@@ -12,16 +12,11 @@
   );
   const ok = $derived(isString(value) && !!widget);
 
-  // Slot id isn't directly available — synthetic key based on field label.
-  // TODO(later): thread real slotId through InspectorRendererProps.
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!isString(value)) warnOnce(warnKey, 'segmented', `expected string, got ${typeof value}`);
     else if (!widget) warnOnce(warnKey, 'segmented', 'meta.widget required (with options)');
   });
-
-  let local = $state(ok ? (value as string) : '');
-  $effect(() => { if (ok) local = value as string; });
 
   function commit(next: string) {
     if (api.readonly || !onCommit) return;
@@ -35,7 +30,7 @@
 {:else}
   <div class="iw">
     <Segmented
-      bind:value={local}
+      value={value as string}
       options={widget!.options}
       disabled={api.readonly || meta?.readonly}
       onchange={commit}

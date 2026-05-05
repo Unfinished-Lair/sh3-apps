@@ -13,17 +13,12 @@
   const multiple = $derived(widget?.multiple ?? false);
   const ok = $derived(isStringOrStringArray(value) && !!widget);
 
-  // Slot id isn't directly available — synthetic key based on field label.
-  // TODO(later): thread real slotId through InspectorRendererProps.
   const warnKey = $derived(meta?.label ?? '<unlabeled>');
   $effect(() => {
     if (!isStringOrStringArray(value))
       warnOnce(warnKey, 'icon-toggle', `expected string or string[], got ${typeof value}`);
     else if (!widget) warnOnce(warnKey, 'icon-toggle', 'meta.widget required (with options)');
   });
-
-  let local: string | string[] = $state(ok ? (value as string | string[]) : (multiple ? [] : ''));
-  $effect(() => { if (ok) local = value as string | string[]; });
 
   function commit(next: string | string[]) {
     if (api.readonly || !onCommit) return;
@@ -37,7 +32,7 @@
 {:else}
   <div class="iw">
     <IconToggleGroup
-      bind:value={local}
+      value={value as string | string[]}
       options={widget!.options}
       multiple={multiple}
       disabled={api.readonly || meta?.readonly}

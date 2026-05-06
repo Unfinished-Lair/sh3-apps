@@ -3,7 +3,13 @@
   import { listModels, type ModelInfo } from '../gemini-client';
 
   interface Props {
-    state: { apiKey: string; modelChain: string[] };
+    state: {
+      apiKey: string;
+      modelChain: string[];
+      systemInstruction: string;
+      temperature: number | null;
+      maxOutputTokens: number | null;
+    };
     session: { knownModels: ModelInfo[]; modelsLastFetchedAt: number | null };
   }
 
@@ -68,13 +74,40 @@
     if (gemini.modelChain.includes(next)) return;
     gemini.modelChain = [...gemini.modelChain, next];
   }
+
+  const temperatureDisplay = $derived(
+    gemini.temperature == null ? '' : String(gemini.temperature),
+  );
+  const maxOutputTokensDisplay = $derived(
+    gemini.maxOutputTokens == null ? '' : String(gemini.maxOutputTokens),
+  );
+
+  function onTemperatureChange(e: Event) {
+    const raw = (e.target as HTMLInputElement).value;
+    if (raw.trim() === '') {
+      gemini.temperature = null;
+      return;
+    }
+    const n = Number(raw);
+    if (Number.isFinite(n)) gemini.temperature = n;
+  }
+
+  function onMaxOutputTokensChange(e: Event) {
+    const raw = (e.target as HTMLInputElement).value;
+    if (raw.trim() === '') {
+      gemini.maxOutputTokens = null;
+      return;
+    }
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) gemini.maxOutputTokens = Math.floor(n);
+  }
 </script>
 
 <section class="gemini-settings">
   <h2>Gemini API key</h2>
   <p class="note">
-    Stored locally in your user zone. Used only by <code>gemini:ask</code> to call
-    Google's Generative Language API.
+    Stored locally in your user zone. Used by the <code>ai</code> shell mode and
+    <code>ai:ask</code> verb to call Google's Generative Language API.
   </p>
 
   <label>
@@ -100,7 +133,7 @@
   </p>
 
   <p class="help">
-    Run <code>gemini:ask hello</code> in the shell to test.
+    Run <code>ai:ask hello</code> in the shell to test.
   </p>
 
   <hr />
@@ -157,10 +190,55 @@
   {#if refreshError}
     <p class="refresh-error">Refresh failed: {refreshError}</p>
   {/if}
+
+  <hr />
+
+  <h2>Generation</h2>
+  <p class="note">Steer how the model responds. All fields optional.</p>
+
+  <label class="field">
+    <span class="field-label">System instruction</span>
+    <textarea
+      bind:value={gemini.systemInstruction}
+      placeholder="Optional. Steer model behavior — e.g., 'You are a concise assistant. Refuse to invent tool calls.'"
+      rows="4"
+      spellcheck="false"
+    ></textarea>
+  </label>
+
+  <label class="field">
+    <span class="field-label">Temperature</span>
+    <input
+      type="number"
+      min="0"
+      max="2"
+      step="0.1"
+      value={temperatureDisplay}
+      oninput={onTemperatureChange}
+      placeholder="(API default)"
+    />
+    <span class="help">Blank = use API default. Lower is more deterministic.</span>
+  </label>
+
+  <label class="field">
+    <span class="field-label">Max output tokens</span>
+    <input
+      type="number"
+      min="1"
+      step="1"
+      value={maxOutputTokensDisplay}
+      oninput={onMaxOutputTokensChange}
+      placeholder="(API default)"
+    />
+    <span class="help">Blank = use API default.</span>
+  </label>
 </section>
 
 <style>
   .gemini-settings {
+    box-sizing: border-box;
+    height: 100%;
+    overflow-y: auto;
     padding: 1rem;
     display: flex;
     flex-direction: column;
@@ -243,5 +321,21 @@
   }
   .add-row > :global(*) {
     flex: 1;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .field-label {
+    font-size: 0.9em;
+    color: var(--shell-fg-muted, inherit);
+  }
+  textarea {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    font: inherit;
+    font-family: var(--shell-mono, ui-monospace, monospace);
+    resize: vertical;
   }
 </style>

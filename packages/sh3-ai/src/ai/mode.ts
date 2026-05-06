@@ -8,35 +8,40 @@ import { ConversationState } from './conversation';
 import ResponseCard from './ResponseCard.svelte';
 
 export interface AiModeDeps {
-  provider: AiProvider;
   conversation: ConversationState;
-  /** Optional override for API-key presence check. Defaults to "always true";
-   *  consumers that wire a real check pass `() => state.user.apiKey.length > 0`. */
-  hasApiKey?: () => boolean;
+  /** Resolve the active provider at dispatch time. Returns undefined when no
+   *  provider has been contributed against `SH3_AI_PROVIDER_CONTRIBUTION`. */
+  getProvider: () => AiProvider | undefined;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
-  const hasApiKey = deps.hasApiKey ?? (() => true);
   return {
-    id: 'gemini',
-    label: 'Gemini',
+    id: 'ai',
+    label: 'AI',
     runsOn: 'client',
     autoRelocate: false,
     activate: () => deps.conversation.reset(),
     deactivate: () => deps.conversation.reset(),
-    dispatch: makeAiDispatch(deps, hasApiKey),
+    dispatch: makeAiDispatch(deps),
   };
 }
 
-function makeAiDispatch(deps: AiModeDeps, hasApiKey: () => boolean) {
+function makeAiDispatch(deps: AiModeDeps) {
   return async (
     input: { line: string; cwd: string; signal: AbortSignal },
     output: ShellModeOutput,
   ): Promise<void> => {
-    const { provider, conversation } = deps;
+    const { conversation } = deps;
 
-    if (!hasApiKey()) {
-      output.status('error', 'gemini: no API key configured. Open the Gemini app to set one.');
+    const provider = deps.getProvider();
+    if (!provider) {
+      output.status('error', 'sh3-ai: no AI provider configured');
+      return;
+    }
+
+    const ready = provider.isReady();
+    if (ready !== true) {
+      output.status('error', ready);
       return;
     }
 
@@ -44,7 +49,7 @@ function makeAiDispatch(deps: AiModeDeps, hasApiKey: () => boolean) {
 
     const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
     if (chain.length === 0) {
-      output.status('error', 'gemini: no models configured');
+      output.status('error', `${provider.id}: no models configured`);
       conversation.popLastUser();
       return;
     }

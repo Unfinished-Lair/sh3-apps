@@ -30,6 +30,7 @@ function fakeProvider(overrides: Partial<AiProvider> = {}): AiProvider {
     chain: () => ['gemini-2.5-flash'],
     chat: () => tokenStream(['hello']),
     isAuthFailure: () => false,
+    isReady: () => true,
     ...overrides,
   };
 }
@@ -38,9 +39,9 @@ describe('makeAiModeDescriptor', () => {
   it('descriptor has the expected shape', () => {
     const conversation = new ConversationState();
     const provider = fakeProvider();
-    const desc = makeAiModeDescriptor({ provider, conversation });
-    expect(desc.id).toBe('gemini');
-    expect(desc.label).toBe('Gemini');
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
+    expect(desc.id).toBe('ai');
+    expect(desc.label).toBe('AI');
     expect(desc.runsOn).toBe('client');
     expect(desc.autoRelocate).toBe(false);
     expect(typeof desc.dispatch).toBe('function');
@@ -51,7 +52,7 @@ describe('makeAiModeDescriptor', () => {
   it('happy path: streams tokens, completes, appends user + assistant messages', async () => {
     const conversation = new ConversationState();
     const provider = fakeProvider({ chat: () => tokenStream(['hel', 'lo']) });
-    const desc = makeAiModeDescriptor({ provider, conversation });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
     const output = makeOutput();
     const streamHandle = output.stream();
     output.stream.mockClear();
@@ -73,7 +74,33 @@ describe('makeAiModeDescriptor', () => {
     ]);
   });
 
-  it('emits an error status and rolls back when API key is empty', async () => {
+  it('emits an error status and does not append when no provider is contributed', async () => {
+    const conversation = new ConversationState();
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => undefined });
+    const output = makeOutput();
+    const signal = new AbortController().signal;
+
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(output.status).toHaveBeenCalledWith('error', expect.stringContaining('no AI provider'));
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('emits the provider isReady() string and does not append when not ready', async () => {
+    const conversation = new ConversationState();
+    const provider = fakeProvider({
+      isReady: () => 'gemini: no API key configured',
+      chat: () => { throw new Error('should not be called'); },
+    });
+    const output = makeOutput();
+    const signal = new AbortController().signal;
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
+
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(output.status).toHaveBeenCalledWith('error', 'gemini: no API key configured');
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('errors and rolls back when the chain is empty', async () => {
     const conversation = new ConversationState();
     const provider = fakeProvider({
       chain: () => [],
@@ -81,10 +108,10 @@ describe('makeAiModeDescriptor', () => {
     });
     const output = makeOutput();
     const signal = new AbortController().signal;
-    const descNoKey = makeAiModeDescriptor({ provider, conversation, hasApiKey: () => false });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
 
-    await descNoKey.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
-    expect(output.status).toHaveBeenCalledWith('error', expect.stringContaining('no API key'));
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(output.status).toHaveBeenCalledWith('error', expect.stringContaining('no models'));
     expect(conversation.messages).toEqual([]);
   });
 
@@ -105,7 +132,7 @@ describe('makeAiModeDescriptor', () => {
       },
       isAuthFailure: (err) => (err as any)?.__auth === true,
     });
-    const desc = makeAiModeDescriptor({ provider, conversation });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
     const output = makeOutput();
     const handle = output.stream();
     output.stream.mockReturnValue(handle);
@@ -128,7 +155,7 @@ describe('makeAiModeDescriptor', () => {
         throw new Error('locked-fail');
       },
     });
-    const desc = makeAiModeDescriptor({ provider, conversation });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
     const output = makeOutput();
     const handle = output.stream();
     output.stream.mockReturnValue(handle);
@@ -150,7 +177,7 @@ describe('makeAiModeDescriptor', () => {
           });
         })(),
     });
-    const desc = makeAiModeDescriptor({ provider, conversation });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
     const output = makeOutput();
     const handle = output.stream();
     output.stream.mockReturnValue(handle);
@@ -167,7 +194,10 @@ describe('makeAiModeDescriptor', () => {
     conversation.appendUser('q');
     conversation.appendAssistant('a', 'gemini-2.5-flash');
     conversation.setLock('gemini-2.5-pro');
-    const desc = makeAiModeDescriptor({ provider: fakeProvider(), conversation });
+    const desc = makeAiModeDescriptor({
+      conversation,
+      getProvider: () => fakeProvider(),
+    });
     desc.activate!({} as any);
     expect(conversation.messages).toEqual([]);
     expect(conversation.lockedModel).toBeNull();
@@ -177,5 +207,22 @@ describe('makeAiModeDescriptor', () => {
     desc.deactivate!({} as any);
     expect(conversation.messages).toEqual([]);
     expect(conversation.lockedModel).toBeNull();
+  });
+
+  it('resolves provider via getProvider on every dispatch (late registration)', async () => {
+    const conversation = new ConversationState();
+    let provider: AiProvider | undefined;
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
+    const output = makeOutput();
+    const signal = new AbortController().signal;
+
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(output.status).toHaveBeenCalledWith('error', expect.stringContaining('no AI provider'));
+
+    provider = fakeProvider({ chat: () => tokenStream(['ok']) });
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(handle.complete).toHaveBeenCalledTimes(1);
   });
 });

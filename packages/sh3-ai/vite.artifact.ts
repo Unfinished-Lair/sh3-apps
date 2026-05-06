@@ -8,11 +8,11 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       formats: ['es'],
-      fileName: 'sh3-gemini-shell',
+      fileName: 'sh3-ai',
     },
     outDir: 'dist/artifact',
     rollupOptions: {
-      external: ['sh3-ai', /^sh3-ai\//, 'sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
+      external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
     },
   },
 });

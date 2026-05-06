@@ -360,7 +360,7 @@ describe('iterateChain', () => {
 });
 
 import { chatStream } from './gemini-client';
-import type { ChatChunk } from './ai/provider';
+import type { ChatChunk } from 'sh3-ai';
 
 describe('chatStream', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
@@ -614,14 +614,26 @@ describe('geminiProvider', () => {
   });
 
   it('id and label are static', () => {
-    const p = geminiProvider({ getApiKey: () => 'x', getChain: () => ['m'] });
+    const p = geminiProvider({
+      getApiKey: () => 'x',
+      getChain: () => ['m'],
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
     expect(p.id).toBe('gemini');
     expect(p.label).toBe('Gemini');
   });
 
   it('chain() reads getChain on every call (live read)', () => {
     let chain = ['a'];
-    const p = geminiProvider({ getApiKey: () => 'x', getChain: () => chain });
+    const p = geminiProvider({
+      getApiKey: () => 'x',
+      getChain: () => chain,
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
     expect(p.chain()).toEqual(['a']);
     chain = ['b', 'c'];
     expect(p.chain()).toEqual(['b', 'c']);
@@ -632,7 +644,13 @@ describe('geminiProvider', () => {
       JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
     ]));
     let key = 'first-key';
-    const p = geminiProvider({ getApiKey: () => key, getChain: () => ['m'] });
+    const p = geminiProvider({
+      getApiKey: () => key,
+      getChain: () => ['m'],
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
     await collect(p.chat([{ role: 'user', content: 'hi' }], 'gemini-2.5-flash', new AbortController().signal));
     expect((mockFetch.mock.calls[0][0] as string)).toContain('key=first-key');
 
@@ -642,17 +660,226 @@ describe('geminiProvider', () => {
   });
 
   it('isAuthFailure returns true for GeminiError with status 400/401/403', () => {
-    const p = geminiProvider({ getApiKey: () => 'x', getChain: () => ['m'] });
+    const p = geminiProvider({
+      getApiKey: () => 'x',
+      getChain: () => ['m'],
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
     expect(p.isAuthFailure(new GeminiError('x', 400))).toBe(true);
     expect(p.isAuthFailure(new GeminiError('x', 401))).toBe(true);
     expect(p.isAuthFailure(new GeminiError('x', 403))).toBe(true);
   });
 
   it('isAuthFailure returns false for other errors', () => {
-    const p = geminiProvider({ getApiKey: () => 'x', getChain: () => ['m'] });
+    const p = geminiProvider({
+      getApiKey: () => 'x',
+      getChain: () => ['m'],
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
     expect(p.isAuthFailure(new GeminiError('x', 500))).toBe(false);
     expect(p.isAuthFailure(new GeminiError('x', 429))).toBe(false);
     expect(p.isAuthFailure(new Error('boom'))).toBe(false);
     expect(p.isAuthFailure(undefined)).toBe(false);
+  });
+
+  it('isReady returns true when API key is set, a string reason otherwise', () => {
+    let key = '';
+    const p = geminiProvider({
+      getApiKey: () => key,
+      getChain: () => ['m'],
+      getSystemInstruction: () => '',
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
+    const empty = p.isReady();
+    expect(typeof empty).toBe('string');
+    expect(empty).toContain('gemini');
+    expect(empty).toContain('API key');
+
+    key = 'present';
+    expect(p.isReady()).toBe(true);
+  });
+});
+
+describe('chatStream generation config', () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('omits systemInstruction and generationConfig when no config provided', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream('test-key', [{ role: 'user', content: 'hi' }], 'gemini-2.5-flash', new AbortController().signal),
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty('systemInstruction');
+    expect(body).not.toHaveProperty('generationConfig');
+  });
+
+  it('includes systemInstruction when provided', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { systemInstruction: 'be brief' },
+      ),
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.systemInstruction).toEqual({ parts: [{ text: 'be brief' }] });
+  });
+
+  it('omits systemInstruction when empty string', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { systemInstruction: '' },
+      ),
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty('systemInstruction');
+  });
+
+  it('includes generationConfig.temperature when number, omits when null', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { temperature: 0.2 },
+      ),
+    );
+    let body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.generationConfig).toEqual({ temperature: 0.2 });
+
+    mockFetch.mockClear();
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { temperature: null },
+      ),
+    );
+    body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty('generationConfig');
+  });
+
+  it('includes generationConfig.maxOutputTokens when number, omits when null', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { maxOutputTokens: 256 },
+      ),
+    );
+    let body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.generationConfig).toEqual({ maxOutputTokens: 256 });
+
+    mockFetch.mockClear();
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { maxOutputTokens: null },
+      ),
+    );
+    body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty('generationConfig');
+  });
+
+  it('combines temperature and maxOutputTokens in generationConfig', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(
+      chatStream(
+        'test-key',
+        [{ role: 'user', content: 'hi' }],
+        'gemini-2.5-flash',
+        new AbortController().signal,
+        { temperature: 0, maxOutputTokens: 100 },
+      ),
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.generationConfig).toEqual({ temperature: 0, maxOutputTokens: 100 });
+  });
+});
+
+describe('askOnce generation config', () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('omits config fields when none provided', async () => {
+    mockFetch.mockResolvedValue(
+      jsonResponse({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    );
+    await askOnce('test-key', 'hi', 'gemini-2.5-flash');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty('systemInstruction');
+    expect(body).not.toHaveProperty('generationConfig');
+  });
+
+  it('includes systemInstruction and generationConfig when provided', async () => {
+    mockFetch.mockResolvedValue(
+      jsonResponse({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    );
+    await askOnce('test-key', 'hi', 'gemini-2.5-flash', undefined, {
+      systemInstruction: 'be brief',
+      temperature: 0.5,
+      maxOutputTokens: 64,
+    });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.systemInstruction).toEqual({ parts: [{ text: 'be brief' }] });
+    expect(body.generationConfig).toEqual({ temperature: 0.5, maxOutputTokens: 64 });
   });
 });

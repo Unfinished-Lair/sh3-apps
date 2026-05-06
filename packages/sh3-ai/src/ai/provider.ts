@@ -1,9 +1,10 @@
 /*
- * Provider abstraction for AI chat backends. Lives in `ai/` because it is
- * destined for sh3-ai when that shard is extracted; sh3-gemini-shell will
- * then become a contributor that registers a `geminiProvider` instance
- * against sh3-ai's contribution point.
+ * Abstract AI provider contract for the sh3-ai shard. Concrete providers
+ * (e.g. sh3-gemini-shell) register `AiProvider` instances against
+ * `SH3_AI_PROVIDER_CONTRIBUTION` via `ctx.contributions.register(...)`.
  */
+
+export const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -30,4 +31,7 @@ export interface AiProvider {
   /** Provider-specific classification of auth failures (so the dispatcher
    *  can break out of the model-chain fallback loop without retrying). */
   isAuthFailure(err: unknown): boolean;
+  /** Readiness signal. `true` = ready to dispatch; a string = user-facing
+   *  not-ready reason (e.g. "gemini: no API key configured"). */
+  isReady(): true | string;
 }

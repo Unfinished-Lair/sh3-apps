@@ -8,11 +8,41 @@ export class GeminiError extends Error {
   }
 }
 
+export interface GeminiGenerationConfig {
+  /** Empty/omitted → do not send `systemInstruction`. */
+  systemInstruction?: string;
+  /** null/omitted → do not send `generationConfig.temperature`. */
+  temperature?: number | null;
+  /** null/omitted → do not send `generationConfig.maxOutputTokens`. */
+  maxOutputTokens?: number | null;
+}
+
+function buildGenerationFields(
+  config: GeminiGenerationConfig | undefined,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (config?.systemInstruction) {
+    out.systemInstruction = { parts: [{ text: config.systemInstruction }] };
+  }
+  const generationConfig: Record<string, number> = {};
+  if (typeof config?.temperature === 'number') {
+    generationConfig.temperature = config.temperature;
+  }
+  if (typeof config?.maxOutputTokens === 'number') {
+    generationConfig.maxOutputTokens = config.maxOutputTokens;
+  }
+  if (Object.keys(generationConfig).length > 0) {
+    out.generationConfig = generationConfig;
+  }
+  return out;
+}
+
 export async function askOnce(
   apiKey: string,
   prompt: string,
   modelId: string,
   signal?: AbortSignal,
+  config?: GeminiGenerationConfig,
 ): Promise<string> {
   const url = `${ENDPOINT(modelId)}?key=${apiKey}`;
   const composed = signal
@@ -23,7 +53,10 @@ export async function askOnce(
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        ...buildGenerationFields(config),
+      }),
       signal: composed,
     });
   } catch (err) {
@@ -125,7 +158,7 @@ export async function iterateChain<T>(
   throw new Error(`all models failed (tried ${tried}); last error: ${last}`);
 }
 
-import type { ChatMessage, ChatChunk } from './ai/provider';
+import type { ChatMessage, ChatChunk } from 'sh3-ai';
 
 const STREAM_ENDPOINT = (modelId: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent`;
@@ -135,6 +168,7 @@ export async function* chatStream(
   messages: ChatMessage[],
   modelId: string,
   signal: AbortSignal,
+  config?: GeminiGenerationConfig,
 ): AsyncIterable<ChatChunk> {
   const url = `${STREAM_ENDPOINT(modelId)}?alt=sse&key=${apiKey}`;
   const composed = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
@@ -148,6 +182,7 @@ export async function* chatStream(
           role: m.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: m.content }],
         })),
+        ...buildGenerationFields(config),
       }),
       signal: composed,
     });
@@ -267,11 +302,14 @@ export async function* chatStream(
   yield { type: 'done' };
 }
 
-import type { AiProvider } from './ai/provider';
+import type { AiProvider } from 'sh3-ai';
 
 export interface GeminiProviderDeps {
   getApiKey: () => string;
   getChain: () => string[];
+  getSystemInstruction: () => string;
+  getTemperature: () => number | null;
+  getMaxOutputTokens: () => number | null;
 }
 
 export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
@@ -280,13 +318,22 @@ export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
     label: 'Gemini',
     chain: () => deps.getChain(),
     chat(messages, model, signal) {
-      return chatStream(deps.getApiKey(), messages, model, signal);
+      return chatStream(deps.getApiKey(), messages, model, signal, {
+        systemInstruction: deps.getSystemInstruction(),
+        temperature: deps.getTemperature(),
+        maxOutputTokens: deps.getMaxOutputTokens(),
+      });
     },
     isAuthFailure(err: unknown): boolean {
       return (
         err instanceof GeminiError &&
         (err.status === 400 || err.status === 401 || err.status === 403)
       );
+    },
+    isReady() {
+      return deps.getApiKey().length > 0
+        ? true
+        : 'gemini: no API key configured. Open the Gemini app to set one.';
     },
   };
 }

@@ -1,0 +1,181 @@
+import { describe, it, expect, vi } from 'vitest';
+import { makeAiModeDescriptor } from './mode';
+import { ConversationState } from './conversation';
+import type { AiProvider, ChatChunk } from './provider';
+
+function makeOutput() {
+  const stream = vi.fn(() => {
+    const append = vi.fn();
+    const complete = vi.fn();
+    const error = vi.fn();
+    return { append, complete, error };
+  });
+  const status = vi.fn();
+  const text = vi.fn();
+  const rich = vi.fn();
+  return { stream, status, text, rich };
+}
+
+function tokenStream(tokens: string[]): AsyncIterable<ChatChunk> {
+  return (async function* () {
+    for (const t of tokens) yield { type: 'token', text: t };
+    yield { type: 'done' };
+  })();
+}
+
+function fakeProvider(overrides: Partial<AiProvider> = {}): AiProvider {
+  return {
+    id: 'gemini',
+    label: 'Gemini',
+    chain: () => ['gemini-2.5-flash'],
+    chat: () => tokenStream(['hello']),
+    isAuthFailure: () => false,
+    ...overrides,
+  };
+}
+
+describe('makeAiModeDescriptor', () => {
+  it('descriptor has the expected shape', () => {
+    const conversation = new ConversationState();
+    const provider = fakeProvider();
+    const desc = makeAiModeDescriptor({ provider, conversation });
+    expect(desc.id).toBe('gemini');
+    expect(desc.label).toBe('Gemini');
+    expect(desc.runsOn).toBe('client');
+    expect(desc.autoRelocate).toBe(false);
+    expect(typeof desc.dispatch).toBe('function');
+    expect(typeof desc.activate).toBe('function');
+    expect(typeof desc.deactivate).toBe('function');
+  });
+
+  it('happy path: streams tokens, completes, appends user + assistant messages', async () => {
+    const conversation = new ConversationState();
+    const provider = fakeProvider({ chat: () => tokenStream(['hel', 'lo']) });
+    const desc = makeAiModeDescriptor({ provider, conversation });
+    const output = makeOutput();
+    const streamHandle = output.stream();
+    output.stream.mockClear();
+    output.stream.mockReturnValue(streamHandle);
+
+    const signal = new AbortController().signal;
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+
+    expect(output.stream).toHaveBeenCalledTimes(1);
+    expect(streamHandle.append).toHaveBeenCalledWith({ model: 'gemini-2.5-flash' });
+    expect(streamHandle.append).toHaveBeenCalledWith({ markdown: 'hel' });
+    expect(streamHandle.append).toHaveBeenCalledWith({ markdown: 'hello' });
+    expect(streamHandle.complete).toHaveBeenCalledTimes(1);
+    expect(streamHandle.error).not.toHaveBeenCalled();
+
+    expect(conversation.messages).toEqual([
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello', model: 'gemini-2.5-flash' },
+    ]);
+  });
+
+  it('emits an error status and rolls back when API key is empty', async () => {
+    const conversation = new ConversationState();
+    const provider = fakeProvider({
+      chain: () => [],
+      chat: () => { throw new Error('should not be called'); },
+    });
+    const output = makeOutput();
+    const signal = new AbortController().signal;
+    const descNoKey = makeAiModeDescriptor({ provider, conversation, hasApiKey: () => false });
+
+    await descNoKey.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(output.status).toHaveBeenCalledWith('error', expect.stringContaining('no API key'));
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('falls through chain on transient error, stops on auth failure', async () => {
+    const conversation = new ConversationState();
+    let calls = 0;
+    const provider = fakeProvider({
+      chain: () => ['a', 'b', 'c'],
+      chat: (_msgs, model) => {
+        calls++;
+        if (model === 'a') throw new Error('transient');
+        if (model === 'b') {
+          const e = new Error('auth');
+          (e as any).__auth = true;
+          throw e;
+        }
+        return tokenStream(['ok']);
+      },
+      isAuthFailure: (err) => (err as any)?.__auth === true,
+    });
+    const desc = makeAiModeDescriptor({ provider, conversation });
+    const output = makeOutput();
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    const signal = new AbortController().signal;
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+
+    expect(calls).toBe(2);
+    expect(handle.error).toHaveBeenCalledTimes(1);
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('honors lockedModel: single attempt, no chain iteration', async () => {
+    const conversation = new ConversationState();
+    conversation.setLock('gemini-2.5-pro');
+    const calls: string[] = [];
+    const provider = fakeProvider({
+      chain: () => ['gemini-2.5-flash', 'gemini-2.5-pro'],
+      chat: (_m, model) => {
+        calls.push(model);
+        throw new Error('locked-fail');
+      },
+    });
+    const desc = makeAiModeDescriptor({ provider, conversation });
+    const output = makeOutput();
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    const signal = new AbortController().signal;
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+    expect(calls).toEqual(['gemini-2.5-pro']);
+    expect(handle.error).toHaveBeenCalledTimes(1);
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('rolls back user message on abort mid-stream', async () => {
+    const conversation = new ConversationState();
+    const provider = fakeProvider({
+      chat: (_m, _model, signal) =>
+        (async function* () {
+          yield { type: 'token', text: 'hel' };
+          await new Promise((res, rej) => {
+            signal.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')));
+          });
+        })(),
+    });
+    const desc = makeAiModeDescriptor({ provider, conversation });
+    const output = makeOutput();
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    const controller = new AbortController();
+    const p = desc.dispatch!({ line: 'hi', cwd: '/', signal: controller.signal }, output as any);
+    controller.abort();
+    await p;
+    expect(handle.error).toHaveBeenCalledTimes(1);
+    expect(conversation.messages).toEqual([]);
+  });
+
+  it('activate and deactivate reset the conversation', () => {
+    const conversation = new ConversationState();
+    conversation.appendUser('q');
+    conversation.appendAssistant('a', 'gemini-2.5-flash');
+    conversation.setLock('gemini-2.5-pro');
+    const desc = makeAiModeDescriptor({ provider: fakeProvider(), conversation });
+    desc.activate!({} as any);
+    expect(conversation.messages).toEqual([]);
+    expect(conversation.lockedModel).toBeNull();
+
+    conversation.appendUser('q2');
+    conversation.setLock('x');
+    desc.deactivate!({} as any);
+    expect(conversation.messages).toEqual([]);
+    expect(conversation.lockedModel).toBeNull();
+  });
+});

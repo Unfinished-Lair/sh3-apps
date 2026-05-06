@@ -1,7 +1,16 @@
 import type { SourceShard, ShardContext, ViewFactory, MountContext, ViewHandle } from 'sh3-core';
+import { registerShellMode } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import SettingsView from './views/SettingsView.svelte';
-import { askGemini, GeminiError, type ModelInfo } from './gemini-client';
+import {
+  askOnce,
+  iterateChain,
+  geminiProvider,
+  GeminiError,
+  type ModelInfo,
+} from './gemini-client';
+import { ConversationState } from './ai/conversation';
+import { makeAiModeDescriptor } from './ai/mode';
 
 interface GeminiUserState {
   apiKey: string;
@@ -45,6 +54,21 @@ export const shard: SourceShard = {
     };
     ctx.registerView('gemini:settings', settingsFactory);
 
+    const provider = geminiProvider({
+      getApiKey: () => state.user.apiKey,
+      getChain: () =>
+        state.user.modelChain.length > 0 ? state.user.modelChain : ['gemini-2.5-flash'],
+    });
+    const conversation = new ConversationState();
+    registerShellMode(
+      ctx,
+      makeAiModeDescriptor({
+        provider,
+        conversation,
+        hasApiKey: () => state.user.apiKey.length > 0,
+      }),
+    );
+
     ctx.registerVerb({
       name: 'ask',
       summary: 'Send a prompt to Gemini and print the answer. Usage: ask <prompt...>',
@@ -74,38 +98,95 @@ export const shard: SourceShard = {
             ? state.user.modelChain
             : ['gemini-2.5-flash'];
         const prompt = args.join(' ');
-        const attempts: { model: string; error: string }[] = [];
 
-        for (const model of chain) {
-          try {
-            const text = await askGemini(state.user.apiKey, prompt, model);
-            vctx.scrollback.push({
-              kind: 'text',
-              stream: 'stdout',
-              chunks: [text],
-              ts: Date.now(),
-            });
-            return;
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            attempts.push({ model, error: msg });
-            if (isAuthFailure(err)) break;
-          }
+        try {
+          const { value } = await iterateChain(
+            chain,
+            isAuthFailure,
+            (model) => askOnce(state.user.apiKey, prompt, model),
+          );
+          vctx.scrollback.push({
+            kind: 'text',
+            stream: 'stdout',
+            chunks: [value],
+            ts: Date.now(),
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          vctx.scrollback.push({
+            kind: 'text',
+            stream: 'stderr',
+            chunks: [`gemini: ${msg}`],
+            ts: Date.now(),
+          });
         }
+      },
+    });
 
-        const tried = attempts.map((a) => a.model).join(', ');
-        const last = attempts[attempts.length - 1]?.error ?? 'unknown error';
+    ctx.registerVerb({
+      name: 'reset',
+      summary: 'Clear the Gemini conversation thread (does not affect scrollback).',
+      async run(vctx) {
+        conversation.reset();
         vctx.scrollback.push({
-          kind: 'text',
-          stream: 'stderr',
-          chunks: [`gemini: all models failed (tried ${tried}); last error: ${last}`],
+          kind: 'status',
+          text: 'gemini: thread cleared',
+          level: 'info',
+          ts: Date.now(),
+        });
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'lock',
+      summary: 'Pin the Gemini conversation to a single model. Usage: lock <model-id>',
+      async run(vctx, args) {
+        if (args.length === 0) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: 'usage: gemini:lock <model-id>',
+            level: 'info',
+            ts: Date.now(),
+          });
+          return;
+        }
+        const id = args[0];
+        const chain = state.user.modelChain;
+        if (!chain.includes(id)) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `gemini: '${id}' is not in your model chain`,
+            level: 'error',
+            ts: Date.now(),
+          });
+          return;
+        }
+        conversation.setLock(id);
+        vctx.scrollback.push({
+          kind: 'status',
+          text: `gemini: locked to ${id}`,
+          level: 'info',
+          ts: Date.now(),
+        });
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'unlock',
+      summary: 'Release the Gemini model lock and resume chain iteration.',
+      async run(vctx) {
+        conversation.setLock(null);
+        vctx.scrollback.push({
+          kind: 'status',
+          text: 'gemini: model lock released',
+          level: 'info',
           ts: Date.now(),
         });
       },
     });
   },
 
-  // Empty body — the hook's only job is to keep the shard resident so
-  // gemini:ask is callable from the SH3 shell when the app is closed.
+  // Empty body — the hook keeps the shard resident so verbs and the mode are
+  // reachable when no Gemini app/view is open.
   autostart() {},
 };

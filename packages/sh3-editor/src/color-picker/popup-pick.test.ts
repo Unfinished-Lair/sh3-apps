@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('sh3-core', () => ({
   shell: {
-    popup: {
-      show: vi.fn(),
+    float: {
+      open: vi.fn(() => 'float-1'),
       close: vi.fn(),
     },
   },
@@ -16,6 +16,8 @@ import {
   openColorPickerPopup,
   type PickDeps,
 } from './popup-pick';
+
+const floatOpen = shell.float.open as unknown as ReturnType<typeof vi.fn>;
 
 describe('decideSettleValue', () => {
   it('returns null when Escape was pressed (regardless of touch)', () => {
@@ -59,63 +61,69 @@ const stubDeps: PickDeps = {
 
 describe('openColorPickerPopup', () => {
   beforeEach(() => {
-    (shell.popup.show as ReturnType<typeof vi.fn>).mockClear();
-    (globalThis as any).window = { innerWidth: 1024, innerHeight: 768 };
+    floatOpen.mockClear();
   });
 
-  it('synthesizes a viewport-center anchor when opts.anchor is omitted', () => {
+  it('opens the sh3-editor:color-pick float with dismissable: true', () => {
     openColorPickerPopup({}, stubDeps);
-    const [, options] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(options.anchor).toEqual({ x: 512, y: 384 });
+    const [viewId, options] = floatOpen.mock.calls[0];
+    expect(viewId).toBe('sh3-editor:color-pick');
+    expect(options.dismissable).toBe(true);
   });
 
-  it('passes through opts.anchor when supplied', () => {
+  it('omits anchor when opts.anchor is not supplied (float renders at root)', () => {
+    openColorPickerPopup({}, stubDeps);
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.anchor).toBeUndefined();
+  });
+
+  it('threads opts.anchor straight into FloatOptions for overlay portaling', () => {
     const el = { tagName: 'BUTTON' } as unknown as HTMLElement;
     openColorPickerPopup({ anchor: el }, stubDeps);
-    const [, options] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [, options] = floatOpen.mock.calls[0];
     expect(options.anchor).toBe(el);
   });
 
-  it('passes a normalized initial into wrapper props (#000000 for invalid)', () => {
+  it('passes a normalized initial through meta (#000000 for invalid)', () => {
     openColorPickerPopup({ initial: 'garbage' }, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(props.initial).toBe('#000000');
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.meta.initial).toBe('#000000');
   });
 
-  it('passes valid initial through unchanged', () => {
+  it('passes valid initial through meta unchanged', () => {
     openColorPickerPopup({ initial: '#abcdef' }, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(props.initial).toBe('#abcdef');
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.meta.initial).toBe('#abcdef');
   });
 
-  it('ignores opts.alpha (no `alpha` prop forwarded to the wrapper)', () => {
+  it('does not forward opts.alpha to meta', () => {
     openColorPickerPopup({ alpha: true, initial: '#ff0000' }, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(props).not.toHaveProperty('alpha');
-    expect(props.initial).toBe('#ff0000');
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.meta).not.toHaveProperty('alpha');
+    expect(options.meta.initial).toBe('#ff0000');
   });
 
-  it('forwards opts.title to the wrapper', () => {
+  it('forwards opts.title through meta', () => {
     openColorPickerPopup({ title: 'Background color' }, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(props.title).toBe('Background color');
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.meta.title).toBe('Background color');
   });
 
-  it('returns a Promise that resolves when wrapper calls onResolve', async () => {
+  it('returns a Promise that resolves when meta.onResolve is called', async () => {
     const promise = openColorPickerPopup({ initial: '#ff0000' }, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    props.onResolve('#abcdef');
+    const [, options] = floatOpen.mock.calls[0];
+    options.meta.onResolve('#abcdef');
     await expect(promise).resolves.toBe('#abcdef');
   });
 
-  it('returns a Promise that resolves null when wrapper calls onResolve(null)', async () => {
+  it('returns a Promise that resolves null when meta.onResolve is called with null', async () => {
     const promise = openColorPickerPopup({}, stubDeps);
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    props.onResolve(null);
+    const [, options] = floatOpen.mock.calls[0];
+    options.meta.onResolve(null);
     await expect(promise).resolves.toBe(null);
   });
 
-  it('forwards user-palette deps into wrapper props', () => {
+  it('forwards user-palette deps through meta', () => {
     const onSave = vi.fn();
     const onDelete = vi.fn();
     const palettes = [{ id: 'user-1', name: 'mine', colors: ['#fff'] }];
@@ -124,9 +132,9 @@ describe('openColorPickerPopup', () => {
       onSaveUserPalette: onSave,
       onDeleteUserPalette: onDelete,
     });
-    const [, , props] = (shell.popup.show as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(props.userPalettes).toBe(palettes);
-    expect(props.onSaveUserPalette).toBe(onSave);
-    expect(props.onDeleteUserPalette).toBe(onDelete);
+    const [, options] = floatOpen.mock.calls[0];
+    expect(options.meta.userPalettes).toBe(palettes);
+    expect(options.meta.onSaveUserPalette).toBe(onSave);
+    expect(options.meta.onDeleteUserPalette).toBe(onDelete);
   });
 });

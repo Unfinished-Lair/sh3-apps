@@ -24,6 +24,8 @@ import ColorRenderer from './inspector/color-renderer.svelte';
 import Settings from './settings/Settings.svelte';
 import Help from './views/Help.svelte';
 import GraphHost from './graph/views/GraphHost.svelte';
+import PopupPickWrapper from './color-picker/PopupPickWrapper.svelte';
+import type { ColorPickViewMeta } from './color-picker/popup-pick';
 import { createDomainRegistry } from './graph/domain/registry';
 import {
   GRAPH_DOMAIN_POINT, GRAPH_VIEW_POINT,
@@ -60,6 +62,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:reader',       label: 'Reader',       standalone: true },
       { id: 'sh3-editor:inspector',    label: 'Inspector',    standalone: true },
       { id: 'sh3-editor:color-picker', label: 'Color Picker', standalone: true },
+      { id: 'sh3-editor:color-pick',   label: 'Color Pick',   standalone: false },
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
       { id: 'sh3-editor:help',         label: 'Help',         standalone: true },
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
@@ -238,6 +241,38 @@ export const shard: SourceShard = {
             bindResult.cleanup();
             unmount(component);
           },
+        };
+      },
+    });
+
+    // Internal float view used by `shell.color.pick()` — mounts the
+    // popup-style picker surface inside a dismissable float so it can stack
+    // above modals via FloatOptions.anchor portaling.
+    ctx.registerView('sh3-editor:color-pick', {
+      mount(container, context) {
+        const meta = context.meta as ColorPickViewMeta | undefined;
+        if (!meta) {
+          throw new Error('sh3-editor:color-pick mounted without meta');
+        }
+        const requestClose = () => {
+          const loc = context.location();
+          if (loc?.kind === 'float') shell.float.close(loc.floatId);
+        };
+        const component = mount(PopupPickWrapper, {
+          target: container,
+          props: {
+            initial: meta.initial,
+            title: meta.title,
+            userPalettes: meta.userPalettes,
+            onSaveUserPalette: meta.onSaveUserPalette,
+            onDeleteUserPalette: meta.onDeleteUserPalette,
+            onResolve: meta.onResolve,
+            close: requestClose,
+          },
+        });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
         };
       },
     });
@@ -515,6 +550,12 @@ export const shard: SourceShard = {
       run() { getActiveGraph()?.dismissPalette(); },
     });
   },
+
+  // Self-start so the color-picker (and other shell-level) contributions
+  // registered in `activate` go live at framework boot — without this,
+  // `shell.color.pick()` would fall through to the native <input type="color">
+  // until some app first launches sh3-editor.
+  autostart() { /* contributions are wired in `activate`; no work to do here. */ },
 
   deactivate() {
     unsubscribeDomainContributions?.();

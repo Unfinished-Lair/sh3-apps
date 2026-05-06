@@ -12,7 +12,7 @@
     onDeleteUserPalette: (paletteId: string) => void;
     /** Called exactly once with the chosen hex (or null on Escape / never-interacted). */
     onResolve: (hex: string | null) => void;
-    /** Injected by shell.popup.show; not used directly — the popup manager owns close. */
+    /** Closes the host overlay (float). Called on Escape. */
     close: () => void;
   }
 
@@ -23,7 +23,7 @@
     onSaveUserPalette,
     onDeleteUserPalette,
     onResolve,
-    close: _close,
+    close,
   }: Props = $props();
 
   let currentValue = $state(initial);
@@ -37,13 +37,16 @@
     onResolve(value);
   }
 
-  // Capture-phase: registered synchronously in onMount, which runs inside the
-  // mount() call that shell.popup.show invokes BEFORE its own queueMicrotask
-  // listener install. So our handler sees Escape first, sets the flag without
-  // preventDefault, then the popup manager's handler closes the popup. Our
-  // onDestroy then resolves null.
+  // The float manager only dismisses on outside-pointerdown (see
+  // overlays/floatDismiss.ts) — Escape never reaches it. We own that gesture
+  // here: capture-phase so we run before in-content focused inputs swallow
+  // the key, mark escapePressed (so settle resolves null), then ask the host
+  // float to close. Closing unmounts the view, which fires onDestroy below.
   function onKeydownCapture(e: KeyboardEvent) {
-    if (e.key === 'Escape') escapePressed = true;
+    if (e.key === 'Escape') {
+      escapePressed = true;
+      close();
+    }
   }
 
   onMount(() => {

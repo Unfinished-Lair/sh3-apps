@@ -34,7 +34,6 @@ export function normalizeOrFallback(initial: string | undefined): string {
 import { shell } from 'sh3-core';
 import type { ColorPickOptions } from 'sh3-core';
 import type { ColorPalette } from '../types';
-import PopupPickWrapper from './PopupPickWrapper.svelte';
 
 export interface PickDeps {
   userPalettes: ColorPalette[];
@@ -43,12 +42,30 @@ export interface PickDeps {
 }
 
 /**
- * Mounts the color-picker surface as a `shell.popup` and resolves with the
- * user's chosen hex on commit (outside-click), or `null` on Escape / never-
- * interacted dismissal. See PopupPickWrapper.svelte for the lifecycle.
+ * Meta payload threaded from `openColorPickerPopup` → `shell.float.open`
+ * → `MountContext.meta` → `sh3-editor:color-pick` view factory →
+ * `PopupPickWrapper` props. Kept here so the shard's view factory and
+ * the opener share one type.
+ */
+export interface ColorPickViewMeta {
+  initial: string;
+  title?: string;
+  userPalettes: ColorPalette[];
+  onSaveUserPalette: (palette: ColorPalette) => void;
+  onDeleteUserPalette: (paletteId: string) => void;
+  onResolve: (hex: string | null) => void;
+}
+
+/**
+ * Opens the color-picker surface as a dismissable float and resolves with
+ * the user's chosen hex on commit (outside-click), or `null` on Escape /
+ * never-interacted dismissal. See PopupPickWrapper.svelte for lifecycle.
  *
- * `opts.anchor` is required by `shell.popup` — when omitted we synthesize a
- * virtual point at viewport center (PopupAnchor accepts `{ x, y }`).
+ * Threads `opts.anchor` straight into FloatOptions so the float-manager can
+ * portal the frame above its opening overlay (modal, popup, parent float)
+ * — without this, a picker invoked from inside a modal would render under
+ * it. When `opts.anchor` is omitted, the float renders at the FloatLayer
+ * root.
  *
  * `opts.alpha` is intentionally ignored — sh3-editor V1 doesn't support RGBA.
  * Callers requesting alpha get `#rrggbb` and detect via string length per the
@@ -59,21 +76,18 @@ export function openColorPickerPopup(
   deps: PickDeps,
 ): Promise<string | null> {
   return new Promise<string | null>((resolve) => {
-    const anchor = opts.anchor ?? {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
+    const meta: ColorPickViewMeta = {
+      initial: normalizeOrFallback(opts.initial),
+      title: opts.title,
+      userPalettes: deps.userPalettes,
+      onSaveUserPalette: deps.onSaveUserPalette,
+      onDeleteUserPalette: deps.onDeleteUserPalette,
+      onResolve: resolve,
     };
-    shell.popup.show(
-      PopupPickWrapper as any,
-      { anchor },
-      {
-        initial: normalizeOrFallback(opts.initial),
-        title: opts.title,
-        userPalettes: deps.userPalettes,
-        onSaveUserPalette: deps.onSaveUserPalette,
-        onDeleteUserPalette: deps.onDeleteUserPalette,
-        onResolve: resolve,
-      },
-    );
+    shell.float.open('sh3-editor:color-pick', {
+      dismissable: true,
+      anchor: opts.anchor,
+      meta: meta as unknown as Record<string, unknown>,
+    });
   });
 }

@@ -9,7 +9,7 @@ import type {
 import { shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import SettingsView from './views/SettingsView.svelte';
-import { geminiProvider, type ModelInfo } from './gemini-client';
+import { deepseekProvider, type ModelInfo } from './deepseek-client';
 
 // String contract with sh3-ai. Mirrors `SH3_AI_PROVIDER_CONTRIBUTION` exported
 // from sh3-ai/src/ai/provider.ts. Inlined (not imported) because bare
@@ -17,10 +17,10 @@ import { geminiProvider, type ModelInfo } from './gemini-client';
 // package is not part of the consuming shard's bundle.
 const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
 
-const SETTINGS_VIEW_ID = 'gemini:settings';
-const SETTINGS_FLOAT_TITLE = 'Gemini Settings';
+const SETTINGS_VIEW_ID = 'deepseek:settings';
+const SETTINGS_FLOAT_TITLE = 'DeepSeek Settings';
 
-interface GeminiUserState {
+interface DeepseekUserState {
   apiKey: string;
   modelChain: string[];
   systemInstruction: string;
@@ -28,7 +28,7 @@ interface GeminiUserState {
   maxOutputTokens: number | null;
 }
 
-interface GeminiSessionState {
+interface DeepseekSessionState {
   knownModels: ModelInfo[];
   modelsLastFetchedAt: number | null;
 }
@@ -55,18 +55,18 @@ function focusOrOpenSettings(): void {
 
 export const shard: SourceShard = {
   manifest: {
-    id: 'gemini',
-    label: 'Gemini',
+    id: 'deepseek',
+    label: 'DeepSeek',
     views: [
-      { id: SETTINGS_VIEW_ID, label: 'Gemini Settings', standalone: true },
+      { id: SETTINGS_VIEW_ID, label: 'DeepSeek Settings', standalone: true },
     ],
   },
 
   activate(ctx: ShardContext) {
-    const state = ctx.state<{ user: GeminiUserState; session: GeminiSessionState }>({
+    const state = ctx.state<{ user: DeepseekUserState; session: DeepseekSessionState }>({
       user: {
         apiKey: '',
-        modelChain: ['gemini-2.5-flash'],
+        modelChain: ['deepseek-chat'],
         systemInstruction: '',
         temperature: null,
         maxOutputTokens: null,
@@ -90,10 +90,10 @@ export const shard: SourceShard = {
     };
     ctx.registerView(SETTINGS_VIEW_ID, settingsFactory);
 
-    const provider = geminiProvider({
+    const provider = deepseekProvider({
       getApiKey: () => state.user.apiKey,
       getChain: () =>
-        state.user.modelChain.length > 0 ? state.user.modelChain : ['gemini-2.5-flash'],
+        state.user.modelChain.length > 0 ? state.user.modelChain : ['deepseek-chat'],
       getSystemInstruction: () => state.user.systemInstruction,
       getTemperature: () => state.user.temperature,
       getMaxOutputTokens: () => state.user.maxOutputTokens,
@@ -101,8 +101,8 @@ export const shard: SourceShard = {
     ctx.contributions.register(SH3_AI_PROVIDER_CONTRIBUTION, provider);
 
     ctx.actions.register({
-      id: 'sh3-gemini-shell:settings.open',
-      label: 'Open Settings: Gemini',
+      id: 'sh3-deepseek-shell:settings.open',
+      label: 'Open Settings: DeepSeek',
       scope: ['home', 'app'],
       paletteItem: true,
       contextItem: false,

@@ -1,7 +1,7 @@
 {
-  "name": "sh3-gemini-shell",
-  "version": "0.5.0",
-  "description": "Gemini integration for the SH3 shell — registers as an sh3-ai.provider; appless, settings reachable via command palette",
+  "name": "sh3-deepseek-shell",
+  "version": "0.1.0",
+  "description": "DeepSeek integration for the SH3 shell — registers as an sh3-ai.provider; appless, settings reachable via command palette",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",

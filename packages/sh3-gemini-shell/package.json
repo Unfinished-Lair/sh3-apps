@@ -1,7 +1,7 @@
 {
-  "name": "sh3-connector-r2",
-  "version": "0.4.5",
-  "description": "Cloudflare R2 backup connector for SH3",
+  "name": "sh3-gemini-shell",
+  "version": "0.2.2",
+  "description": "Gemini integration for the SH3 shell — first AI package; front-only with user-zone API key",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
@@ -14,13 +14,11 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-core": "^0.14.0",
-    "sh3-file-explorer": "^0.6.0 || ^0.7.0"
+    "sh3-core": "^0.14.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "sh3-core": "^0.14.0",
-    "sh3-file-explorer": "^0.6.0 || ^0.7.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",
     "vite": "^6.0.0",

@@ -18,6 +18,7 @@ export const mockApp: SourceApp = {
     label: 'Mock App',
     requiredShards: ['mock'],
     layoutVersion: 2,
+    icon: 'box',
   },
   initialLayout: {
     type: 'split',

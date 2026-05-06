@@ -13,6 +13,7 @@ export const inspectorFiddleApp: SourceApp = {
     label: 'Inspector Fiddle',
     requiredShards: ['inspector-fiddle', 'sh3-editor'],
     layoutVersion: 1,
+    icon: 'wand-sparkles',
   },
   initialLayout: {
     type: 'split',

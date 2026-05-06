@@ -16,6 +16,7 @@ export const app: SourceApp = {
     layoutVersion: 1,
     admin: true,
     permissions: ['state:manage'],
+    icon: 'activity',
   },
   initialLayout: {
     type: 'tabs',

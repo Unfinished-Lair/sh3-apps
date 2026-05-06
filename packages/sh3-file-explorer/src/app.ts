@@ -12,6 +12,7 @@ export const app: SourceApp = {
     requiredShards: ['sh3-file-explorer'],
     layoutVersion: 2,
     permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    icon: 'folder-tree',
   },
   initialLayout: {
     type: 'slot',

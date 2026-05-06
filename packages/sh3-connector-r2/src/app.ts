@@ -7,6 +7,7 @@ export const app: SourceApp = {
     requiredShards: ['sh3-connector-r2'],
     layoutVersion: 2,
     permissions: ['documents:browse'],
+    icon: 'hard-drive',
   },
   initialLayout: {
     type: 'tabs',

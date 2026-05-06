@@ -7,6 +7,7 @@ export const app: SourceApp = {
     label: 'Style',
     requiredShards: ['sh3-style'],
     layoutVersion: 1,
+    icon: 'palette',
   },
 
   initialLayout: {

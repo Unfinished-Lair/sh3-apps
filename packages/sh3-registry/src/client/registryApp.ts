@@ -14,6 +14,7 @@ export const registryApp: SourceApp = {
     requiredShards: ['sh3-registry'],
     layoutVersion: 1,
     admin: true,
+    icon: 'archive',
   },
   initialLayout: {
     type: 'tabs',

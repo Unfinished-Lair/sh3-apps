@@ -8,7 +8,7 @@ import { confirmDelete } from './confirmDelete';
 type ReadyStore = Extract<ExplorerStore, { ready: true }>;
 type ActionDispatchContext = Parameters<Action['run']>[0];
 
-const FEATURE_GATE_TOAST = 'Delete requires sh3-core with browse.deleteFrom (RFC pending).';
+const FEATURE_GATE_TOAST = 'Delete requires sh3-core with browse.deleteFrom.';
 const NO_SELECTION_TOAST = 'Select a file or folder first.';
 
 export async function runDelete(

@@ -2,7 +2,7 @@
 
 Official SH3 file explorer — browses tenant documents.
 
-- Requires `sh3-core ^0.11.1`.
+- Requires `sh3-core ^0.13.0`.
 - Declares the `documents:browse`, `documents:read`, and `documents:write` permissions.
 - Exposes one app (`sh3-file-explorer-app`) and one shard (`sh3-file-explorer`) with one view: `Files`.
 
@@ -56,19 +56,13 @@ Within the Files view, the explorer provides keyboard shortcuts for deletion:
 
 The action is also reachable via right-click and the command palette (registered through sh3-core's Actions framework).
 
-The shard declares `documents:read` and `documents:write` so the modal can preview content and the delete can land. The cross-shard delete itself goes through `ctx.browse.deleteFrom`, which is added in sh3-core 0.12.0+. Against earlier versions, the action toasts `Delete requires sh3-core with browse.deleteFrom (RFC pending).` and bails. See `docs/sh3-rfcs/2026-04-27-browse-delete-from.md` (local) for the upstream extension.
+The shard declares `documents:read` and `documents:write` so the modal can preview content and the delete can land. The cross-shard delete itself goes through `ctx.browse.deleteFrom`, available in sh3-core 0.11.8+. Against older hosts the action toasts `Delete requires sh3-core with browse.deleteFrom.` and bails.
 
 ## Verifying delete locally
 
-**Pre-RFC (sh3-core 0.11.x):**
 1. `npm run build:artifact` in `packages/sh3-file-explorer/`.
-2. Install the artifact in a host with at least one document from another shard (e.g. sh3-editor).
-3. Open File Explorer, select a file, press `Delete`.
-4. Expect a toast: `Delete requires sh3-core with browse.deleteFrom (RFC pending).` The action also appears in the right-click menu and palette.
-
-**Post-RFC (sh3-core ≥ 0.12.0):**
-1. Bump the peer dep to that version; reinstall and rebuild.
-2. Repeat step 3 above. Expect the modal with a text preview; Confirm removes the file from the tree within ~100ms.
-3. Select a folder with descendants, press `Delete`. Expect the modal with the descendant count, no list. Confirm removes all descendants.
-4. Press `Shift+Delete` on a file. Expect immediate delete, success toast.
-5. Press `Shift+Delete` on a folder. Expect the modal still appears.
+2. Install the artifact in a host running sh3-core ≥ 0.13.0 with at least one document from another shard (e.g. sh3-editor).
+3. Select a file, press `Delete`. Expect the modal with a text preview; Confirm removes the file from the tree within ~100ms.
+4. Select a folder with descendants, press `Delete`. Expect the modal with the descendant count, no list. Confirm removes all descendants.
+5. Press `Shift+Delete` on a file. Expect immediate delete, success toast.
+6. Press `Shift+Delete` on a folder. Expect the modal still appears.

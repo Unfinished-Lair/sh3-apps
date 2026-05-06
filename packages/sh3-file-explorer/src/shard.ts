@@ -1,7 +1,7 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { createExplorerStore, type ExplorerStore } from './explorerShard.svelte';
-import { bindSelectionToActions } from './explorerSelection.svelte';
+import { bindSelectionToActions, SELECTION_TYPE } from './explorerSelection.svelte';
 import { runDelete } from './delete/runDelete';
 import BrowserView from './browser/BrowserView.svelte';
 
@@ -31,10 +31,10 @@ export const shard: SourceShard = {
       ctx.actions.register({
         id: 'sh3-file-explorer:document.delete',
         label: 'Delete',
-        scope: 'view:sh3-file-explorer-browser',
+        scope: { element: SELECTION_TYPE },
         defaultShortcut: 'Delete',
         group: 'document',
-        paletteItem: true,
+        paletteItem: false,
         contextItem: true,
         run: (dCtx) => runDelete(ctx, store, dCtx, { skipConfirm: false }),
       });
@@ -42,7 +42,7 @@ export const shard: SourceShard = {
       ctx.actions.register({
         id: 'sh3-file-explorer:document.delete-skip-confirm',
         label: 'Delete (skip confirmation)',
-        scope: 'view:sh3-file-explorer-browser',
+        scope: { element: SELECTION_TYPE },
         defaultShortcut: 'Shift+Delete',
         paletteItem: false,
         contextItem: false,

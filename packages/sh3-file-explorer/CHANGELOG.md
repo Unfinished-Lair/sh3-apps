@@ -1,5 +1,11 @@
 # sh3-file-explorer changelog
 
+## 0.7.1 — 2026-05-06
+
+### Changed
+- `peerDependencies.sh3-core` bumped from `^0.11.1` to `^0.13.0`. The cross-shard delete primitive (`browse.deleteFrom`) ships in 0.11.8+ and is present in current 0.13.x hosts; the runtime feature-detect now lights up the real delete path instead of the gate toast.
+- Feature-gate toast text updated to drop the "RFC pending" framing now that the upstream API has shipped.
+
 ## 0.7.0 — 2026-04-27
 
 ### Added

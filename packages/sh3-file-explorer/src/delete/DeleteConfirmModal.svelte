@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { PreviewState } from './readPreview';
 
   let {
@@ -22,9 +22,16 @@
     cancelBtn?.focus();
   });
 
+  // sh3-core's modal manager owns the document-level Escape listener and
+  // closes the topmost modal without invoking our handlers. Fire onCancel
+  // here so the confirmDelete() promise settles on manager-driven dismissal;
+  // the wrapper's `settled` guard makes this idempotent for button paths.
+  onDestroy(() => {
+    onCancel();
+  });
+
   function onKeydown(ev: KeyboardEvent) {
-    if (ev.key === 'Escape') { ev.preventDefault(); onCancel(); }
-    else if (ev.key === 'Enter') { ev.preventDefault(); onConfirm(); }
+    if (ev.key === 'Enter') { ev.preventDefault(); onConfirm(); }
   }
 
   const previewPlaceholder = $derived(
@@ -42,9 +49,7 @@
   );
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<div class="sh3-fe-delete">
+<div class="sh3-fe-delete" onkeydown={onKeydown}>
   <h2>{target.kind === 'folder' ? 'Delete folder?' : 'Delete file?'}</h2>
   <div class="sh3-fe-delete__path">
     <span class="sh3-fe-delete__shard">{target.shardId}</span>

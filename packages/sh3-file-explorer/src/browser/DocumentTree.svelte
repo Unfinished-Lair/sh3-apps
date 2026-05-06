@@ -1,7 +1,21 @@
 <script lang="ts">
-  import type { ExplorerStore, BrowseEntry } from '../explorerShard.svelte';
+  import type { ExplorerStore, BrowseEntry, Selection } from '../explorerShard.svelte';
+  import { SELECTION_TYPE, selectionToActionPayload } from '../explorerSelection.svelte';
 
   let { store }: { store: ExplorerStore } = $props();
+
+  const ROW_SCOPE = `element:${SELECTION_TYPE}`;
+
+  function primeContextSelection(sel: Exclude<Selection, null>) {
+    if (!store.ready) return;
+    store.setSelection(sel);
+    // The $effect mirror in bindSelectionToActions is async; the contextmenu
+    // event bubbles synchronously to sh3-core's document listener, which
+    // checks ctx.actions.selection right then. Update it directly so the
+    // element-scope action shows up on first right-click.
+    const payload = selectionToActionPayload(sel);
+    if (payload) store.ctx.actions.selection.set(payload);
+  }
 
   type FolderNode = { kind: 'folder'; name: string; path: string; shardId: string; descendantCount: number; children: TreeNode[] };
   type FileNode = { kind: 'file'; name: string; path: string; shardId: string; lastModified: number };
@@ -111,7 +125,12 @@
 {#snippet treeNode(node: TreeNode, depth: number)}
   <li>
     {#if node.kind === 'folder'}
-      <div class="sh3-fe-row" style="padding-left: {depth * 12}px">
+      <div
+        class="sh3-fe-row"
+        data-sh3-scope={ROW_SCOPE}
+        style="padding-left: {depth * 12}px"
+        oncontextmenu={() => primeContextSelection({ shardId: node.shardId, path: node.path, kind: 'folder' })}
+      >
         <button
           class="sh3-fe-twisty"
           aria-label={store.ready && store.isExpanded(keyFor(node)) ? 'Collapse' : 'Expand'}
@@ -140,7 +159,12 @@
         </ul>
       {/if}
     {:else}
-      <div class="sh3-fe-row" style="padding-left: {depth * 12}px">
+      <div
+        class="sh3-fe-row"
+        data-sh3-scope={ROW_SCOPE}
+        style="padding-left: {depth * 12}px"
+        oncontextmenu={() => primeContextSelection({ shardId: node.shardId, path: node.path, kind: 'file' })}
+      >
         <button
           class="sh3-fe-node sh3-fe-node--file"
           class:selected={store.ready && store.selection?.shardId === node.shardId && store.selection?.path === node.path && store.selection?.kind === 'file'}

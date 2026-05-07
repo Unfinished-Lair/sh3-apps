@@ -705,6 +705,145 @@ describe('geminiProvider', () => {
   });
 });
 
+describe('chatStream tool-call translation', () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sends functionDeclarations with . encoded as __ in names', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'hi' }],
+      'gemini-2.5-flash',
+      new AbortController().signal,
+      undefined,
+      {
+        tools: [
+          {
+            name: 'sh3-r2.backup',
+            description: 'Back up',
+            inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+          },
+        ],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toEqual([
+      {
+        functionDeclarations: [
+          {
+            name: 'sh3-r2__backup',
+            description: 'Back up',
+            parameters: { type: 'object', properties: { path: { type: 'string' } } },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('omits the tools field when no tools given', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(chatStream(
+      'k', [{ role: 'user', content: 'hi' }], 'gemini-2.5-flash', new AbortController().signal,
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toBeUndefined();
+  });
+
+  it('parses functionCall parts and emits tool-call chunk + tool-calls finishReason', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({
+        candidates: [{
+          content: {
+            parts: [
+              { functionCall: { name: 'sh3-r2__backup', args: { path: '/docs' } } },
+            ],
+          },
+        }],
+      }),
+    ]));
+    const chunks = await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'do it' }],
+      'gemini-2.5-flash',
+      new AbortController().signal,
+      undefined,
+      {
+        tools: [{
+          name: 'sh3-r2.backup',
+          description: 'b',
+          inputSchema: { type: 'object' },
+        }],
+      },
+    ));
+    // First chunk: tool-call (decoded back to '.')
+    expect(chunks[0]).toMatchObject({
+      type: 'tool-call',
+      name: 'sh3-r2.backup',
+      arguments: { path: '/docs' },
+    });
+    // Second chunk: done with tool-calls finishReason
+    expect(chunks[chunks.length - 1]).toEqual({ type: 'done', finishReason: 'tool-calls' });
+  });
+
+  it('appends toolResults as role:function parts in the next request', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    // Pre-seed the callId↔name map (normally populated by an earlier turn).
+    const callIdToName = new Map<string, string>([['c1', 'sh3-r2.backup']]);
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'hi' }],
+      'gemini-2.5-flash',
+      new AbortController().signal,
+      undefined,
+      {
+        toolResults: [{ toolCallId: 'c1', content: 'done' }],
+      },
+      callIdToName,
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const fnPart = body.contents[body.contents.length - 1];
+    expect(fnPart.role).toBe('function');
+    expect(fnPart.parts[0].functionResponse).toEqual({
+      name: 'sh3-r2__backup',
+      response: { result: 'done' },
+    });
+  });
+
+  it('serializes an error toolResult as { error }', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    const callIdToName = new Map<string, string>([['c1', 'sh3-r2.backup']]);
+    await collect(chatStream(
+      'k', [{ role: 'user', content: 'hi' }], 'gemini-2.5-flash', new AbortController().signal,
+      undefined,
+      { toolResults: [{ toolCallId: 'c1', content: { error: 'boom' } }] },
+      callIdToName,
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const fnPart = body.contents[body.contents.length - 1];
+    expect(fnPart.parts[0].functionResponse).toEqual({
+      name: 'sh3-r2__backup',
+      response: { error: 'boom' },
+    });
+  });
+});
+
 describe('chatStream generation config', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
 

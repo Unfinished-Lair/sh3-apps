@@ -158,10 +158,54 @@ export async function iterateChain<T>(
   throw new Error(`all models failed (tried ${tried}); last error: ${last}`);
 }
 
-import type { ChatMessage, ChatChunk } from 'sh3-ai';
+import type { ChatMessage, ChatChunk, ChatOptions } from 'sh3-ai';
 
 const STREAM_ENDPOINT = (modelId: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent`;
+
+/** Gemini function names must match `[a-zA-Z_][a-zA-Z0-9_-]{0,63}` — '.' is
+ *  rejected. sh3-ai tool names use '.' as the segment separator, so we
+ *  encode '.' → '__' on the wire and decode the inverse on incoming
+ *  functionCall.name fields. Round-trip-safe for any sh3-ai-shaped name. */
+function encodeToolName(name: string): string {
+  return name.replace(/\./g, '__');
+}
+function decodeToolName(name: string): string {
+  return name.replace(/__/g, '.');
+}
+
+function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
+  if (!options?.tools || options.tools.length === 0) return {};
+  return {
+    tools: [
+      {
+        functionDeclarations: options.tools.map((t) => ({
+          name: encodeToolName(t.name),
+          description: t.description,
+          parameters: t.inputSchema,
+        })),
+      },
+    ],
+  };
+}
+
+function toolResultsToContents(
+  options: ChatOptions | undefined,
+  callIdToName: Map<string, string>,
+): Array<Record<string, unknown>> {
+  if (!options?.toolResults || options.toolResults.length === 0) return [];
+  return options.toolResults.map((r) => {
+    const decoded = callIdToName.get(r.toolCallId);
+    const encoded = decoded ? encodeToolName(decoded) : r.toolCallId;
+    const response = typeof r.content === 'string'
+      ? { result: r.content }
+      : { error: r.content.error };
+    return {
+      role: 'function',
+      parts: [{ functionResponse: { name: encoded, response } }],
+    };
+  });
+}
 
 export async function* chatStream(
   apiKey: string,
@@ -169,20 +213,24 @@ export async function* chatStream(
   modelId: string,
   signal: AbortSignal,
   config?: GeminiGenerationConfig,
+  options?: ChatOptions,
+  callIdToName: Map<string, string> = new Map(),
 ): AsyncIterable<ChatChunk> {
   const url = `${STREAM_ENDPOINT(modelId)}?alt=sse&key=${apiKey}`;
   const composed = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
   let res: Response;
   try {
+    const baseContents = messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: messages.map((m) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        })),
+        contents: [...baseContents, ...toolResultsToContents(options, callIdToName)],
         ...buildGenerationFields(config),
+        ...buildToolsField(options),
       }),
       signal: composed,
     });
@@ -208,16 +256,37 @@ export async function* chatStream(
     throw new GeminiError('streamGenerateContent: empty body');
   }
 
-  function* extractTokens(parsed: unknown): Iterable<string> {
-    const parts = (parsed as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-      ?.candidates?.[0]?.content?.parts;
+  type SsePart =
+    | { kind: 'token'; text: string }
+    | { kind: 'tool-call'; id: string; name: string; arguments: unknown };
+
+  function* extractParts(parsed: unknown): Iterable<SsePart> {
+    const parts = (parsed as {
+      candidates?: {
+        content?: {
+          parts?: Array<{
+            text?: string;
+            functionCall?: { name?: string; args?: unknown };
+          }>;
+        };
+      }[];
+    })?.candidates?.[0]?.content?.parts;
     if (!parts) return;
     for (const p of parts) {
-      if (typeof p.text === 'string' && p.text.length > 0) yield p.text;
+      if (typeof p.text === 'string' && p.text.length > 0) {
+        yield { kind: 'token', text: p.text };
+      } else if (p.functionCall && typeof p.functionCall.name === 'string') {
+        yield {
+          kind: 'tool-call',
+          id: crypto.randomUUID(),
+          name: decodeToolName(p.functionCall.name),
+          arguments: p.functionCall.args ?? {},
+        };
+      }
     }
   }
 
-  function* parseSseEvent(event: string): Iterable<string> {
+  function* parseSseEvent(event: string): Iterable<SsePart> {
     for (const line of event.split(/\r?\n/)) {
       if (!line.startsWith('data:')) continue;
       // SSE allows an optional single space after the colon; trim handles both forms.
@@ -229,7 +298,7 @@ export async function* chatStream(
       } catch {
         continue;
       }
-      yield* extractTokens(parsed);
+      yield* extractParts(parsed);
     }
   }
 
@@ -237,6 +306,20 @@ export async function* chatStream(
   let buffer = '';
   let raw = '';
   let yieldedAny = false;
+  let yieldedToolCall = false;
+
+  async function* yieldPart(part: SsePart): AsyncIterable<ChatChunk> {
+    yieldedAny = true;
+    if (part.kind === 'token') {
+      yield { type: 'token', text: part.text };
+    } else {
+      yieldedToolCall = true;
+      // Remember encoded↔decoded mapping so a follow-up turn carrying
+      // toolResults can address the correct functionResponse.name.
+      callIdToName.set(part.id, part.name);
+      yield { type: 'tool-call', id: part.id, name: part.name, arguments: part.arguments };
+    }
+  }
 
   try {
     while (true) {
@@ -250,9 +333,8 @@ export async function* chatStream(
       const events = buffer.split(/\r?\n\r?\n/);
       buffer = events.pop() ?? '';
       for (const event of events) {
-        for (const text of parseSseEvent(event)) {
-          yieldedAny = true;
-          yield { type: 'token', text };
+        for (const part of parseSseEvent(event)) {
+          yield* yieldPart(part);
         }
       }
     }
@@ -266,9 +348,8 @@ export async function* chatStream(
 
   // Drain trailing SSE event (no terminating blank line).
   if (buffer.trim().length > 0) {
-    for (const text of parseSseEvent(buffer)) {
-      yieldedAny = true;
-      yield { type: 'token', text };
+    for (const part of parseSseEvent(buffer)) {
+      yield* yieldPart(part);
     }
   }
 
@@ -285,9 +366,8 @@ export async function* chatStream(
     if (parsed !== undefined) {
       const chunks = Array.isArray(parsed) ? parsed : [parsed];
       for (const chunk of chunks) {
-        for (const text of extractTokens(chunk)) {
-          yieldedAny = true;
-          yield { type: 'token', text };
+        for (const part of extractParts(chunk)) {
+          yield* yieldPart(part);
         }
       }
     }
@@ -299,7 +379,9 @@ export async function* chatStream(
       `streamGenerateContent: empty stream${preview ? ` (body preview: ${preview})` : ''}`,
     );
   }
-  yield { type: 'done' };
+  yield yieldedToolCall
+    ? { type: 'done', finishReason: 'tool-calls' }
+    : { type: 'done' };
 }
 
 import type { AiProvider } from 'sh3-ai';
@@ -313,16 +395,26 @@ export interface GeminiProviderDeps {
 }
 
 export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
+  // Persist the encoded-name ↔ decoded-name map across turns of the same
+  // dispatch loop so functionResponse.name can be addressed correctly.
+  // sh3-ai's dispatch loop uses the same provider instance per loop.
+  const callIdToName = new Map<string, string>();
   return {
     id: 'gemini',
     label: 'Gemini',
+    capabilities: { tools: true },
     chain: () => deps.getChain(),
-    chat(messages, model, signal) {
-      return chatStream(deps.getApiKey(), messages, model, signal, {
-        systemInstruction: deps.getSystemInstruction(),
-        temperature: deps.getTemperature(),
-        maxOutputTokens: deps.getMaxOutputTokens(),
-      });
+    chat(messages, model, signal, options) {
+      return chatStream(
+        deps.getApiKey(), messages, model, signal,
+        {
+          systemInstruction: deps.getSystemInstruction(),
+          temperature: deps.getTemperature(),
+          maxOutputTokens: deps.getMaxOutputTokens(),
+        },
+        options,
+        callIdToName,
+      );
     },
     isAuthFailure(err: unknown): boolean {
       return (

@@ -20,7 +20,7 @@ const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
 const SETTINGS_VIEW_ID = 'gemini:settings';
 const SETTINGS_FLOAT_TITLE = 'Gemini Settings';
 
-interface GeminiUserState {
+interface GeminiUserState extends Record<string, unknown> {
   apiKey: string;
   modelChain: string[];
   systemInstruction: string;
@@ -28,7 +28,7 @@ interface GeminiUserState {
   maxOutputTokens: number | null;
 }
 
-interface GeminiSessionState {
+interface GeminiSessionState extends Record<string, unknown> {
   knownModels: ModelInfo[];
   modelsLastFetchedAt: number | null;
 }

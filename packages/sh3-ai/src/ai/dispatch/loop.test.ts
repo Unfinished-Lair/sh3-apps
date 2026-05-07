@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { dispatchLoop } from './loop';
+import { makeTranscript } from './transcript';
 import type { AiProvider, ChatChunk, ChatOptions } from '../provider';
 import type { Tool } from '../catalog/types';
 import type { ResolvedScope } from '../scope/types';
@@ -55,7 +56,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(conv.messages).toEqual([
@@ -89,7 +90,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(run).toHaveBeenCalledWith({ x: 1 }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
@@ -125,7 +126,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(run).not.toHaveBeenCalled();
@@ -156,7 +157,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(conv.toolResults[0].content).toEqual({ error: 'boom' });
@@ -185,7 +186,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
       maxRounds: 2,
     });
 
@@ -225,7 +226,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: ac.signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(sb.entries.some(
@@ -255,7 +256,7 @@ describe('dispatchLoop', () => {
       provider,
       model: 'm1',
       signal: new AbortController().signal,
-      scrollback: sb,
+      transcript: makeTranscript(sb),
     });
 
     expect(conv.toolResults[0].content).toEqual({ error: expect.stringMatching(/unknown tool/) });

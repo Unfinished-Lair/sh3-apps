@@ -4,11 +4,7 @@ import type { ResolvedScope } from '../scope/types';
 import { evaluate } from '../scope/evaluate';
 import { ConversationState } from '../conversation';
 import { serializeResult } from './serialize';
-import { makeTranscript } from './transcript';
-
-interface ScrollbackPushable {
-  push(entry: unknown): void;
-}
+import type { Transcript } from './transcript';
 
 export interface DispatchLoopOptions {
   prompt: string;
@@ -18,7 +14,7 @@ export interface DispatchLoopOptions {
   provider: AiProvider;
   model: string;
   signal: AbortSignal;
-  scrollback: ScrollbackPushable;
+  transcript: Transcript;
   maxRounds?: number;        // default 16
   maxResultBytes?: number;   // default 4096
 }
@@ -26,10 +22,8 @@ export interface DispatchLoopOptions {
 export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   const {
     prompt, catalog, scope, conversation, provider, model, signal,
-    scrollback, maxRounds = 16, maxResultBytes,
+    transcript, maxRounds = 16, maxResultBytes,
   } = opts;
-
-  const transcript = makeTranscript(scrollback);
   const tools: ToolSpec[] | undefined = catalog.length > 0
     ? catalog.map((t) => ({
         name: t.name, description: t.description, inputSchema: t.inputSchema,

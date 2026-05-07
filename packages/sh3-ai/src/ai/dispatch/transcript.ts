@@ -1,9 +1,17 @@
-// Thin wrapper around vctx.scrollback.push so the dispatch loop reads
-// linearly without scrollback boilerplate at every site. All entries
-// reuse existing scrollback entry kinds; no new types needed in Phase 1.
+// Transcript abstraction for the dispatch loop. Two factories:
+//   - makeTranscript(scrollback) — pushes raw scrollback entries directly
+//     (used by unit tests and any caller holding a Scrollback handle).
+//   - makeOutputTranscript(output) — bridges to a ShellModeOutput
+//     (used by mode.ts so tool-call activity is rendered via the same
+//     coalescing/streaming primitives as ordinary mode output).
 
 interface ScrollbackPushable {
   push(entry: unknown): void;
+}
+
+interface OutputLike {
+  text(stream: 'stdout' | 'stderr', chunk: string): void;
+  status(level: 'info' | 'warn' | 'error', msg: string): void;
 }
 
 interface TranscriptOptions {
@@ -18,6 +26,16 @@ export interface Transcript {
   status(level: 'info' | 'warn' | 'error', text: string): void;
   /** Truncate a value for inline display (args, results). */
   preview(value: unknown): string;
+}
+
+function makePreview(previewMax: number) {
+  return (value: unknown) => {
+    let s: string;
+    try { s = typeof value === 'string' ? value : JSON.stringify(value); }
+    catch { s = String(value); }
+    if (s.length <= previewMax) return s;
+    return `${s.slice(0, previewMax - 1)}…`;
+  };
 }
 
 export function makeTranscript(
@@ -40,12 +58,18 @@ export function makeTranscript(
       activeStream = null;
       scrollback.push({ kind: 'status', text, level, ts: Date.now() });
     },
-    preview(value) {
-      let s: string;
-      try { s = typeof value === 'string' ? value : JSON.stringify(value); }
-      catch { s = String(value); }
-      if (s.length <= previewMax) return s;
-      return `${s.slice(0, previewMax - 1)}…`;
-    },
+    preview: makePreview(previewMax),
+  };
+}
+
+export function makeOutputTranscript(
+  output: OutputLike,
+  opts?: TranscriptOptions,
+): Transcript {
+  const previewMax = opts?.previewMax ?? 80;
+  return {
+    token(text) { output.text('stdout', text); },
+    status(level, text) { output.status(level, text); },
+    preview: makePreview(previewMax),
   };
 }

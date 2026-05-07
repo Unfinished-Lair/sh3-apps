@@ -15,9 +15,10 @@ import {
 import { verbsToTools } from './ai/catalog/verb-adapter';
 import { toolContributionsToTools } from './ai/catalog/tool-contribution';
 import { assembleCatalog, filterByScope } from './ai/catalog/assemble';
-import { makeScopeLookup, type UserScopes } from './ai/scope/store';
+import { makeScopeLookup, addUserScope, removeUserScope, type UserScopes } from './ai/scope/store';
 import { resolveScope } from './ai/scope/resolve';
 import { SCOPE_NONE, BUILTIN_SCOPES } from './ai/scope/builtins';
+import { parseScopeSaveArgs } from './ai/scope/parse-args';
 import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
 
 async function runOneShot(
@@ -343,12 +344,52 @@ export const shard: SourceShard = {
           return;
         }
 
-        if (sub === 'save' || sub === 'delete') {
-          // Implemented in Task 23.
-          vctx.scrollback.push({
-            kind: 'status', text: `ai:scope ${sub}: not yet implemented`,
-            level: 'error', ts: Date.now(),
-          });
+        if (sub === 'save') {
+          try {
+            const parsed = parseScopeSaveArgs(args.slice(1));
+            state.user.scopes = addUserScope(state.user.scopes, {
+              id: parsed.id,
+              label: parsed.id,
+              extends: parsed.extends.length > 0 ? parsed.extends : undefined,
+              whitelist: parsed.whitelist,
+              blacklist: parsed.blacklist,
+            });
+            vctx.scrollback.push({
+              kind: 'status', text: `scope saved: ${parsed.id}`,
+              level: 'info', ts: Date.now(),
+            });
+          } catch (err) {
+            vctx.scrollback.push({
+              kind: 'status',
+              text: `ai: ${err instanceof Error ? err.message : String(err)}`,
+              level: 'error', ts: Date.now(),
+            });
+          }
+          return;
+        }
+
+        if (sub === 'delete') {
+          const targetId = args[1];
+          if (!targetId) {
+            vctx.scrollback.push({
+              kind: 'status', text: 'usage: ai:scope delete <id>',
+              level: 'info', ts: Date.now(),
+            });
+            return;
+          }
+          try {
+            state.user.scopes = removeUserScope(state.user.scopes, targetId);
+            vctx.scrollback.push({
+              kind: 'status', text: `scope deleted: ${targetId}`,
+              level: 'info', ts: Date.now(),
+            });
+          } catch (err) {
+            vctx.scrollback.push({
+              kind: 'status',
+              text: `ai: ${err instanceof Error ? err.message : String(err)}`,
+              level: 'error', ts: Date.now(),
+            });
+          }
           return;
         }
 

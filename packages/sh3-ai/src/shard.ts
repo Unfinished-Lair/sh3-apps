@@ -308,6 +308,54 @@ export const shard: SourceShard = {
     });
 
     ctx.registerVerb({
+      name: 'catalog',
+      summary:
+        'List the AI tool catalog under the active scope, or describe one tool. Usage: ai:catalog [<name>]',
+      async run(vctx, args) {
+        const catalog = buildCatalog();
+
+        if (args.length === 0) {
+          if (catalog.length === 0) {
+            vctx.scrollback.push({
+              kind: 'status', text: 'ai: no tools available under active scope',
+              level: 'info', ts: Date.now(),
+            });
+            return;
+          }
+          const lines = catalog.map(
+            (t) => `  ${t.name} — ${t.description} (${t.source})`,
+          );
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `${catalog.length} tool(s):\n${lines.join('\n')}`,
+            level: 'info', ts: Date.now(),
+          });
+          return;
+        }
+
+        const target = catalog.find((t) => t.name === args[0]);
+        if (!target) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `ai: '${args[0]}' is not in the active catalog (denied by scope or unregistered)`,
+            level: 'error', ts: Date.now(),
+          });
+          return;
+        }
+        vctx.scrollback.push({
+          kind: 'status',
+          text: [
+            `name:        ${target.name}`,
+            `description: ${target.description}`,
+            `source:      ${target.source}`,
+            `inputSchema: ${JSON.stringify(target.inputSchema, null, 2)}`,
+          ].join('\n'),
+          level: 'info', ts: Date.now(),
+        });
+      },
+    });
+
+    ctx.registerVerb({
       name: 'scope',
       summary:
         'List, switch, save, or delete AI permission scopes. Usage: ai:scope [<id>|clear|save <id> [opts]|delete <id>]',

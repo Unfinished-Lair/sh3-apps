@@ -20,6 +20,8 @@ import { resolveScope } from './ai/scope/resolve';
 import { SCOPE_NONE, BUILTIN_SCOPES } from './ai/scope/builtins';
 import { parseScopeSaveArgs } from './ai/scope/parse-args';
 import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
+import { ConversationStore } from './ai/conversations/store';
+import type { ConversationDocument } from './ai/conversations/types';
 
 async function runOneShot(
   provider: AiProvider,
@@ -68,18 +70,22 @@ export const shard: SourceShard = {
     views: [],
   },
 
-  activate(ctx: ShardContext) {
+  async activate(ctx: ShardContext) {
     const state = ctx.state<{
       user: {
         activeProviderId: string | null;
         activeScopeId: string;
         scopes: UserScopes;
+        activeConversationId: string | null;
+        titleStrategy: 'first-message' | 'llm-summarize';
       };
     }>({
       user: {
         activeProviderId: null,
         activeScopeId: SCOPE_NONE.id,
         scopes: {},
+        activeConversationId: null,
+        titleStrategy: 'first-message',
       },
     });
 
@@ -89,6 +95,41 @@ export const shard: SourceShard = {
     };
 
     const conversation = new ConversationState();
+    const docHandle = ctx.documents({ format: 'text', extensions: ['.json'] });
+    const store = new ConversationStore(docHandle);
+
+    // Restore the previously-active conversation (if any) so the user
+    // re-enters where they left off after a reload.
+    if (state.user.activeConversationId) {
+      const id = state.user.activeConversationId;
+      let doc: ConversationDocument | null = null;
+      try {
+        doc = await store.load(id);
+      } catch (err) {
+        console.warn(`sh3-ai: failed to load active conversation ${id}: ${(err as Error).message}`);
+      }
+      if (doc) {
+        conversation.bindTo(doc, store.autosave(doc.id));
+        // Restore provider+model when possible.
+        if (doc.providerId) {
+          const list = ctx.contributions.list<AiProvider>(SH3_AI_PROVIDER_CONTRIBUTION);
+          const found = list.find((p) => p.id === doc!.providerId);
+          if (found) {
+            state.user.activeProviderId = found.id;
+            if (doc.model && found.chain().includes(doc.model)) {
+              conversation.setLock(doc.model);
+            }
+          } else {
+            console.warn(
+              `sh3-ai: conversation '${doc.title || doc.id}' was authored with provider '${doc.providerId}' which is no longer registered.`,
+            );
+          }
+        }
+      } else {
+        // Active id pointed to a missing doc — clear the pointer.
+        state.user.activeConversationId = null;
+      }
+    }
 
     function currentResolvedScope() {
       const lookup = makeScopeLookup(state.user.scopes);

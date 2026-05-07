@@ -69,3 +69,38 @@ describe('ConversationState', () => {
     expect(c.lockedModel).toBeNull();
   });
 });
+
+describe('ConversationState tool-call extension', () => {
+  it('records a tool call with the source message index', () => {
+    const c = new ConversationState();
+    c.appendUser('hi');
+    c.appendAssistant('thinking', 'm1');
+    c.appendToolCall({ callId: '1', name: 'a.b', arguments: { x: 1 } });
+    expect(c.toolCalls).toEqual([
+      { messageIndex: 1, callId: '1', name: 'a.b', arguments: { x: 1 } },
+    ]);
+  });
+
+  it('records a tool result alongside the call', () => {
+    const c = new ConversationState();
+    c.appendUser('hi');
+    c.appendAssistant('thinking', 'm1');
+    c.appendToolCall({ callId: '1', name: 'a.b', arguments: {} });
+    c.appendToolResult({ callId: '1', content: 'ok' });
+    expect(c.toolResults).toEqual([
+      { messageIndex: 1, callId: '1', content: 'ok' },
+    ]);
+  });
+
+  it('reset() clears tool history alongside messages', () => {
+    const c = new ConversationState();
+    c.appendUser('hi');
+    c.appendAssistant('a', 'm1');
+    c.appendToolCall({ callId: '1', name: 'a.b', arguments: {} });
+    c.appendToolResult({ callId: '1', content: 'ok' });
+    c.reset();
+    expect(c.messages).toEqual([]);
+    expect(c.toolCalls).toEqual([]);
+    expect(c.toolResults).toEqual([]);
+  });
+});

@@ -1,6 +1,6 @@
 {
   "name": "sh3-deepseek-shell",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "DeepSeek integration for the SH3 shell — registers as an sh3-ai.provider; appless, settings reachable via command palette",
   "author": "@unfinished-lair",
   "type": "module",

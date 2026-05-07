@@ -301,7 +301,7 @@ describe('chatStream tool-call translation', () => {
       {
         type: 'function',
         function: {
-          name: 'sh3-r2.backup',
+          name: 'sh3-r2__backup',                       // '.' encoded as '__'
           description: 'Back up',
           parameters: { type: 'object', properties: { path: { type: 'string' } } },
         },
@@ -320,10 +320,11 @@ describe('chatStream tool-call translation', () => {
     expect(body.tools).toBeUndefined();
   });
 
-  it('accumulates tool_calls deltas and emits one tool-call chunk per index', async () => {
+  it('accumulates tool_calls deltas and emits one tool-call chunk per index (decoding __→.)', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ choices: [{ delta: {
-        tool_calls: [{ index: 0, id: 'c1', function: { name: 'sh3-r2.backup', arguments: '{"pa' } }],
+        // DeepSeek echoes back the encoded form ('__') we sent up.
+        tool_calls: [{ index: 0, id: 'c1', function: { name: 'sh3-r2__backup', arguments: '{"pa' } }],
       }, finish_reason: null }] }),
       JSON.stringify({ choices: [{ delta: {
         tool_calls: [{ index: 0, function: { arguments: 'th":"/docs"}' } }],
@@ -339,7 +340,7 @@ describe('chatStream tool-call translation', () => {
     expect(toolCall).toMatchObject({
       type: 'tool-call',
       id: 'c1',
-      name: 'sh3-r2.backup',
+      name: 'sh3-r2.backup',                            // decoded back to '.'
       arguments: { path: '/docs' },
     });
     const done = chunks[chunks.length - 1];

@@ -41,13 +41,24 @@ function buildMessages(
   return out;
 }
 
+/** OpenAI-compatible providers (DeepSeek included) validate function names
+ *  against `^[a-zA-Z0-9_-]+$` — '.' is rejected. sh3-ai tool names use '.'
+ *  as the segment separator, so we encode '.' → '__' on the wire and decode
+ *  the inverse on incoming `tool_calls[i].function.name`. */
+function encodeToolName(name: string): string {
+  return name.replace(/\./g, '__');
+}
+function decodeToolName(name: string): string {
+  return name.replace(/__/g, '.');
+}
+
 function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
   if (!options?.tools || options.tools.length === 0) return {};
   return {
     tools: options.tools.map((t) => ({
       type: 'function',
       function: {
-        name: t.name,
+        name: encodeToolName(t.name),
         description: t.description,
         parameters: t.inputSchema,
       },
@@ -276,7 +287,7 @@ export async function* chatStream(
     try { parsedArgs = acc.argString ? JSON.parse(acc.argString) : {}; }
     catch { parsedArgs = { _raw: acc.argString }; }
     yieldedAny = true;
-    yield { type: 'tool-call', id: acc.id, name: acc.name, arguments: parsedArgs };
+    yield { type: 'tool-call', id: acc.id, name: decodeToolName(acc.name), arguments: parsedArgs };
   }
 
   if (!yieldedAny) {

@@ -1,18 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { verbsToTools } from './verb-adapter';
 
+const ok = (result: unknown) => Promise.resolve({ result, scrollback: [] });
+
 describe('verbsToTools', () => {
   it('returns an empty array when listVerbs returns []', () => {
-    const fakeRunVerb = vi.fn();
-    const tools = verbsToTools([], fakeRunVerb);
-    expect(tools).toEqual([]);
+    expect(verbsToTools([], vi.fn())).toEqual([]);
   });
 
-  it('produces a Tool per verb with name "<shardId>.<name>"', () => {
+  it('produces a Tool per verb with name "<shardId>.<bare>"', () => {
     const tools = verbsToTools(
       [
-        { shardId: 'sh3-fe', name: 'read', summary: 'Read a file' },
-        { shardId: 'sh3-r2', name: 'backup', summary: 'Back up to R2' },
+        { shardId: 'sh3-fe', name: 'sh3-fe:read', summary: 'Read a file' },
+        { shardId: 'sh3-r2', name: 'sh3-r2:backup', summary: 'Back up to R2' },
       ],
       vi.fn(),
     );
@@ -22,8 +22,8 @@ describe('verbsToTools', () => {
   it('uses summary as description, falling back to a placeholder', () => {
     const tools = verbsToTools(
       [
-        { shardId: 'a', name: 'b', summary: 'Custom' },
-        { shardId: 'a', name: 'c', summary: undefined },
+        { shardId: 'a', name: 'a:b', summary: 'Custom' },
+        { shardId: 'a', name: 'a:c', summary: undefined },
       ],
       vi.fn(),
     );
@@ -31,9 +31,9 @@ describe('verbsToTools', () => {
     expect(tools[1].description).toMatch(/no description/i);
   });
 
-  it('emits the pre-R1-full input schema (single string args field)', () => {
+  it('emits the fallback single-string args schema when verb has no schema', () => {
     const tools = verbsToTools(
-      [{ shardId: 'a', name: 'b', summary: undefined }],
+      [{ shardId: 'a', name: 'a:b', summary: undefined }],
       vi.fn(),
     );
     expect(tools[0].inputSchema).toEqual({
@@ -49,27 +49,59 @@ describe('verbsToTools', () => {
     expect(tools[0].source).toBe('verb');
   });
 
-  it('run() splits args on whitespace and forwards to runVerb', async () => {
-    const fakeRunVerb = vi.fn().mockResolvedValue('ok');
+  it('passes verb.schema.input through verbatim when present', () => {
+    const input = {
+      type: 'object',
+      properties: { path: { type: 'string' } },
+      required: ['path'],
+    };
     const [tool] = verbsToTools(
-      [{ shardId: 'fe', name: 'list', summary: 'List' }],
+      [{ shardId: 'a', name: 'a:b', summary: 'x', schema: { input } }],
+      vi.fn(),
+    );
+    expect(tool.inputSchema).toBe(input);
+  });
+
+  it('run() (no schema) splits args on whitespace and unwraps result', async () => {
+    const fakeRunVerb = vi.fn().mockReturnValue(ok('ok'));
+    const [tool] = verbsToTools(
+      [{ shardId: 'fe', name: 'fe:list', summary: 'List' }],
       fakeRunVerb,
     );
     const ac = new AbortController();
     const result = await tool.run({ args: '/docs --recursive' }, { signal: ac.signal });
     expect(fakeRunVerb).toHaveBeenCalledWith(
-      'fe', 'list', ['/docs', '--recursive'], { signal: ac.signal },
+      'fe', 'fe:list', ['/docs', '--recursive'], { signal: ac.signal },
     );
     expect(result).toBe('ok');
   });
 
-  it('run() handles empty args string', async () => {
-    const fakeRunVerb = vi.fn().mockResolvedValue(undefined);
+  it('run() (with schema) dispatches with opts.structured and empty args', async () => {
+    const fakeRunVerb = vi.fn().mockReturnValue(ok({ bytes: 12 }));
     const [tool] = verbsToTools(
-      [{ shardId: 'fe', name: 'pwd', summary: '' }],
+      [{
+        shardId: 'sh3-r2',
+        name: 'sh3-r2:backup',
+        summary: 'Back up',
+        schema: { input: { type: 'object', properties: { path: { type: 'string' } } } },
+      }],
+      fakeRunVerb,
+    );
+    const ac = new AbortController();
+    const result = await tool.run({ path: '/docs' }, { signal: ac.signal });
+    expect(fakeRunVerb).toHaveBeenCalledWith(
+      'sh3-r2', 'sh3-r2:backup', [], { signal: ac.signal, structured: { path: '/docs' } },
+    );
+    expect(result).toEqual({ bytes: 12 });
+  });
+
+  it('run() handles empty args string (no schema)', async () => {
+    const fakeRunVerb = vi.fn().mockReturnValue(ok(undefined));
+    const [tool] = verbsToTools(
+      [{ shardId: 'fe', name: 'fe:pwd', summary: '' }],
       fakeRunVerb,
     );
     await tool.run({ args: '' }, { signal: new AbortController().signal });
-    expect(fakeRunVerb).toHaveBeenCalledWith('fe', 'pwd', [], expect.anything());
+    expect(fakeRunVerb).toHaveBeenCalledWith('fe', 'fe:pwd', [], expect.anything());
   });
 });

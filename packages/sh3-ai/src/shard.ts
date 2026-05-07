@@ -31,6 +31,13 @@ async function runOneShot(
       for await (const chunk of provider.chat(messages, model, signal)) {
         if (chunk.type === 'token') {
           text += chunk.text;
+        } else if (chunk.type === 'tool-call') {
+          // runOneShot does not pass tools, but a misbehaving provider
+          // could still emit them. Surface as a hard error so we don't
+          // silently swallow them.
+          throw new Error(
+            `provider emitted a tool-call chunk for a tools-less request`,
+          );
         } else if (chunk.type === 'done') {
           done = true;
           break;

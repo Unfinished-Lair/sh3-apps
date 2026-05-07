@@ -70,6 +70,106 @@ describe('ConversationState', () => {
   });
 });
 
+describe('ConversationState binding + autosave', () => {
+  function fakeAutosave() {
+    const writes: string[] = [];
+    let disposed = false;
+    return {
+      writes,
+      controller: {
+        dirty: false,
+        update(content: string) { writes.push(content); },
+        async flush() {},
+        async dispose() { disposed = true; },
+      },
+      get disposed() { return disposed; },
+    };
+  }
+
+  const doc = {
+    id: 'abc',
+    version: 1 as const,
+    title: 'fixing auth',
+    createdAt: 100,
+    updatedAt: 200,
+    providerId: 'gemini',
+    model: 'gemini-2.5-flash',
+    messages: [
+      { role: 'user' as const, content: 'why' },
+      { role: 'assistant' as const, content: 'because', model: 'gemini-2.5-flash' },
+    ],
+    toolCalls: [
+      { messageIndex: 1, callId: 'c1', name: 'a.b', arguments: {} },
+    ],
+    toolResults: [
+      { messageIndex: 1, callId: 'c1', content: 'ok' },
+    ],
+  };
+
+  it('bindTo replaces in-memory contents', () => {
+    const c = new ConversationState();
+    c.appendUser('stale');
+    const a = fakeAutosave();
+    c.bindTo(doc, a.controller);
+    expect(c.id).toBe('abc');
+    expect(c.title).toBe('fixing auth');
+    expect(c.createdAt).toBe(100);
+    expect(c.providerId).toBe('gemini');
+    expect(c.lockedModel).toBe('gemini-2.5-flash');
+    expect(c.messages).toEqual(doc.messages);
+    expect(c.toolCalls).toEqual(doc.toolCalls);
+    expect(c.toolResults).toEqual(doc.toolResults);
+  });
+
+  it('mutators while bound trigger autosave update', () => {
+    const c = new ConversationState();
+    const a = fakeAutosave();
+    c.bindTo(doc, a.controller);
+    const before = a.writes.length;
+    c.appendUser('next prompt');
+    expect(a.writes.length).toBe(before + 1);
+    const written = JSON.parse(a.writes[a.writes.length - 1]);
+    expect(written.messages[written.messages.length - 1]).toEqual({
+      role: 'user', content: 'next prompt',
+    });
+  });
+
+  it('mutators while unbound do not call autosave', () => {
+    const c = new ConversationState();
+    c.appendUser('unbound');         // no controller exists
+    expect(c.messages).toHaveLength(1);
+    // Nothing to assert against; the absence of a throw is the test.
+  });
+
+  it('detach() disposes the controller and clears binding fields', () => {
+    const c = new ConversationState();
+    const a = fakeAutosave();
+    c.bindTo(doc, a.controller);
+    c.detach();
+    expect(c.id).toBeNull();
+    expect(c.title).toBe('');
+    expect(c.createdAt).toBe(0);
+    expect(c.providerId).toBeNull();
+    expect(a.disposed).toBe(true);
+  });
+
+  it('after detach, mutators stop persisting (in-memory only)', () => {
+    const c = new ConversationState();
+    const a = fakeAutosave();
+    c.bindTo(doc, a.controller);
+    c.detach();
+    const before = a.writes.length;
+    c.appendUser('after detach');
+    expect(a.writes.length).toBe(before);
+    expect(c.messages[c.messages.length - 1].content).toBe('after detach');
+  });
+
+  it('toDocument() throws when unbound', () => {
+    const c = new ConversationState();
+    expect(() => c.toDocument()).toThrow(/not bound/);
+  });
+});
+
 describe('ConversationState tool-call extension', () => {
   it('records a tool call with the source message index', () => {
     const c = new ConversationState();

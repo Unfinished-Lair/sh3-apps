@@ -265,6 +265,116 @@ describe('chatStream', () => {
   });
 });
 
+describe('chatStream tool-call translation', () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sends tools as OpenAI-style { type:function, function:{...} } entries', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: null }] }),
+      JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'hi' }],
+      'deepseek-chat',
+      new AbortController().signal,
+      undefined,
+      {
+        tools: [{
+          name: 'sh3-r2.backup',
+          description: 'Back up',
+          inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+        }],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toEqual([
+      {
+        type: 'function',
+        function: {
+          name: 'sh3-r2.backup',
+          description: 'Back up',
+          parameters: { type: 'object', properties: { path: { type: 'string' } } },
+        },
+      },
+    ]);
+  });
+
+  it('omits the tools field when no tools given', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k', [{ role: 'user', content: 'hi' }], 'deepseek-chat', new AbortController().signal,
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toBeUndefined();
+  });
+
+  it('accumulates tool_calls deltas and emits one tool-call chunk per index', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: {
+        tool_calls: [{ index: 0, id: 'c1', function: { name: 'sh3-r2.backup', arguments: '{"pa' } }],
+      }, finish_reason: null }] }),
+      JSON.stringify({ choices: [{ delta: {
+        tool_calls: [{ index: 0, function: { arguments: 'th":"/docs"}' } }],
+      }, finish_reason: null }] }),
+      JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+    ]));
+    const chunks = await collect(chatStream(
+      'k', [{ role: 'user', content: 'go' }], 'deepseek-chat', new AbortController().signal,
+      undefined,
+      { tools: [{ name: 'sh3-r2.backup', description: 'b', inputSchema: { type: 'object' } }] },
+    ));
+    const toolCall = chunks.find((c) => c.type === 'tool-call');
+    expect(toolCall).toMatchObject({
+      type: 'tool-call',
+      id: 'c1',
+      name: 'sh3-r2.backup',
+      arguments: { path: '/docs' },
+    });
+    const done = chunks[chunks.length - 1];
+    expect(done).toEqual({ type: 'done', finishReason: 'tool-calls' });
+  });
+
+  it('appends toolResults as role:tool messages with tool_call_id', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k', [{ role: 'user', content: 'hi' }], 'deepseek-chat', new AbortController().signal,
+      undefined,
+      { toolResults: [{ toolCallId: 'c1', content: 'done' }] },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const last = body.messages[body.messages.length - 1];
+    expect(last).toEqual({ role: 'tool', tool_call_id: 'c1', content: 'done' });
+  });
+
+  it('serializes an error toolResult as JSON {"error":...}', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k', [{ role: 'user', content: 'hi' }], 'deepseek-chat', new AbortController().signal,
+      undefined,
+      { toolResults: [{ toolCallId: 'c1', content: { error: 'boom' } }] },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const last = body.messages[body.messages.length - 1];
+    expect(last.content).toBe('{"error":"boom"}');
+  });
+});
+
 describe('chatStream generation config', () => {
   let mockFetch: ReturnType<typeof vi.fn>;
 

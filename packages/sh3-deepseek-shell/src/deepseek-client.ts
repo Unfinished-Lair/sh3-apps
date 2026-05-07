@@ -1,4 +1,4 @@
-import type { AiProvider, ChatChunk, ChatMessage } from 'sh3-ai';
+import type { AiProvider, ChatChunk, ChatMessage, ChatOptions } from 'sh3-ai';
 
 const BASE_URL = 'https://api.deepseek.com';
 
@@ -18,16 +18,41 @@ export interface DeepseekGenerationConfig {
   maxOutputTokens?: number | null;
 }
 
+type DeepseekMessage =
+  | { role: 'system' | 'user' | 'assistant'; content: string }
+  | { role: 'tool'; tool_call_id: string; content: string };
+
 function buildMessages(
   messages: ChatMessage[],
-  systemInstruction?: string,
-): { role: 'system' | 'user' | 'assistant'; content: string }[] {
-  const out: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+  systemInstruction: string | undefined,
+  options: ChatOptions | undefined,
+): DeepseekMessage[] {
+  const out: DeepseekMessage[] = [];
   if (systemInstruction && systemInstruction.length > 0) {
     out.push({ role: 'system', content: systemInstruction });
   }
   for (const m of messages) out.push({ role: m.role, content: m.content });
+  for (const r of options?.toolResults ?? []) {
+    const content = typeof r.content === 'string'
+      ? r.content
+      : JSON.stringify({ error: r.content.error });
+    out.push({ role: 'tool', tool_call_id: r.toolCallId, content });
+  }
   return out;
+}
+
+function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
+  if (!options?.tools || options.tools.length === 0) return {};
+  return {
+    tools: options.tools.map((t) => ({
+      type: 'function',
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.inputSchema,
+      },
+    })),
+  };
 }
 
 function buildBody(
@@ -35,11 +60,13 @@ function buildBody(
   modelId: string,
   stream: boolean,
   config: DeepseekGenerationConfig | undefined,
+  options: ChatOptions | undefined,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: modelId,
-    messages: buildMessages(messages, config?.systemInstruction),
+    messages: buildMessages(messages, config?.systemInstruction, options),
     stream,
+    ...buildToolsField(options),
   };
   if (typeof config?.temperature === 'number') body.temperature = config.temperature;
   if (typeof config?.maxOutputTokens === 'number') body.max_tokens = config.maxOutputTokens;
@@ -99,6 +126,7 @@ export async function* chatStream(
   modelId: string,
   signal: AbortSignal,
   config?: DeepseekGenerationConfig,
+  options?: ChatOptions,
 ): AsyncIterable<ChatChunk> {
   const url = `${BASE_URL}/chat/completions`;
   const composed = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
@@ -110,7 +138,7 @@ export async function* chatStream(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(buildBody(messages, modelId, true, config)),
+      body: JSON.stringify(buildBody(messages, modelId, true, config, options)),
       signal: composed,
     });
   } catch (err) {
@@ -128,28 +156,80 @@ export async function* chatStream(
     throw new DeepseekError('chat/completions: empty body');
   }
 
-  function* extractTokens(parsed: unknown): Iterable<string> {
-    const choices = (parsed as { choices?: { delta?: { content?: string } }[] })?.choices;
+  // Per-index tool-call accumulators. OpenAI-style streaming sends
+  // tool_calls deltas keyed by `index`; the function name arrives once and
+  // the `arguments` string accumulates across deltas.
+  const toolCallAcc = new Map<
+    number,
+    { id: string; name: string; argString: string }
+  >();
+  let observedFinishReason: 'stop' | 'tool-calls' | 'length' | 'error' | undefined;
+
+  type Delta = {
+    text?: string;
+    toolDeltas?: Array<{
+      index: number;
+      id?: string;
+      function?: { name?: string; arguments?: string };
+    }>;
+    finishReason?: string | null;
+  };
+
+  function* extractDeltas(parsed: unknown): Iterable<Delta> {
+    const choices = (parsed as {
+      choices?: Array<{
+        delta?: {
+          content?: string;
+          tool_calls?: Array<{
+            index: number;
+            id?: string;
+            function?: { name?: string; arguments?: string };
+          }>;
+        };
+        finish_reason?: string | null;
+      }>;
+    })?.choices;
     if (!choices) return;
     for (const c of choices) {
-      const text = c.delta?.content;
-      if (typeof text === 'string' && text.length > 0) yield text;
+      yield {
+        text: c.delta?.content,
+        toolDeltas: c.delta?.tool_calls,
+        finishReason: c.finish_reason,
+      };
     }
   }
 
-  function* parseSseEvent(event: string): Iterable<string> {
+  function* parseSseEvent(event: string): Iterable<Delta> {
     for (const line of event.split(/\r?\n/)) {
       if (!line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (!data || data === '[DONE]') continue;
       let parsed: unknown;
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        continue;
-      }
-      yield* extractTokens(parsed);
+      try { parsed = JSON.parse(data); } catch { continue; }
+      yield* extractDeltas(parsed);
     }
+  }
+
+  function applyDelta(d: Delta): ChatChunk | null {
+    if (d.toolDeltas) {
+      for (const td of d.toolDeltas) {
+        let acc = toolCallAcc.get(td.index);
+        if (!acc) {
+          acc = { id: td.id ?? crypto.randomUUID(), name: '', argString: '' };
+          toolCallAcc.set(td.index, acc);
+        }
+        if (td.id && !acc.id) acc.id = td.id;
+        if (td.function?.name) acc.name = td.function.name;
+        if (typeof td.function?.arguments === 'string') {
+          acc.argString += td.function.arguments;
+        }
+      }
+    }
+    if (d.finishReason === 'tool_calls') observedFinishReason = 'tool-calls';
+    else if (d.finishReason === 'stop') observedFinishReason = 'stop';
+    else if (d.finishReason === 'length') observedFinishReason = 'length';
+    if (d.text && d.text.length > 0) return { type: 'token', text: d.text };
+    return null;
   }
 
   const decoder = new TextDecoder();
@@ -165,9 +245,12 @@ export async function* chatStream(
       const events = buffer.split(/\r?\n\r?\n/);
       buffer = events.pop() ?? '';
       for (const event of events) {
-        for (const text of parseSseEvent(event)) {
-          yieldedAny = true;
-          yield { type: 'token', text };
+        for (const delta of parseSseEvent(event)) {
+          const chunk = applyDelta(delta);
+          if (chunk) {
+            yieldedAny = true;
+            yield chunk;
+          }
         }
       }
     }
@@ -178,16 +261,31 @@ export async function* chatStream(
   }
 
   if (buffer.trim().length > 0) {
-    for (const text of parseSseEvent(buffer)) {
-      yieldedAny = true;
-      yield { type: 'token', text };
+    for (const delta of parseSseEvent(buffer)) {
+      const chunk = applyDelta(delta);
+      if (chunk) {
+        yieldedAny = true;
+        yield chunk;
+      }
     }
+  }
+
+  // Emit accumulated tool-calls as discrete chunks before the done chunk.
+  for (const acc of toolCallAcc.values()) {
+    let parsedArgs: unknown;
+    try { parsedArgs = acc.argString ? JSON.parse(acc.argString) : {}; }
+    catch { parsedArgs = { _raw: acc.argString }; }
+    yieldedAny = true;
+    yield { type: 'tool-call', id: acc.id, name: acc.name, arguments: parsedArgs };
   }
 
   if (!yieldedAny) {
     throw new DeepseekError('chat/completions: empty stream');
   }
-  yield { type: 'done' };
+
+  yield observedFinishReason === 'tool-calls'
+    ? { type: 'done', finishReason: 'tool-calls' }
+    : { type: 'done' };
 }
 
 export interface DeepseekProviderDeps {
@@ -202,13 +300,18 @@ export function deepseekProvider(deps: DeepseekProviderDeps): AiProvider {
   return {
     id: 'deepseek',
     label: 'DeepSeek',
+    capabilities: { tools: true },
     chain: () => deps.getChain(),
-    chat(messages, model, signal) {
-      return chatStream(deps.getApiKey(), messages, model, signal, {
-        systemInstruction: deps.getSystemInstruction(),
-        temperature: deps.getTemperature(),
-        maxOutputTokens: deps.getMaxOutputTokens(),
-      });
+    chat(messages, model, signal, options) {
+      return chatStream(
+        deps.getApiKey(), messages, model, signal,
+        {
+          systemInstruction: deps.getSystemInstruction(),
+          temperature: deps.getTemperature(),
+          maxOutputTokens: deps.getMaxOutputTokens(),
+        },
+        options,
+      );
     },
     isAuthFailure(err: unknown): boolean {
       // 400 invalid format, 401 bad key, 402 insufficient balance, 403 forbidden —

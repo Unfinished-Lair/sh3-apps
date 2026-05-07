@@ -20,7 +20,7 @@ const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
 const SETTINGS_VIEW_ID = 'deepseek:settings';
 const SETTINGS_FLOAT_TITLE = 'DeepSeek Settings';
 
-interface DeepseekUserState {
+interface DeepseekUserState extends Record<string, unknown> {
   apiKey: string;
   modelChain: string[];
   systemInstruction: string;
@@ -28,7 +28,7 @@ interface DeepseekUserState {
   maxOutputTokens: number | null;
 }
 
-interface DeepseekSessionState {
+interface DeepseekSessionState extends Record<string, unknown> {
   knownModels: ModelInfo[];
   modelsLastFetchedAt: number | null;
 }

@@ -17,7 +17,7 @@ import { toolContributionsToTools } from './ai/catalog/tool-contribution';
 import { assembleCatalog, filterByScope } from './ai/catalog/assemble';
 import { makeScopeLookup, type UserScopes } from './ai/scope/store';
 import { resolveScope } from './ai/scope/resolve';
-import { SCOPE_NONE } from './ai/scope/builtins';
+import { SCOPE_NONE, BUILTIN_SCOPES } from './ai/scope/builtins';
 import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
 
 async function runOneShot(
@@ -303,6 +303,71 @@ export const shard: SourceShard = {
             });
             return;
         }
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'scope',
+      summary:
+        'List, switch, save, or delete AI permission scopes. Usage: ai:scope [<id>|clear|save <id> [opts]|delete <id>]',
+      async run(vctx, args) {
+        const lookup = makeScopeLookup(state.user.scopes);
+        const knownIds = [
+          ...BUILTIN_SCOPES.map((s) => s.id),
+          ...Object.keys(state.user.scopes),
+        ];
+
+        if (args.length === 0) {
+          const active = state.user.activeScopeId;
+          const lines = [`scope: ${active}`, '', 'available scopes:'];
+          for (const id of knownIds) {
+            const s = lookup(id);
+            if (!s) continue;
+            lines.push(`  ${id === active ? '*' : ' '} ${s.id}  ${s.label}`);
+          }
+          vctx.scrollback.push({
+            kind: 'status', text: lines.join('\n'), level: 'info', ts: Date.now(),
+          });
+          return;
+        }
+
+        const sub = args[0];
+
+        if (sub === 'clear') {
+          state.user.activeScopeId = SCOPE_NONE.id;
+          conversation.reset();
+          vctx.scrollback.push({
+            kind: 'status', text: `scope: ${SCOPE_NONE.id}`,
+            level: 'info', ts: Date.now(),
+          });
+          return;
+        }
+
+        if (sub === 'save' || sub === 'delete') {
+          // Implemented in Task 23.
+          vctx.scrollback.push({
+            kind: 'status', text: `ai:scope ${sub}: not yet implemented`,
+            level: 'error', ts: Date.now(),
+          });
+          return;
+        }
+
+        const target = lookup(sub);
+        if (!target) {
+          vctx.scrollback.push({
+            kind: 'status', text: `ai: unknown scope '${sub}'`,
+            level: 'error', ts: Date.now(),
+          });
+          return;
+        }
+        state.user.activeScopeId = target.id;
+        conversation.reset();
+        const catalog = buildCatalog();
+        vctx.scrollback.push({
+          kind: 'status',
+          text: `scope: ${target.id} — ${catalog.length} tools available`,
+          level: 'info', ts: Date.now(),
+        });
       },
     });
   },

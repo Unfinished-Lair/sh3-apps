@@ -5,6 +5,7 @@ export {
   type ChatMessage,
   type ChatChunk,
   type ChatOptions,
+  type ToolCallSpec,
   type ToolSpec,
   type ToolResult,
 } from './ai/provider';

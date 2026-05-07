@@ -1,4 +1,4 @@
-import type { AiProvider, ToolResult } from '../provider';
+import type { AiProvider, ToolCallSpec, ToolResult } from '../provider';
 import type { Tool, ToolSpec } from '../catalog/types';
 import type { ResolvedScope } from '../scope/types';
 import { evaluate } from '../scope/evaluate';
@@ -32,7 +32,9 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
   conversation.appendUser(prompt);
 
+  let toolCalls: ToolCallSpec[] | undefined;
   let toolResults: ToolResult[] | undefined;
+  let reasoningContent: string | undefined;
   let round = 0;
 
   while (!signal.aborted) {
@@ -42,17 +44,21 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
     }
 
     let assistantText = '';
-    const pendingCalls: { id: string; name: string; arguments: unknown }[] = [];
+    let assistantReasoning = '';
+    const pendingCalls: ToolCallSpec[] = [];
     let finishReason: 'stop' | 'tool-calls' | 'length' | 'error' | undefined;
 
     for await (const chunk of provider.chat(
-      conversation.messages, model, signal, { tools, toolResults },
+      conversation.messages, model, signal,
+      { tools, toolCalls, toolResults, reasoningContent },
     )) {
       if (chunk.type === 'token') {
         assistantText += chunk.text;
         transcript.token(chunk.text);
+      } else if (chunk.type === 'reasoning') {
+        assistantReasoning += chunk.text;
       } else if (chunk.type === 'tool-call') {
-        pendingCalls.push(chunk);
+        pendingCalls.push({ id: chunk.id, name: chunk.name, arguments: chunk.arguments });
         transcript.status('info', `→ ${chunk.name}(${transcript.preview(chunk.arguments)})`);
       } else if (chunk.type === 'done') {
         finishReason = chunk.finishReason;
@@ -70,7 +76,9 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     if (finishReason !== 'tool-calls' || pendingCalls.length === 0) break;
 
+    toolCalls = [...pendingCalls];
     toolResults = [];
+    reasoningContent = assistantReasoning.length > 0 ? assistantReasoning : undefined;
     for (const call of pendingCalls) {
       if (signal.aborted) break;
 

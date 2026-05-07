@@ -18,8 +18,20 @@ export interface DeepseekGenerationConfig {
   maxOutputTokens?: number | null;
 }
 
+interface DeepseekToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
 type DeepseekMessage =
-  | { role: 'system' | 'user' | 'assistant'; content: string }
+  | { role: 'system' | 'user'; content: string }
+  | {
+      role: 'assistant';
+      content: string;
+      tool_calls?: DeepseekToolCall[];
+      reasoning_content?: string;
+    }
   | { role: 'tool'; tool_call_id: string; content: string };
 
 function buildMessages(
@@ -32,6 +44,39 @@ function buildMessages(
     out.push({ role: 'system', content: systemInstruction });
   }
   for (const m of messages) out.push({ role: m.role, content: m.content });
+
+  // Re-attach the prior round's tool_calls so the upcoming `tool` messages
+  // are valid per OpenAI's contract: every `role:tool` must follow an
+  // assistant message whose `tool_calls[]` contains the matching id. The
+  // sh3-ai dispatcher splits this state across `messages` (text) and
+  // `options.toolCalls` (calls), so we stitch them back together here. If
+  // the last message is the assistant that produced these calls, attach
+  // in-place; otherwise inject an empty-content assistant turn carrying
+  // just the tool_calls.
+  const pendingCalls = options?.toolCalls;
+  if (pendingCalls && pendingCalls.length > 0) {
+    const tool_calls: DeepseekToolCall[] = pendingCalls.map((c) => ({
+      id: c.id,
+      type: 'function',
+      function: {
+        name: encodeToolName(c.name),
+        arguments: typeof c.arguments === 'string'
+          ? c.arguments
+          : JSON.stringify(c.arguments ?? {}),
+      },
+    }));
+    const reasoning_content = options?.reasoningContent;
+    const last = out[out.length - 1];
+    if (last && last.role === 'assistant') {
+      last.tool_calls = tool_calls;
+      if (reasoning_content) last.reasoning_content = reasoning_content;
+    } else {
+      const assistant: DeepseekMessage = { role: 'assistant', content: '', tool_calls };
+      if (reasoning_content) assistant.reasoning_content = reasoning_content;
+      out.push(assistant);
+    }
+  }
+
   for (const r of options?.toolResults ?? []) {
     const content = typeof r.content === 'string'
       ? r.content
@@ -178,6 +223,7 @@ export async function* chatStream(
 
   type Delta = {
     text?: string;
+    reasoning?: string;
     toolDeltas?: Array<{
       index: number;
       id?: string;
@@ -191,6 +237,7 @@ export async function* chatStream(
       choices?: Array<{
         delta?: {
           content?: string;
+          reasoning_content?: string;
           tool_calls?: Array<{
             index: number;
             id?: string;
@@ -204,6 +251,7 @@ export async function* chatStream(
     for (const c of choices) {
       yield {
         text: c.delta?.content,
+        reasoning: c.delta?.reasoning_content,
         toolDeltas: c.delta?.tool_calls,
         finishReason: c.finish_reason,
       };
@@ -221,7 +269,7 @@ export async function* chatStream(
     }
   }
 
-  function applyDelta(d: Delta): ChatChunk | null {
+  function applyDelta(d: Delta): ChatChunk[] {
     if (d.toolDeltas) {
       for (const td of d.toolDeltas) {
         let acc = toolCallAcc.get(td.index);
@@ -239,8 +287,14 @@ export async function* chatStream(
     if (d.finishReason === 'tool_calls') observedFinishReason = 'tool-calls';
     else if (d.finishReason === 'stop') observedFinishReason = 'stop';
     else if (d.finishReason === 'length') observedFinishReason = 'length';
-    if (d.text && d.text.length > 0) return { type: 'token', text: d.text };
-    return null;
+    const chunks: ChatChunk[] = [];
+    if (d.reasoning && d.reasoning.length > 0) {
+      chunks.push({ type: 'reasoning', text: d.reasoning });
+    }
+    if (d.text && d.text.length > 0) {
+      chunks.push({ type: 'token', text: d.text });
+    }
+    return chunks;
   }
 
   const decoder = new TextDecoder();
@@ -257,8 +311,7 @@ export async function* chatStream(
       buffer = events.pop() ?? '';
       for (const event of events) {
         for (const delta of parseSseEvent(event)) {
-          const chunk = applyDelta(delta);
-          if (chunk) {
+          for (const chunk of applyDelta(delta)) {
             yieldedAny = true;
             yield chunk;
           }
@@ -273,8 +326,7 @@ export async function* chatStream(
 
   if (buffer.trim().length > 0) {
     for (const delta of parseSseEvent(buffer)) {
-      const chunk = applyDelta(delta);
-      if (chunk) {
+      for (const chunk of applyDelta(delta)) {
         yieldedAny = true;
         yield chunk;
       }

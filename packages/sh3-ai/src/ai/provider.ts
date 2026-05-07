@@ -15,6 +15,7 @@ export interface ChatMessage {
 
 export type ChatChunk =
   | { type: 'token'; text: string }
+  | { type: 'reasoning'; text: string }
   | { type: 'tool-call'; id: string; name: string; arguments: unknown }
   | {
       type: 'done';
@@ -23,9 +24,29 @@ export type ChatChunk =
       finishReason?: 'stop' | 'tool-calls' | 'length' | 'error';
     };
 
+/** Spec of a single tool call the dispatcher just produced. Mirrors the
+ *  shape carried in `ChatChunk` `tool-call` events. Passed to `chat()`
+ *  alongside `toolResults` so OpenAI-style providers can rebuild the
+ *  required `tool_calls` field on the preceding assistant turn. */
+export interface ToolCallSpec {
+  id: string;
+  name: string;
+  arguments: unknown;
+}
+
 export interface ChatOptions {
   tools?: ToolSpec[];
+  /** Tool calls produced by the prior round (1:1 with `toolResults`).
+   *  Providers that need explicit assistant→tool linking (DeepSeek, OpenAI,
+   *  Anthropic) use this to reconstruct that turn. Providers that don't
+   *  (Gemini, which uses `functionCall`/`functionResponse` parts) may ignore. */
+  toolCalls?: ToolCallSpec[];
   toolResults?: ToolResult[];
+  /** Chain-of-thought emitted by the prior round on reasoning models that
+   *  require it to be echoed back (DeepSeek `deepseek-reasoner`: the
+   *  `reasoning_content` field). Provider attaches it to the assistant turn
+   *  carrying `toolCalls`; ignored on non-reasoning models. */
+  reasoningContent?: string;
 }
 
 export interface AiProvider {

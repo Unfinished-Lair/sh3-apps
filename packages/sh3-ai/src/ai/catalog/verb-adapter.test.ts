@@ -104,4 +104,58 @@ describe('verbsToTools', () => {
     await tool.run({ args: '' }, { signal: new AbortController().signal });
     expect(fakeRunVerb).toHaveBeenCalledWith('fe', 'fe:pwd', [], expect.anything());
   });
+
+  it('folds scrollback into the result when result is undefined', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: undefined,
+      scrollback: [
+        { kind: 'status', text: 'app-a (running)', level: 'info', ts: 1 },
+        { kind: 'status', text: 'app-b (idle)', level: 'info', ts: 2 },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'shell', name: 'shell:apps', summary: 'List apps' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toBe('app-a (running)\napp-b (idle)');
+  });
+
+  it('joins text-stream chunks from scrollback', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: undefined,
+      scrollback: [
+        { kind: 'text', stream: 'stdout', chunks: ['hello ', 'world'], ts: 1 },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'a', name: 'a:b', summary: '' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toBe('hello \nworld');
+  });
+
+  it('prefers result over scrollback when both are present', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: { count: 2 },
+      scrollback: [{ kind: 'status', text: 'noise', level: 'info', ts: 1 }],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'a', name: 'a:b', summary: '' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toEqual({ count: 2 });
+  });
+
+  it('returns empty string when both result and scrollback are empty', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({ result: undefined, scrollback: [] });
+    const [tool] = verbsToTools(
+      [{ shardId: 'a', name: 'a:b', summary: '' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toBe('');
+  });
 });

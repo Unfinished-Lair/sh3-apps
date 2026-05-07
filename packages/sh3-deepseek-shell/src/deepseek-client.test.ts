@@ -361,6 +361,114 @@ describe('chatStream tool-call translation', () => {
     expect(last).toEqual({ role: 'tool', tool_call_id: 'c1', content: 'done' });
   });
 
+  it('attaches tool_calls to the trailing assistant message when toolCalls is supplied', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [
+        { role: 'user', content: 'list apps' },
+        { role: 'assistant', content: 'I will list them.' },
+      ],
+      'deepseek-chat', new AbortController().signal,
+      undefined,
+      {
+        toolCalls: [{ id: 'c1', name: 'shell.apps', arguments: { x: 1 } }],
+        toolResults: [{ toolCallId: 'c1', content: 'app-a, app-b' }],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.messages).toEqual([
+      { role: 'user', content: 'list apps' },
+      {
+        role: 'assistant',
+        content: 'I will list them.',
+        tool_calls: [{
+          id: 'c1',
+          type: 'function',
+          function: { name: 'shell__apps', arguments: '{"x":1}' },
+        }],
+      },
+      { role: 'tool', tool_call_id: 'c1', content: 'app-a, app-b' },
+    ]);
+  });
+
+  it('emits reasoning chunks from delta.reasoning_content (deepseek-reasoner)', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { reasoning_content: 'I should ' } }] }),
+      JSON.stringify({ choices: [{ delta: { reasoning_content: 'list apps' } }] }),
+      JSON.stringify({ choices: [{ delta: { content: 'Listing.' }, finish_reason: 'stop' }] }),
+    ]));
+    const chunks = await collect(chatStream(
+      'k', [{ role: 'user', content: 'apps?' }], 'deepseek-reasoner', new AbortController().signal,
+    ));
+    expect(chunks).toEqual<ChatChunk[]>([
+      { type: 'reasoning', text: 'I should ' },
+      { type: 'reasoning', text: 'list apps' },
+      { type: 'token', text: 'Listing.' },
+      { type: 'done' },
+    ]);
+  });
+
+  it('echoes reasoningContent on the assistant turn alongside tool_calls', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'list apps' }],
+      'deepseek-reasoner', new AbortController().signal,
+      undefined,
+      {
+        toolCalls: [{ id: 'c1', name: 'shell.apps', arguments: {} }],
+        toolResults: [{ toolCallId: 'c1', content: 'app-a' }],
+        reasoningContent: 'I should call shell.apps',
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const assistant = body.messages[body.messages.length - 2];
+    expect(assistant).toEqual({
+      role: 'assistant',
+      content: '',
+      tool_calls: [{
+        id: 'c1', type: 'function',
+        function: { name: 'shell__apps', arguments: '{}' },
+      }],
+      reasoning_content: 'I should call shell.apps',
+    });
+  });
+
+  it('injects an empty-content assistant turn for toolCalls when no preceding assistant message', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'list apps' }],
+      'deepseek-chat', new AbortController().signal,
+      undefined,
+      {
+        toolCalls: [{ id: 'c1', name: 'shell.apps', arguments: {} }],
+        toolResults: [{ toolCallId: 'c1', content: 'app-a' }],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.messages).toEqual([
+      { role: 'user', content: 'list apps' },
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [{
+          id: 'c1',
+          type: 'function',
+          function: { name: 'shell__apps', arguments: '{}' },
+        }],
+      },
+      { role: 'tool', tool_call_id: 'c1', content: 'app-a' },
+    ]);
+  });
+
   it('serializes an error toolResult as JSON {"error":...}', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }),

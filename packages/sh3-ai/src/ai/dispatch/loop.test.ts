@@ -236,6 +236,89 @@ describe('dispatchLoop', () => {
     )).toBe(true);
   });
 
+  it('passes the prior round\'s toolCalls to the provider on the next round', async () => {
+    const tool = fakeTool('a.b', async () => 'ok');
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake',
+      chain: () => ['m1'],
+      capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: { x: 1 } };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'token', text: 'done' };
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false,
+      isReady: () => true,
+    };
+    const sb = fakeScrollback();
+    const conv = new ConversationState();
+    const scope: ResolvedScope = { id: 's', whitelist: ['a.*'], blacklist: [] };
+
+    await dispatchLoop({
+      prompt: 'go',
+      catalog: [tool],
+      scope,
+      conversation: conv,
+      provider,
+      model: 'm1',
+      signal: new AbortController().signal,
+      transcript: makeTranscript(sb),
+    });
+
+    expect(seenOptions[0]?.toolCalls).toBeUndefined();
+    expect(seenOptions[1]?.toolCalls).toEqual([
+      { id: 'c1', name: 'a.b', arguments: { x: 1 } },
+    ]);
+    expect(seenOptions[1]?.toolResults).toHaveLength(1);
+  });
+
+  it('forwards reasoning chunks accumulated in the prior round', async () => {
+    const tool = fakeTool('a.b', async () => 'ok');
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake',
+      chain: () => ['m1'],
+      capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'reasoning', text: 'I should ' };
+          yield { type: 'reasoning', text: 'call a.b' };
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: {} };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'token', text: 'done' };
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false,
+      isReady: () => true,
+    };
+    const sb = fakeScrollback();
+    const conv = new ConversationState();
+    const scope: ResolvedScope = { id: 's', whitelist: ['a.*'], blacklist: [] };
+
+    await dispatchLoop({
+      prompt: 'go',
+      catalog: [tool],
+      scope,
+      conversation: conv,
+      provider,
+      model: 'm1',
+      signal: new AbortController().signal,
+      transcript: makeTranscript(sb),
+    });
+
+    expect(seenOptions[0]?.reasoningContent).toBeUndefined();
+    expect(seenOptions[1]?.reasoningContent).toBe('I should call a.b');
+  });
+
   it('rejects unknown tool names from the model', async () => {
     const provider = fakeProvider([
       [

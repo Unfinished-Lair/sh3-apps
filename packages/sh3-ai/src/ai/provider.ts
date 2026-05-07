@@ -4,6 +4,8 @@
  * `SH3_AI_PROVIDER_CONTRIBUTION` via `ctx.contributions.register(...)`.
  */
 
+import type { ToolSpec, ToolResult } from './catalog/types';
+
 export const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
 
 export interface ChatMessage {
@@ -13,7 +15,18 @@ export interface ChatMessage {
 
 export type ChatChunk =
   | { type: 'token'; text: string }
-  | { type: 'done' };
+  | { type: 'tool-call'; id: string; name: string; arguments: unknown }
+  | {
+      type: 'done';
+      // Optional to preserve compatibility with providers that haven't yet
+      // adopted the tool-call surface; absent → treat as 'stop'.
+      finishReason?: 'stop' | 'tool-calls' | 'length' | 'error';
+    };
+
+export interface ChatOptions {
+  tools?: ToolSpec[];
+  toolResults?: ToolResult[];
+}
 
 export interface AiProvider {
   /** Stable id, e.g. 'gemini'. */
@@ -22,16 +35,24 @@ export interface AiProvider {
   label: string;
   /** Live read of the user's preferred model order (highest priority first). */
   chain(): string[];
-  /** Stream chat tokens for the given messages against the given model. */
+  /** Capability flags. Absent or `tools: false` means the dispatcher will
+   *  not pass `tools`; the provider is treated as text-only. Additive in
+   *  future minor revisions of this contract. */
+  capabilities?: { tools?: boolean };
+  /** Stream chat tokens (and tool-call chunks, when `options.tools` is set
+   *  and the provider supports them) for the given messages against the
+   *  given model. Existing 4-argument calls remain valid; the 5th arg is
+   *  optional and defaults to no tools. */
   chat(
     messages: ChatMessage[],
     model: string,
     signal: AbortSignal,
+    options?: ChatOptions,
   ): AsyncIterable<ChatChunk>;
-  /** Provider-specific classification of auth failures (so the dispatcher
-   *  can break out of the model-chain fallback loop without retrying). */
+  /** Provider-specific classification of auth failures. */
   isAuthFailure(err: unknown): boolean;
-  /** Readiness signal. `true` = ready to dispatch; a string = user-facing
-   *  not-ready reason (e.g. "gemini: no API key configured"). */
+  /** Readiness signal. */
   isReady(): true | string;
 }
+
+export type { ToolSpec, ToolResult };

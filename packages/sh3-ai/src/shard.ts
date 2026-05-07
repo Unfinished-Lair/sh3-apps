@@ -7,11 +7,11 @@ import {
   type AiProvider,
   type ChatMessage,
 } from './ai/provider';
-
-function getActiveProvider(ctx: ShardContext): AiProvider | undefined {
-  const list = ctx.contributions.list<AiProvider>(SH3_AI_PROVIDER_CONTRIBUTION);
-  return list.length > 0 ? list[0] : undefined;
-}
+import {
+  resolveActiveProvider,
+  formatProviderList,
+  decideSwitchAction,
+} from './ai/selection';
 
 async function runOneShot(
   provider: AiProvider,
@@ -57,13 +57,22 @@ export const shard: SourceShard = {
   },
 
   activate(ctx: ShardContext) {
+    const state = ctx.state<{ user: { activeProviderId: string | null } }>({
+      user: { activeProviderId: null },
+    });
+
+    const getActive = (): AiProvider | undefined => {
+      const list = ctx.contributions.list<AiProvider>(SH3_AI_PROVIDER_CONTRIBUTION);
+      return resolveActiveProvider(list, state.user.activeProviderId);
+    };
+
     const conversation = new ConversationState();
 
     registerShellMode(
       ctx,
       makeAiModeDescriptor({
         conversation,
-        getProvider: () => getActiveProvider(ctx),
+        getProvider: () => getActive(),
       }),
     );
 
@@ -81,7 +90,7 @@ export const shard: SourceShard = {
           return;
         }
 
-        const provider = getActiveProvider(ctx);
+        const provider = getActive();
         if (!provider) {
           vctx.scrollback.push({
             kind: 'text',
@@ -152,7 +161,7 @@ export const shard: SourceShard = {
           });
           return;
         }
-        const provider = getActiveProvider(ctx);
+        const provider = getActive();
         if (!provider) {
           vctx.scrollback.push({
             kind: 'status',
@@ -194,6 +203,66 @@ export const shard: SourceShard = {
           level: 'info',
           ts: Date.now(),
         });
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'provider',
+      summary:
+        'List AI providers or switch the active one. Usage: ai:provider [<id>]',
+      async run(vctx, args) {
+        const list = ctx.contributions.list<AiProvider>(
+          SH3_AI_PROVIDER_CONTRIBUTION,
+        );
+
+        if (args.length === 0) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: formatProviderList(list, state.user.activeProviderId),
+            level: 'info',
+            ts: Date.now(),
+          });
+          return;
+        }
+
+        const requested = args[0];
+        const action = decideSwitchAction(
+          list,
+          state.user.activeProviderId,
+          requested,
+        );
+
+        switch (action.kind) {
+          case 'no-providers':
+          case 'unknown':
+            vctx.scrollback.push({
+              kind: 'status',
+              text: action.message,
+              level: 'error',
+              ts: Date.now(),
+            });
+            return;
+          case 'already-active':
+            vctx.scrollback.push({
+              kind: 'status',
+              text: action.message,
+              level: 'info',
+              ts: Date.now(),
+            });
+            return;
+          case 'switched':
+            state.user.activeProviderId = action.newActiveId;
+            // Different providers have different model namespaces and likely
+            // different system instructions; carrying messages across is unsafe.
+            conversation.reset();
+            vctx.scrollback.push({
+              kind: 'status',
+              text: action.message,
+              level: 'info',
+              ts: Date.now(),
+            });
+            return;
+        }
       },
     });
   },

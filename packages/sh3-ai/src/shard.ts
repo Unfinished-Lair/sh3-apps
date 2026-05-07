@@ -149,6 +149,12 @@ export const shard: SourceShard = {
       return filterByScope(all, currentResolvedScope());
     }
 
+    function rotateConversation() {
+      conversation.detach();
+      state.user.activeConversationId = null;
+      // Lazy creation in dispatch will pick up from here.
+    }
+
     async function ensureActiveConversation() {
       if (conversation.id) return;
       const provider = getActive();
@@ -263,12 +269,15 @@ export const shard: SourceShard = {
     ctx.registerVerb({
       name: 'reset',
       globalVerb: true,
-      summary: 'Clear the AI conversation thread (does not affect scrollback).',
+      summary: 'Start a fresh AI conversation. The previous conversation stays saved.',
       async run(vctx) {
-        conversation.reset();
+        const prevTitle = conversation.title || conversation.id;
+        rotateConversation();
         vctx.scrollback.push({
           kind: 'status',
-          text: 'ai: thread cleared',
+          text: prevTitle
+            ? `ai: new conversation started (was '${prevTitle}')`
+            : 'ai: new conversation started',
           level: 'info',
           ts: Date.now(),
         });
@@ -384,7 +393,7 @@ export const shard: SourceShard = {
             state.user.activeProviderId = action.newActiveId;
             // Different providers have different model namespaces and likely
             // different system instructions; carrying messages across is unsafe.
-            conversation.reset();
+            rotateConversation();
             vctx.scrollback.push({
               kind: 'status',
               text: action.message,
@@ -475,7 +484,7 @@ export const shard: SourceShard = {
 
         if (sub === 'clear') {
           state.user.activeScopeId = SCOPE_NONE.id;
-          conversation.reset();
+          rotateConversation();
           vctx.scrollback.push({
             kind: 'status', text: `scope: ${SCOPE_NONE.id}`,
             level: 'info', ts: Date.now(),
@@ -541,7 +550,7 @@ export const shard: SourceShard = {
           return;
         }
         state.user.activeScopeId = target.id;
-        conversation.reset();
+        rotateConversation();
         const catalog = buildCatalog();
         vctx.scrollback.push({
           kind: 'status',

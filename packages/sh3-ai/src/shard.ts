@@ -1,5 +1,7 @@
-import type { SourceShard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext, ViewFactory, ViewHandle, MountContext } from 'sh3-core';
 import { registerShellMode } from 'sh3-core';
+import { mount, unmount } from 'svelte';
+import Conversations from './ai/conversations/Conversations.svelte';
 import { ConversationState } from './ai/conversation';
 import { makeAiModeDescriptor } from './ai/mode';
 import {
@@ -68,7 +70,9 @@ export const shard: SourceShard = {
   manifest: {
     id: 'ai',
     label: 'AI',
-    views: [],
+    views: [
+      { id: 'ai:conversations', label: 'AI Conversations', standalone: true },
+    ],
   },
 
   async activate(ctx: ShardContext) {
@@ -195,6 +199,27 @@ export const shard: SourceShard = {
         console.warn(`sh3-ai: failed to persist title: ${(err as Error).message}`);
       }
     }
+
+    const conversationsFactory: ViewFactory = {
+      mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
+        const instance = mount(Conversations, {
+          target: container,
+          props: {
+            store,
+            getActiveId: () => state.user.activeConversationId,
+            onActivate: (id: string) => openConversationById(id).then(() => undefined),
+            onNew: () => newConversation().then(() => undefined),
+            onRename: renameConversationById,
+            onDelete: deleteConversationById,
+          },
+        });
+        return {
+          unmount() { unmount(instance); },
+          closable: true,
+        };
+      },
+    };
+    ctx.registerView('ai:conversations', conversationsFactory);
 
     registerShellMode(
       ctx,

@@ -177,6 +177,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'reset',
+      globalVerb: true,
       summary: 'Clear the AI conversation thread (does not affect scrollback).',
       async run(vctx) {
         conversation.reset();
@@ -191,6 +192,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'lock',
+      globalVerb: true,
       summary: 'Pin the AI conversation to a single model. Usage: ai:lock <model-id>',
       async run(vctx, args) {
         if (args.length === 0) {
@@ -235,6 +237,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'unlock',
+      globalVerb: true,
       summary: 'Release the AI model lock and resume chain iteration.',
       async run(vctx) {
         conversation.setLock(null);
@@ -249,6 +252,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'provider',
+      globalVerb: true,
       summary:
         'List AI providers or switch the active one. Usage: ai:provider [<id>]',
       async run(vctx, args) {
@@ -309,6 +313,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'catalog',
+      globalVerb: true,
       summary:
         'List the AI tool catalog under the active scope, or describe one tool. Usage: ai:catalog [<name>]',
       async run(vctx, args) {
@@ -357,6 +362,7 @@ export const shard: SourceShard = {
 
     ctx.registerVerb({
       name: 'scope',
+      globalVerb: true,
       summary:
         'List, switch, save, or delete AI permission scopes. Usage: ai:scope [<id>|clear|save <id> [opts]|delete <id>]',
       async run(vctx, args) {

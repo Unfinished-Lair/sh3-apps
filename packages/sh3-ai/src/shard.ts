@@ -266,6 +266,114 @@ export const shard: SourceShard = {
       },
     });
 
+    // View-facing helpers. The Conversations browser view (ai:conversations)
+    // calls these via its mount-time props. No verbs in this version —
+    // conversation management is fully driven through the view.
+
+    async function newConversation(): Promise<ConversationDocument> {
+      if (conversation.id) conversation.detach();
+      const provider = getActive();
+      const doc = await store.create({
+        providerId: provider?.id ?? null,
+        model: conversation.lockedModel,
+      });
+      conversation.bindTo(doc, store.autosave(doc.id));
+      state.user.activeConversationId = doc.id;
+      return doc;
+    }
+
+    async function openConversationById(id: string): Promise<ConversationDocument | null> {
+      const doc = await store.load(id);
+      if (!doc) return null;
+      if (conversation.id !== doc.id) conversation.detach();
+      conversation.bindTo(doc, store.autosave(doc.id));
+      state.user.activeConversationId = doc.id;
+      // Restore provider+model when possible.
+      if (doc.providerId) {
+        const list = ctx.contributions.list<AiProvider>(SH3_AI_PROVIDER_CONTRIBUTION);
+        const found = list.find((p) => p.id === doc.providerId);
+        if (found) {
+          state.user.activeProviderId = found.id;
+          if (doc.model && found.chain().includes(doc.model)) {
+            conversation.setLock(doc.model);
+          }
+        } else {
+          console.warn(
+            `sh3-ai: conversation '${doc.title || doc.id}' was authored on '${doc.providerId}' which is no longer registered.`,
+          );
+        }
+      }
+      return doc;
+    }
+
+    async function renameConversationById(id: string, newTitle: string): Promise<void> {
+      await store.rename(id, newTitle);
+      if (conversation.id === id) conversation.title = newTitle;
+    }
+
+    async function deleteConversationById(id: string): Promise<void> {
+      if (conversation.id === id) {
+        // Refuse silently — the view should hide delete on the active row.
+        // But accept it as a rotation if it slips through: detach then delete.
+        conversation.detach();
+        state.user.activeConversationId = null;
+      }
+      await store.delete(id);
+    }
+
+    ctx.registerVerb({
+      name: 'browse',
+      globalVerb: true,
+      summary: 'Open the AI Conversations browser into the current layout.',
+      async run(vctx) {
+        const result = vctx.shell.openViewInCurrentLayout('ai:conversations');
+        if (!result.ok) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `ai: failed to open Conversations view${result.error ? ': ' + result.error : ''}`,
+            level: 'error', ts: Date.now(),
+          });
+        }
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'config',
+      globalVerb: true,
+      summary: 'Get/set AI shard config. Usage: ai:config [titleStrategy <first-message|llm-summarize>]',
+      async run(vctx, args) {
+        if (args.length === 0) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `titleStrategy: ${state.user.titleStrategy}`,
+            level: 'info', ts: Date.now(),
+          });
+          return;
+        }
+        if (args[0] === 'titleStrategy') {
+          const value = args[1];
+          if (value !== 'first-message' && value !== 'llm-summarize') {
+            vctx.scrollback.push({
+              kind: 'status',
+              text: 'usage: ai:config titleStrategy <first-message|llm-summarize>',
+              level: 'error', ts: Date.now(),
+            });
+            return;
+          }
+          state.user.titleStrategy = value;
+          vctx.scrollback.push({
+            kind: 'status', text: `titleStrategy: ${value}`,
+            level: 'info', ts: Date.now(),
+          });
+          return;
+        }
+        vctx.scrollback.push({
+          kind: 'status', text: `ai: unknown config key '${args[0]}'`,
+          level: 'error', ts: Date.now(),
+        });
+      },
+    });
+
     ctx.registerVerb({
       name: 'reset',
       globalVerb: true,

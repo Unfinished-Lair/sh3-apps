@@ -81,3 +81,9 @@ A package's `package.json.version` is lower than what's already on the registry.
 ### "Package <name> has missing artifact"
 
 The workflow didn't run `build:artifact` for this package before invoking the script. Check the build step in the workflow.
+
+## Manifest id renames
+
+Each registry entry stamps `source: { npm: "<workspace-name>" }` so the publish script can recognise its origin workspace. If a workspace's manifest id changes (typically when a package transitions from combo to shard-only — the artifact builder picks the App's id when an app is exported and falls back to the Shard's id otherwise), the next publish run sweeps the previous entry and its bundles. Renames show up in the publish summary under `### Registry (gh-pages)` as `✗ <old-id>: swept (renamed by <npm> → <new-id>)`.
+
+Entries with no `source.npm` field (published before this mechanism existed) are left alone by the sweep — the script can't safely attribute them. They're backfilled implicitly the next time their workspace publishes.

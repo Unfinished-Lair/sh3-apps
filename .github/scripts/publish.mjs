@@ -11,10 +11,11 @@
  *   - _pages/registry.json
  *   - _pages/bundles/{id}-{version}.js
  *   - _pages/bundles/{id}-{version}-server.js
- *   (and deletes previous bundles for bumped packages)
+ *   (and deletes previous bundles for bumped packages, plus any
+ *    orphans whose source workspace now publishes under a different id)
  *
  * Emits to stdout:
- *   - One JSON line: {"registry_published": [...], "npm_eligible": [...]}
+ *   - One JSON line: {"registryPublished": [...], "npmEligible": [...], "swept": [...]}
  *   - Followed by a markdown summary for $GITHUB_STEP_SUMMARY
  *
  * Exit code 0 on success (including "nothing to do"); non-zero on any error.
@@ -177,6 +178,7 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
     label: manifest.label,
     description: manifest.description ?? '',
     author: { name: authorName },
+    source: { npm: pkg.npmName },
     versions: [versionEntry],
   };
 
@@ -187,6 +189,45 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
   }
 
   return liveRegistry;
+}
+
+/**
+ * Drop entries whose source workspace now publishes under a different manifest id.
+ *
+ * `entry.source.npm` is stamped on every publish (see applyPackageUpdate). If a
+ * workspace's manifest id later changes — e.g. a package transitions from
+ * combo (app id wins) to shard-only (shard id wins) — the previous entry would
+ * otherwise linger under the stale id forever. This sweep removes those.
+ *
+ * Entries with no `source.npm` (published before this field existed) are left
+ * alone: the sweep can't safely attribute them. They will be backfilled the
+ * next time their workspace publishes, since applyPackageUpdate stamps the
+ * field on every write.
+ */
+export function sweepOrphans(packages, pagesDir, liveRegistry) {
+  const workspaceMap = new Map();
+  for (const p of packages) workspaceMap.set(p.npmName, p.id);
+
+  const swept = [];
+  const surviving = [];
+  for (const entry of liveRegistry.packages) {
+    const sourceNpm = entry.source?.npm;
+    const currentId = sourceNpm ? workspaceMap.get(sourceNpm) : undefined;
+    if (currentId !== undefined && entry.id !== currentId) {
+      for (const ver of entry.versions) {
+        for (const url of [ver.bundleUrl, ver.serverBundleUrl]) {
+          if (!url) continue;
+          const bundlePath = join(pagesDir, url);
+          if (existsSync(bundlePath)) unlinkSync(bundlePath);
+        }
+      }
+      swept.push({ id: entry.id, source: sourceNpm, replacedBy: currentId });
+    } else {
+      surviving.push(entry);
+    }
+  }
+  liveRegistry.packages = surviving;
+  return swept;
 }
 
 const NPM_ELIGIBLE_PACKAGES = new Set(['@unfinished-lair/sh3-editor']);
@@ -228,11 +269,14 @@ export async function main({ repoRoot, pagesDir }) {
     }
   }
 
-  // 6. Save registry
+  // 6. Sweep orphans: entries whose source workspace now publishes a different id
+  const swept = sweepOrphans(packages, pagesDir, registry);
+
+  // 7. Save registry
   saveRegistry(pagesDir, registry);
 
-  // 7. Emit JSON line + markdown summary
-  const result = { registryPublished, npmEligible };
+  // 8. Emit JSON line + markdown summary
+  const result = { registryPublished, npmEligible, swept };
   process.stdout.write(JSON.stringify(result) + '\n');
   process.stdout.write(renderSummary(classified, result));
 
@@ -249,6 +293,11 @@ function renderSummary(classified, result) {
       lines.push(`- ✓ ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.version}`);
     } else if (c.outcome === 'unchanged') {
       lines.push(`- · ${c.pkg.id}: ${c.pkg.version} (unchanged)`);
+    }
+  }
+  if (result.swept && result.swept.length > 0) {
+    for (const s of result.swept) {
+      lines.push(`- ✗ ${s.id}: swept (renamed by ${s.source} → ${s.replacedBy})`);
     }
   }
   lines.push('');

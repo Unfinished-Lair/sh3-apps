@@ -17,6 +17,7 @@ describe('publish.mjs', () => {
     assert.ok(typeof publish.discoverPackages === 'function');
     assert.ok(typeof publish.diffPackage === 'function');
     assert.ok(typeof publish.applyPackageUpdate === 'function');
+    assert.ok(typeof publish.sweepOrphans === 'function');
     assert.ok(typeof publish.main === 'function');
   });
 });
@@ -370,11 +371,12 @@ describe('applyPackageUpdate', () => {
     rmSync(tmp, { recursive: true, force: true });
   }
 
-  function makePkg(id, version, { type = 'shard', withServer = false, manifestVersion = null } = {}) {
+  function makePkg(id, version, { type = 'shard', withServer = false, manifestVersion = null, npmName = null } = {}) {
     const pkgDir = join(tmp, 'packages', id);
     const artifactDir = join(pkgDir, 'dist', 'artifact');
+    const finalNpmName = npmName ?? id;
     mkdirSync(artifactDir, { recursive: true });
-    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: id, version }));
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: finalNpmName, version }));
     const manifest = {
       id,
       type,
@@ -389,7 +391,7 @@ describe('applyPackageUpdate', () => {
     if (withServer) {
       writeFileSync(join(artifactDir, 'server.js'), `export const server = '${id}-${version}';`);
     }
-    return { id, version, dir: pkgDir, artifactDir };
+    return { id, version, npmName: finalNpmName, dir: pkgDir, artifactDir };
   }
 
   it('adds a new package entry for a "new" outcome', () => {
@@ -403,6 +405,7 @@ describe('applyPackageUpdate', () => {
       const entry = reg.packages[0];
       assert.equal(entry.id, 'sh3-editor');
       assert.equal(entry.type, 'shard');
+      assert.deepEqual(entry.source, { npm: 'sh3-editor' });
       assert.equal(entry.versions.length, 1);
       assert.equal(entry.versions[0].version, '0.1.0');
       assert.equal(entry.versions[0].bundleUrl, 'bundles/sh3-editor-0.1.0.js');
@@ -410,6 +413,18 @@ describe('applyPackageUpdate', () => {
       assert.equal(entry.versions[0].serverBundleUrl, undefined);
 
       assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('stamps source.npm from pkgJson.name, not from manifest id', () => {
+    setup();
+    try {
+      const pkg = makePkg('sh3-editor', '0.1.0', { npmName: '@unfinished-lair/sh3-editor' });
+      const reg = { version: 1, packages: [] };
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+      assert.deepEqual(reg.packages[0].source, { npm: '@unfinished-lair/sh3-editor' });
     } finally {
       teardown();
     }
@@ -691,6 +706,212 @@ describe('main()', () => {
 
       assert.deepEqual(result.registryPublished, ['sh3-diagnostic']);
       assert.deepEqual(result.npmEligible, []); // only sh3-editor can be eligible
+    } finally {
+      teardown();
+    }
+  });
+
+  it('sweeps orphan entry when workspace publishes under a different manifest id', async () => {
+    setup();
+    try {
+      // Workspace `sh3-gemini-shell` previously published as id `gemini-shell`
+      // (combo era). Now it builds shard-only and the manifest id is `gemini`.
+      makePkg('sh3-gemini-shell', '0.5.0'); // makePkg sets manifest.id to first arg
+      // Override manifest id to simulate the rename.
+      const pkgDir = join(tmp, 'packages', 'sh3-gemini-shell');
+      const artifactDir = join(pkgDir, 'dist', 'artifact');
+      const manifest = JSON.parse(readFileSync(join(artifactDir, 'manifest.json'), 'utf-8'));
+      manifest.id = 'gemini';
+      writeFileSync(join(artifactDir, 'manifest.json'), JSON.stringify(manifest));
+
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'gemini-shell', type: 'combo', label: 'Gemini', description: '',
+            author: { name: 'x' },
+            source: { npm: 'sh3-gemini-shell' },
+            versions: [{ version: '0.4.2', contractVersion: '1', bundleUrl: 'bundles/gemini-shell-0.4.2.js', integrity: 'sha384-old' }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'gemini-shell-0.4.2.js'), 'old');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      // New entry exists, old orphan gone
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      const ids = reg.packages.map((p) => p.id).sort();
+      assert.deepEqual(ids, ['gemini']);
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'gemini-shell-0.4.2.js')));
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'gemini-0.5.0.js')));
+
+      assert.deepEqual(result.swept, [{ id: 'gemini-shell', source: 'sh3-gemini-shell', replacedBy: 'gemini' }]);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('does not sweep entries with no source.npm (pre-migration)', async () => {
+    setup();
+    try {
+      makePkg('sh3-editor', '0.1.0', { npmName: '@unfinished-lair/sh3-editor' });
+      // Seed an unrelated entry with no source field — must survive.
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'legacy-thing', type: 'shard', label: 'Legacy', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/legacy-thing-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'legacy-thing-0.1.0.js'), 'legacy');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      const ids = reg.packages.map((p) => p.id).sort();
+      assert.deepEqual(ids, ['legacy-thing', 'sh3-editor']);
+      assert.deepEqual(result.swept, []);
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'legacy-thing-0.1.0.js')));
+    } finally {
+      teardown();
+    }
+  });
+});
+
+describe('sweepOrphans', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+    mkdirSync(join(tmp, 'bundles'), { recursive: true });
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  it('drops entry whose source workspace now publishes a different id', () => {
+    setup();
+    try {
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'gemini-shell', type: 'combo', label: 'Gemini', description: '',
+            author: { name: 'x' },
+            source: { npm: 'sh3-gemini-shell' },
+            versions: [{ version: '0.4.2', contractVersion: '1', bundleUrl: 'bundles/gemini-shell-0.4.2.js', integrity: 'sha384-old' }],
+          },
+          {
+            id: 'gemini', type: 'shard', label: 'Gemini', description: '',
+            author: { name: 'x' },
+            source: { npm: 'sh3-gemini-shell' },
+            versions: [{ version: '0.5.0', contractVersion: '1', bundleUrl: 'bundles/gemini-0.5.0.js', integrity: 'sha384-new' }],
+          },
+        ],
+      };
+      writeFileSync(join(tmp, 'bundles', 'gemini-shell-0.4.2.js'), 'old');
+      writeFileSync(join(tmp, 'bundles', 'gemini-0.5.0.js'), 'new');
+
+      const swept = publish.sweepOrphans(
+        [{ id: 'gemini', npmName: 'sh3-gemini-shell' }],
+        tmp,
+        reg,
+      );
+
+      assert.equal(reg.packages.length, 1);
+      assert.equal(reg.packages[0].id, 'gemini');
+      assert.deepEqual(swept, [{ id: 'gemini-shell', source: 'sh3-gemini-shell', replacedBy: 'gemini' }]);
+      assert.ok(!existsSync(join(tmp, 'bundles', 'gemini-shell-0.4.2.js')));
+      assert.ok(existsSync(join(tmp, 'bundles', 'gemini-0.5.0.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('leaves entries from absent workspaces untouched', () => {
+    setup();
+    try {
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            source: { npm: '@unfinished-lair/sh3-editor' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/sh3-editor-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      };
+
+      // Editor not in this run's discovered packages — must NOT be swept.
+      const swept = publish.sweepOrphans([], tmp, reg);
+      assert.equal(reg.packages.length, 1);
+      assert.deepEqual(swept, []);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('leaves entries with no source.npm untouched', () => {
+    setup();
+    try {
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'legacy', type: 'shard', label: 'Legacy', description: '',
+            author: { name: 'x' },
+            versions: [{ version: '0.1.0', contractVersion: '1', bundleUrl: 'bundles/legacy-0.1.0.js', integrity: 'sha384-xxx' }],
+          },
+        ],
+      };
+
+      const swept = publish.sweepOrphans(
+        [{ id: 'something-else', npmName: 'something-else' }],
+        tmp,
+        reg,
+      );
+      assert.equal(reg.packages.length, 1);
+      assert.deepEqual(swept, []);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('removes server bundle alongside client bundle on sweep', () => {
+    setup();
+    try {
+      const reg = {
+        version: 1,
+        packages: [
+          {
+            id: 'old-id', type: 'combo', label: 'Old', description: '',
+            author: { name: 'x' },
+            source: { npm: 'sh3-thing' },
+            versions: [{
+              version: '0.1.0', contractVersion: '1',
+              bundleUrl: 'bundles/old-id-0.1.0.js', integrity: 'sha384-xxx',
+              serverBundleUrl: 'bundles/old-id-0.1.0-server.js',
+            }],
+          },
+        ],
+      };
+      writeFileSync(join(tmp, 'bundles', 'old-id-0.1.0.js'), 'c');
+      writeFileSync(join(tmp, 'bundles', 'old-id-0.1.0-server.js'), 's');
+
+      publish.sweepOrphans(
+        [{ id: 'new-id', npmName: 'sh3-thing' }],
+        tmp,
+        reg,
+      );
+      assert.equal(reg.packages.length, 0);
+      assert.ok(!existsSync(join(tmp, 'bundles', 'old-id-0.1.0.js')));
+      assert.ok(!existsSync(join(tmp, 'bundles', 'old-id-0.1.0-server.js')));
     } finally {
       teardown();
     }

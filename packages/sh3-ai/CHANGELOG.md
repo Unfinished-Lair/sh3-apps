@@ -1,5 +1,36 @@
 # sh3-ai changelog
 
+## 0.4.10 — 2026-05-08 — LLM tool-call round-trip actually works
+
+**Headline:** an LLM that calls a verb under the `ai` shell mode now (a) sees useful output, (b) can keep talking after a tool round, and (c) gives up cleanly when the verb fails — instead of getting `undefined`, hitting an OpenAI API rejection on round 2, or retrying in a loop.
+
+### Fixes
+
+- **Verb output reaches the LLM.** `verb-adapter` now folds the scrollback returned by `ctx.runVerb` into the tool result. Verbs that publish via `vctx.scrollback.push(...)` (most SH3 built-ins) used to surface as `undefined` to the model. Empty `result` values (`''`, `[]`, `{}`, `null`) also fall back to scrollback now, so verbs that return placeholder values while emitting their real output as scrollback entries work too.
+- **Rich scrollback entries surface as JSON.** Anything that isn't a plain `kind:'status'` or `kind:'text'` entry — tables, lists, custom kinds emitted by sh3-core or other shards — gets JSON-stringified (minus the transient `ts` field) so the model sees structured data rather than nothing.
+- **Error-level scrollback entries become tool errors.** When the verb's `result` is empty and scrollback contains a `level:'error'` status (or a `stream:'stderr'` text stream), the adapter throws — and the dispatch loop's catch turns that into a `{ error }` tool-result. The LLM treats `{ error }` as terminal; without this, error-shaped text was being read as informational and the model kept retrying.
+- **OpenAI-style providers accept the second round.** `ChatOptions` gained `toolCalls` and `reasoningContent`; `ChatChunk` gained a `reasoning` variant. The dispatch loop accumulates reasoning across a round and forwards both fields on the next provider call, so providers like DeepSeek can rebuild the assistant turn that spawned the tools. Fixes the API rejections "Messages with role 'tool' must be a response to a preceding message with 'tool_calls'" and "The `reasoning_content` in the thinking mode must be passed back to the API" — the latter only on `deepseek-reasoner`.
+
+### New exports
+
+- `ToolCallSpec` from `sh3-ai` — the shape providers receive on `ChatOptions.toolCalls`.
+- `'reasoning'` ChatChunk variant — providers emit one of these per chain-of-thought delta on reasoning models.
+- `ChatOptions.reasoningContent` — the prior round's reasoning, to be echoed back on the assistant turn.
+
+### Companion provider work
+
+- `sh3-deepseek-shell` 0.2.5 reattaches `tool_calls` (and `reasoning_content` on `deepseek-reasoner`) when building the request body. Earlier `sh3-deepseek-shell` versions are not compatible with sh3-ai 0.4.5+ — the peer dep is now `^0.4.5`.
+- Gemini does not need this treatment (its `functionCall`/`functionResponse` parts work without explicit re-attachment).
+
+## 0.4.6 — 2026-05-08 — AI Configuration palette submenu
+
+Provider shards now register settings entries under a shared `AI Configuration...` submenu instead of owning their own top-level palette actions.
+
+- New contribution point: `SH3_AI_CONFIG_MENU_CONTRIBUTION` (`'sh3-ai.configMenu'`). Shards register `AiConfigMenuItem { id, label, run() }` against it; sh3-ai reconciles the children dynamically as registrations come and go.
+- Parent palette label changed from `Open Config: AI` to `AI Configuration...`.
+- The built-in `Conversations` entry is unchanged; it lives under the same submenu.
+- Companion: `sh3-deepseek-shell` 0.2.5 and `sh3-gemini-shell` 0.6.1 drop their own `Open Settings: …` actions and register against the new contribution point.
+
 ## 0.4.0 — 2026-05-07 — Durable conversations + browser view
 
 **Headline:** conversations now persist across reloads via `ctx.documents()`, and a dockable Conversations browser (palette-launchable as `AI Conversations`) lets users juggle multiple conversations.

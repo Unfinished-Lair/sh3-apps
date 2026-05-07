@@ -121,7 +121,7 @@ describe('verbsToTools', () => {
     expect(result).toBe('app-a (running)\napp-b (idle)');
   });
 
-  it('joins text-stream chunks from scrollback', async () => {
+  it('concatenates text-stream chunks from scrollback (continuous stream, no separator)', async () => {
     const fakeRunVerb = vi.fn().mockResolvedValue({
       result: undefined,
       scrollback: [
@@ -133,10 +133,51 @@ describe('verbsToTools', () => {
       fakeRunVerb,
     );
     const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
-    expect(result).toBe('hello \nworld');
+    expect(result).toBe('hello world');
   });
 
-  it('prefers result over scrollback when both are present', async () => {
+  it('serializes rich (unknown-kind) scrollback entries as JSON, stripping ts', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: undefined,
+      scrollback: [
+        {
+          kind: 'apps-list',
+          ts: 1717530000000,
+          items: [
+            { id: 'sh3-r2', label: 'R2', status: 'running' },
+            { id: 'sh3-fe', label: 'FE', status: 'idle' },
+          ],
+        },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'shell', name: 'shell:apps', summary: 'List apps' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toBe(JSON.stringify({
+      kind: 'apps-list',
+      items: [
+        { id: 'sh3-r2', label: 'R2', status: 'running' },
+        { id: 'sh3-fe', label: 'FE', status: 'idle' },
+      ],
+    }));
+  });
+
+  it('falls back to scrollback when result is empty (e.g. [], "", {})', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: [],
+      scrollback: [{ kind: 'status', text: 'app-a (running)', level: 'info', ts: 1 }],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'shell', name: 'shell:apps', summary: 'List apps' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toBe('app-a (running)');
+  });
+
+  it('prefers a non-empty result over scrollback when both are present', async () => {
     const fakeRunVerb = vi.fn().mockResolvedValue({
       result: { count: 2 },
       scrollback: [{ kind: 'status', text: 'noise', level: 'info', ts: 1 }],
@@ -147,6 +188,53 @@ describe('verbsToTools', () => {
     );
     const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
     expect(result).toEqual({ count: 2 });
+  });
+
+  it('throws when result is empty and scrollback contains a level:error status', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: undefined,
+      scrollback: [
+        { kind: 'status', text: 'verb requires shell context', level: 'error', ts: 1 },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'shell', name: 'shell:apps', summary: 'List apps' }],
+      fakeRunVerb,
+    );
+    await expect(
+      tool.run({ args: '' }, { signal: new AbortController().signal }),
+    ).rejects.toThrow('verb requires shell context');
+  });
+
+  it('throws when result is empty and scrollback contains a stderr text stream', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: undefined,
+      scrollback: [
+        { kind: 'text', stream: 'stderr', chunks: ['boom: ', 'undefined method'], ts: 1 },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'a', name: 'a:b', summary: '' }],
+      fakeRunVerb,
+    );
+    await expect(
+      tool.run({ args: '' }, { signal: new AbortController().signal }),
+    ).rejects.toThrow('boom: undefined method');
+  });
+
+  it('does NOT throw when scrollback has errors AND a non-empty result', async () => {
+    const fakeRunVerb = vi.fn().mockResolvedValue({
+      result: { count: 3 },
+      scrollback: [
+        { kind: 'status', text: 'warning, but completed', level: 'error', ts: 1 },
+      ],
+    });
+    const [tool] = verbsToTools(
+      [{ shardId: 'a', name: 'a:b', summary: '' }],
+      fakeRunVerb,
+    );
+    const result = await tool.run({ args: '' }, { signal: new AbortController().signal });
+    expect(result).toEqual({ count: 3 });
   });
 
   it('returns empty string when both result and scrollback are empty', async () => {

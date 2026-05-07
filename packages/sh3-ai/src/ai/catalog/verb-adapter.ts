@@ -78,14 +78,55 @@ function toolNameFor(v: VerbDescriptor): string {
   return `${v.shardId}.${bare}`;
 }
 
-/** When a verb returns nothing but pushed output to scrollback, surface
- *  that text to the LLM so it sees what a human user would see. If the
- *  verb did return a value, it wins — scrollback is dropped to avoid
- *  double-reporting. */
+/** When a verb returns nothing meaningful but pushed output to scrollback,
+ *  surface that text to the LLM so it sees what a human user would see. A
+ *  defined-but-empty result (`''`, `[]`, `{}`, `null`) is treated as
+ *  "no useful return" and we still fall back to scrollback — many SH3
+ *  built-ins return such placeholders while emitting their real output via
+ *  `vctx.scrollback`.
+ *
+ *  Verbs that fail under programmatic invocation (e.g. they expect a shell
+ *  vctx that sh3-core's `runVerb` doesn't provide) typically signal failure
+ *  by pushing a `level: 'error'` status to scrollback and returning nothing.
+ *  We detect that pattern and throw, so the dispatch loop's catch translates
+ *  it to a `{ error }` tool-result — the LLM treats those as terminal,
+ *  whereas plain error-shaped text gets ignored and the model retries. */
 function foldScrollback(out: { result: unknown; scrollback: unknown[] }): unknown {
-  if (out.result !== undefined) return out.result;
+  if (isEmptyResult(out.result)) {
+    const errorText = collectScrollbackErrors(out.scrollback);
+    if (errorText.length > 0) throw new Error(errorText);
+  }
   const text = scrollbackToText(out.scrollback);
-  return text.length > 0 ? text : '';
+  if (text.length > 0 && isEmptyResult(out.result)) return text;
+  if (out.result !== undefined) return out.result;
+  return text;
+}
+
+/** Returns the joined text of error-level scrollback entries, or '' if
+ *  none. An "error entry" is a status with `level: 'error'` or a text
+ *  stream on stderr. */
+function collectScrollbackErrors(entries: unknown[]): string {
+  const lines: string[] = [];
+  for (const e of entries) {
+    if (!e || typeof e !== 'object') continue;
+    const rec = e as Record<string, unknown>;
+    if (rec.level === 'error' && typeof rec.text === 'string') {
+      lines.push(rec.text);
+      continue;
+    }
+    if (rec.stream === 'stderr' && Array.isArray(rec.chunks)) {
+      const joined = rec.chunks.filter((c): c is string => typeof c === 'string').join('');
+      if (joined) lines.push(joined);
+    }
+  }
+  return lines.join('\n');
+}
+
+function isEmptyResult(r: unknown): boolean {
+  if (r === undefined || r === null || r === '') return true;
+  if (Array.isArray(r)) return r.length === 0;
+  if (typeof r === 'object') return Object.keys(r as object).length === 0;
+  return false;
 }
 
 function scrollbackToText(entries: unknown[]): string {
@@ -98,9 +139,19 @@ function scrollbackToText(entries: unknown[]): string {
       continue;
     }
     if (Array.isArray(rec.chunks)) {
-      for (const c of rec.chunks) {
-        if (typeof c === 'string') lines.push(c);
-      }
+      const joined = rec.chunks.filter((c): c is string => typeof c === 'string').join('');
+      if (joined) lines.push(joined);
+      continue;
+    }
+    // Rich entry (table, list, tree, custom kinds from sh3-core/other shards)
+    // — we don't know the schema, so JSON-stringify the payload minus the
+    // transient `ts` field. The LLM gets enough structure to reason about it
+    // rather than nothing at all.
+    try {
+      const { ts: _ts, ...rest } = rec;
+      lines.push(JSON.stringify(rest));
+    } catch {
+      // Skip entries that can't be serialized (cycles, etc.).
     }
   }
   return lines.join('\n');

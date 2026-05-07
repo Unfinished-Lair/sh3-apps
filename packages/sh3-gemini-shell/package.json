@@ -1,6 +1,6 @@
 {
   "name": "sh3-gemini-shell",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Gemini integration for the SH3 shell — registers as an sh3-ai.provider; appless, settings reachable via command palette",
   "author": "@unfinished-lair",
   "type": "module",
@@ -14,12 +14,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-ai": "^0.3.0",
+    "sh3-ai": "^0.4.5",
     "sh3-core": "^0.15.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-ai": "^0.3.0",
+    "sh3-ai": "^0.4.5",
     "sh3-core": "^0.15.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",

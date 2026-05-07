@@ -21,6 +21,12 @@ export interface AiModeDeps {
   getCatalog?: () => Tool[];
   /** Resolved scope used by the dispatch loop to re-check each tool call. */
   getScope?: () => ResolvedScope;
+  /** Ensure a ConversationState binding exists before the user message is
+   *  appended. Called at the top of dispatch when the state is unbound. */
+  ensureActiveConversation?: () => Promise<void>;
+  /** Hook fired after a successful turn (chat-only or tool path). The shard
+   *  uses this to apply the title strategy on the first turn. */
+  onTurnComplete?: () => Promise<void>;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -54,9 +60,22 @@ function makeAiDispatch(deps: AiModeDeps) {
       return;
     }
 
+    if (deps.ensureActiveConversation) {
+      try {
+        await deps.ensureActiveConversation();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        output.status('error', `sh3-ai: ${msg}`);
+        return;
+      }
+    }
+
     const catalog = deps.getCatalog?.() ?? [];
     if (catalog.length > 0) {
       await runToolDispatch(provider, conversation, catalog, deps.getScope!(), input, output);
+      if (deps.onTurnComplete) {
+        try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
+      }
       return;
     }
 
@@ -77,6 +96,10 @@ function makeAiDispatch(deps: AiModeDeps) {
     });
 
     await runChatTurn(provider, conversation, chain, input.signal, handle);
+
+    if (deps.onTurnComplete) {
+      try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
+    }
   };
 }
 

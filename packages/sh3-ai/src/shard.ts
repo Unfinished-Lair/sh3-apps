@@ -22,6 +22,7 @@ import { parseScopeSaveArgs } from './ai/scope/parse-args';
 import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
 import { ConversationStore } from './ai/conversations/store';
 import type { ConversationDocument } from './ai/conversations/types';
+import { firstMessageTitle, llmSummarizeTitle } from './ai/conversations/title-strategy';
 
 async function runOneShot(
   provider: AiProvider,
@@ -148,6 +149,47 @@ export const shard: SourceShard = {
       return filterByScope(all, currentResolvedScope());
     }
 
+    async function ensureActiveConversation() {
+      if (conversation.id) return;
+      const provider = getActive();
+      const doc = await store.create({
+        providerId: provider?.id ?? null,
+        model: conversation.lockedModel,
+      });
+      conversation.bindTo(doc, store.autosave(doc.id));
+      state.user.activeConversationId = doc.id;
+    }
+
+    async function onTurnComplete() {
+      if (!conversation.id || conversation.title) return;
+      const firstUser = conversation.messages.find((m) => m.role === 'user');
+      const firstAssistant = conversation.messages.find((m) => m.role === 'assistant');
+      if (!firstUser || !firstAssistant) return;
+
+      let title: string;
+      if (state.user.titleStrategy === 'llm-summarize') {
+        const provider = getActive();
+        if (provider) {
+          title = await llmSummarizeTitle(
+            (p, sig) => runOneShot(provider, p, sig),
+            firstUser.content,
+            firstAssistant.content,
+            new AbortController().signal,
+          );
+        } else {
+          title = firstMessageTitle(firstUser.content);
+        }
+      } else {
+        title = firstMessageTitle(firstUser.content);
+      }
+      try {
+        await store.rename(conversation.id, title);
+        conversation.title = title;
+      } catch (err) {
+        console.warn(`sh3-ai: failed to persist title: ${(err as Error).message}`);
+      }
+    }
+
     registerShellMode(
       ctx,
       makeAiModeDescriptor({
@@ -155,6 +197,8 @@ export const shard: SourceShard = {
         getProvider: () => getActive(),
         getCatalog: () => buildCatalog(),
         getScope: () => currentResolvedScope(),
+        ensureActiveConversation,
+        onTurnComplete,
       }),
     );
 

@@ -9,6 +9,7 @@ import type {
 import { registerShellMode, shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import Conversations from './ai/conversations/Conversations.svelte';
+import ScopeList from './rich/ScopeList.svelte';
 
 const CONVERSATIONS_VIEW_ID = 'ai:conversations';
 const CONVERSATIONS_FLOAT_TITLE = 'AI Conversations';
@@ -666,14 +667,24 @@ export const shard: SourceShard = {
 
         if (args.length === 0) {
           const active = state.user.activeScopeId;
-          const lines = [`scope: ${active}`, '', 'available scopes:'];
+          const scopes: Array<{ id: string; label: string; isActive: boolean }> = [];
           for (const id of knownIds) {
             const s = lookup(id);
             if (!s) continue;
-            lines.push(`  ${id === active ? '*' : ' '} ${s.id}  ${s.label}`);
+            scopes.push({ id: s.id, label: s.label, isActive: s.id === active });
           }
           vctx.scrollback.push({
-            kind: 'status', text: lines.join('\n'), level: 'info', ts: Date.now(),
+            kind: 'rich',
+            component: ScopeList,
+            props: {
+              data: {
+                scopes,
+                onSelectScope: (id: string) => {
+                  void vctx.dispatch(`ai:scope ${id}`);
+                },
+              },
+            },
+            ts: Date.now(),
           });
           return;
         }

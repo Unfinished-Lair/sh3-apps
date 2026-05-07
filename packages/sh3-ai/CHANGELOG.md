@@ -1,5 +1,9 @@
 # sh3-ai changelog
 
+## 0.4.11 — 2026-05-08 — Clickable scope listing
+
+`ai:scope` (no-args) now renders as a `kind:'rich'` entry with clickable scope IDs — switching takes one click instead of typing `ai:scope <id>`. The active row's button is disabled. CLI subpaths (`clear`, `save`, `delete`, switch-by-id, errors) are unchanged. Click handler re-dispatches `ai:scope <id>`, so all the existing rotate/status logic runs unchanged.
+
 ## 0.4.10 — 2026-05-08 — LLM tool-call round-trip actually works
 
 **Headline:** an LLM that calls a verb under the `ai` shell mode now (a) sees useful output, (b) can keep talking after a tool round, and (c) gives up cleanly when the verb fails — instead of getting `undefined`, hitting an OpenAI API rejection on round 2, or retrying in a loop.

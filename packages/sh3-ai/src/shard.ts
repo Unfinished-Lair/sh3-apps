@@ -51,7 +51,12 @@ import { makeScopeLookup, addUserScope, removeUserScope, type UserScopes } from 
 import { resolveScope } from './ai/scope/resolve';
 import { SCOPE_NONE, BUILTIN_SCOPES } from './ai/scope/builtins';
 import { parseScopeSaveArgs } from './ai/scope/parse-args';
-import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
+import {
+  SH3_AI_TOOL_CONTRIBUTION,
+  SH3_AI_CONFIG_MENU_CONTRIBUTION,
+  type ToolContribution,
+  type AiConfigMenuItem,
+} from './contributions';
 import { ConversationStore } from './ai/conversations/store';
 import type { ConversationDocument } from './ai/conversations/types';
 import { firstMessageTitle, llmSummarizeTitle } from './ai/conversations/title-strategy';
@@ -251,11 +256,12 @@ export const shard: SourceShard = {
     };
     ctx.registerView(CONVERSATIONS_VIEW_ID, conversationsFactory);
 
-    // Command Palette: parent submenu "Open Config: AI" with children
-    // (Conversations today; future Settings, etc.).
+    // Command Palette: parent submenu "AI Configuration..." with a built-in
+    // "Conversations" child plus dynamic children registered by other shards
+    // against SH3_AI_CONFIG_MENU_CONTRIBUTION (e.g. provider settings).
     ctx.actions.register({
       id: 'sh3-ai:open-config',
-      label: 'Open Config: AI',
+      label: 'AI Configuration...',
       scope: ['home', 'app'],
       paletteItem: true,
       contextItem: false,
@@ -271,6 +277,30 @@ export const shard: SourceShard = {
         focusOrOpenConversations();
       },
     });
+
+    const configMenuDisposers = new Map<string, () => void>();
+    function reconcileConfigMenu() {
+      for (const dispose of configMenuDisposers.values()) dispose();
+      configMenuDisposers.clear();
+      const items = ctx.contributions.list<AiConfigMenuItem>(
+        SH3_AI_CONFIG_MENU_CONTRIBUTION,
+      );
+      for (const item of items) {
+        if (configMenuDisposers.has(item.id)) continue;
+        const dispose = ctx.actions.register({
+          id: `sh3-ai:open-config.${item.id}`,
+          label: item.label,
+          scope: ['home', 'app'],
+          submenuOf: 'sh3-ai:open-config',
+          run() {
+            item.run();
+          },
+        });
+        configMenuDisposers.set(item.id, dispose);
+      }
+    }
+    ctx.contributions.onChange(SH3_AI_CONFIG_MENU_CONTRIBUTION, reconcileConfigMenu);
+    reconcileConfigMenu();
 
     registerShellMode(
       ctx,

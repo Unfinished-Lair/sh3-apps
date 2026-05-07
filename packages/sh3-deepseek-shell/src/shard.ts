@@ -11,11 +11,12 @@ import { mount, unmount } from 'svelte';
 import SettingsView from './views/SettingsView.svelte';
 import { deepseekProvider, type ModelInfo } from './deepseek-client';
 
-// String contract with sh3-ai. Mirrors `SH3_AI_PROVIDER_CONTRIBUTION` exported
-// from sh3-ai/src/ai/provider.ts. Inlined (not imported) because bare
-// cross-shard imports fail at SH3 install time — the providing shard's
-// package is not part of the consuming shard's bundle.
+// String contracts with sh3-ai. Mirror the constants exported from
+// sh3-ai/src/contributions.ts and sh3-ai/src/ai/provider.ts. Inlined (not
+// imported) because bare cross-shard imports fail at SH3 install time — the
+// providing shard's package is not part of the consuming shard's bundle.
 const SH3_AI_PROVIDER_CONTRIBUTION = 'sh3-ai.provider';
+const SH3_AI_CONFIG_MENU_CONTRIBUTION = 'sh3-ai.configMenu';
 
 const SETTINGS_VIEW_ID = 'deepseek:settings';
 const SETTINGS_FLOAT_TITLE = 'DeepSeek Settings';
@@ -100,16 +101,10 @@ export const shard: SourceShard = {
     });
     ctx.contributions.register(SH3_AI_PROVIDER_CONTRIBUTION, provider);
 
-    ctx.actions.register({
-      id: 'sh3-deepseek-shell:settings.open',
-      label: 'Open Settings: DeepSeek',
-      scope: ['home', 'app'],
-      paletteItem: true,
-      contextItem: false,
-      group: 'Settings',
-      run() {
-        focusOrOpenSettings();
-      },
+    ctx.contributions.register(SH3_AI_CONFIG_MENU_CONTRIBUTION, {
+      id: 'deepseek.settings',
+      label: 'DeepSeek',
+      run: focusOrOpenSettings,
     });
   },
 

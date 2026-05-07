@@ -12,6 +12,13 @@ import {
   formatProviderList,
   decideSwitchAction,
 } from './ai/selection';
+import { verbsToTools } from './ai/catalog/verb-adapter';
+import { toolContributionsToTools } from './ai/catalog/tool-contribution';
+import { assembleCatalog, filterByScope } from './ai/catalog/assemble';
+import { makeScopeLookup, type UserScopes } from './ai/scope/store';
+import { resolveScope } from './ai/scope/resolve';
+import { SCOPE_NONE } from './ai/scope/builtins';
+import { SH3_AI_TOOL_CONTRIBUTION, type ToolContribution } from './contributions';
 
 async function runOneShot(
   provider: AiProvider,
@@ -32,9 +39,6 @@ async function runOneShot(
         if (chunk.type === 'token') {
           text += chunk.text;
         } else if (chunk.type === 'tool-call') {
-          // runOneShot does not pass tools, but a misbehaving provider
-          // could still emit them. Surface as a hard error so we don't
-          // silently swallow them.
           throw new Error(
             `provider emitted a tool-call chunk for a tools-less request`,
           );
@@ -64,8 +68,18 @@ export const shard: SourceShard = {
   },
 
   activate(ctx: ShardContext) {
-    const state = ctx.state<{ user: { activeProviderId: string | null } }>({
-      user: { activeProviderId: null },
+    const state = ctx.state<{
+      user: {
+        activeProviderId: string | null;
+        activeScopeId: string;
+        scopes: UserScopes;
+      };
+    }>({
+      user: {
+        activeProviderId: null,
+        activeScopeId: SCOPE_NONE.id,
+        scopes: {},
+      },
     });
 
     const getActive = (): AiProvider | undefined => {
@@ -75,11 +89,30 @@ export const shard: SourceShard = {
 
     const conversation = new ConversationState();
 
+    function currentResolvedScope() {
+      const lookup = makeScopeLookup(state.user.scopes);
+      const root = lookup(state.user.activeScopeId) ?? SCOPE_NONE;
+      return resolveScope(root, lookup);
+    }
+
+    function buildCatalog() {
+      const verbs = ctx.listVerbs();
+      const verbTools = verbsToTools(verbs, (shardId, name, args, opts) =>
+        ctx.runVerb(shardId, name, args, opts),
+      );
+      const contribs = ctx.contributions.list<ToolContribution>(SH3_AI_TOOL_CONTRIBUTION);
+      const contributionTools = toolContributionsToTools(contribs);
+      const all = assembleCatalog({ verbTools, contributionTools });
+      return filterByScope(all, currentResolvedScope());
+    }
+
     registerShellMode(
       ctx,
       makeAiModeDescriptor({
         conversation,
         getProvider: () => getActive(),
+        getCatalog: () => buildCatalog(),
+        getScope: () => currentResolvedScope(),
       }),
     );
 

@@ -10,7 +10,10 @@ export interface VerbDescriptor {
   shardId: string;
   name: string;
   summary: string | undefined;
-  schema?: { input: JsonSchema };
+  /** Loose `unknown` so we accept sh3-core's PortableJSONSchema (strict
+   *  shape) and any equivalent JSON-shaped value without a structural
+   *  type clash. The schema is passed verbatim to the LLM. */
+  schema?: { input: unknown };
 }
 
 /**
@@ -42,7 +45,9 @@ export function verbsToTools(
 ): Tool[] {
   return verbs.map((v) => {
     const hasSchema = v.schema !== undefined && v.schema.input !== undefined;
-    const inputSchema = hasSchema ? v.schema!.input : FALLBACK_SCHEMA;
+    const inputSchema: JsonSchema = hasSchema
+      ? (v.schema!.input as JsonSchema)
+      : FALLBACK_SCHEMA;
     return {
       name: toolNameFor(v),
       description: v.summary && v.summary.length > 0 ? v.summary : '(no description)',

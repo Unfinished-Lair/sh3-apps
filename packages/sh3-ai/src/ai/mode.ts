@@ -6,12 +6,21 @@ import type {
 import type { AiProvider } from './provider';
 import { ConversationState } from './conversation';
 import ResponseCard from './ResponseCard.svelte';
+import type { Tool } from './catalog/types';
+import type { ResolvedScope } from './scope/types';
+import { dispatchLoop } from './dispatch/loop';
+import { makeOutputTranscript } from './dispatch/transcript';
 
 export interface AiModeDeps {
   conversation: ConversationState;
   /** Resolve the active provider at dispatch time. Returns undefined when no
    *  provider has been contributed against `SH3_AI_PROVIDER_CONTRIBUTION`. */
   getProvider: () => AiProvider | undefined;
+  /** Build the catalog of tools available under the active scope. When empty
+   *  (or omitted), the dispatch falls back to chat-only with chain fallback. */
+  getCatalog?: () => Tool[];
+  /** Resolved scope used by the dispatch loop to re-check each tool call. */
+  getScope?: () => ResolvedScope;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -45,6 +54,12 @@ function makeAiDispatch(deps: AiModeDeps) {
       return;
     }
 
+    const catalog = deps.getCatalog?.() ?? [];
+    if (catalog.length > 0) {
+      await runToolDispatch(provider, conversation, catalog, deps.getScope!(), input, output);
+      return;
+    }
+
     conversation.appendUser(input.line);
 
     const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
@@ -63,6 +78,43 @@ function makeAiDispatch(deps: AiModeDeps) {
 
     await runChatTurn(provider, conversation, chain, input.signal, handle);
   };
+}
+
+/**
+ * Tool-aware dispatch: single model, no chain fallback. Assistant text and
+ * tool-call activity stream through `output.text` / `output.status` rather
+ * than the ResponseCard so tool-call status interleaves correctly with
+ * inline text.
+ */
+async function runToolDispatch(
+  provider: AiProvider,
+  conversation: ConversationState,
+  catalog: Tool[],
+  scope: ResolvedScope,
+  input: { line: string; cwd: string; signal: AbortSignal },
+  output: ShellModeOutput,
+): Promise<void> {
+  const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
+  if (chain.length === 0) {
+    output.status('error', `${provider.id}: no models configured`);
+    return;
+  }
+  const model = chain[0];
+  try {
+    await dispatchLoop({
+      prompt: input.line,
+      catalog,
+      scope,
+      conversation,
+      provider,
+      model,
+      signal: input.signal,
+      transcript: makeOutputTranscript(output),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    output.status('error', `sh3-ai: ${msg}`);
+  }
 }
 
 async function runChatTurn(

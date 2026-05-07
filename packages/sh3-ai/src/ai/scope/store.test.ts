@@ -40,7 +40,9 @@ describe('addUserScope', () => {
   });
 
   it('replaces an existing user scope with the same id', () => {
-    const initial = { a: { id: 'a', label: 'old', whitelist: [], blacklist: [] } } as const;
+    const initial: Record<string, Scope> = {
+      a: { id: 'a', label: 'old', whitelist: [], blacklist: [] },
+    };
     const next = addUserScope(initial, { id: 'a', label: 'new', whitelist: [], blacklist: [] });
     expect(next.a.label).toBe('new');
   });

@@ -6,6 +6,16 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contributions": {
+      "types": "./dist/contributions.d.ts",
+      "default": "./dist/contributions.js"
+    }
+  },
   "files": ["dist"],
   "scripts": {
     "build": "vite build",

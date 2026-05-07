@@ -1,7 +1,37 @@
-import type { SourceShard, ShardContext, ViewFactory, ViewHandle, MountContext } from 'sh3-core';
-import { registerShellMode } from 'sh3-core';
+import type {
+  SourceShard,
+  ShardContext,
+  ViewFactory,
+  ViewHandle,
+  MountContext,
+  LayoutNode,
+} from 'sh3-core';
+import { registerShellMode, shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import Conversations from './ai/conversations/Conversations.svelte';
+
+const CONVERSATIONS_VIEW_ID = 'ai:conversations';
+const CONVERSATIONS_FLOAT_TITLE = 'AI Conversations';
+
+function nodeContainsView(node: LayoutNode, viewId: string): boolean {
+  if (node.type === 'slot') return node.viewId === viewId;
+  if (node.type === 'tabs') return node.tabs.some((t) => t.viewId === viewId);
+  if (node.type === 'split') return node.children.some((c) => nodeContainsView(c, viewId));
+  return false;
+}
+
+function focusOrOpenConversations(): void {
+  for (const f of shell.float.list()) {
+    if (nodeContainsView(f.content, CONVERSATIONS_VIEW_ID)) {
+      shell.float.focus(f.id);
+      return;
+    }
+  }
+  shell.float.open(CONVERSATIONS_VIEW_ID, {
+    title: CONVERSATIONS_FLOAT_TITLE,
+    size: { w: 480, h: 560 },
+  });
+}
 import { ConversationState } from './ai/conversation';
 import { makeAiModeDescriptor } from './ai/mode';
 import {
@@ -71,7 +101,7 @@ export const shard: SourceShard = {
     id: 'ai',
     label: 'AI',
     views: [
-      { id: 'ai:conversations', label: 'AI Conversations', standalone: true },
+      { id: CONVERSATIONS_VIEW_ID, label: 'AI Conversations', standalone: true },
     ],
   },
 
@@ -219,7 +249,28 @@ export const shard: SourceShard = {
         };
       },
     };
-    ctx.registerView('ai:conversations', conversationsFactory);
+    ctx.registerView(CONVERSATIONS_VIEW_ID, conversationsFactory);
+
+    // Command Palette: parent submenu "Open Config: AI" with children
+    // (Conversations today; future Settings, etc.).
+    ctx.actions.register({
+      id: 'sh3-ai:open-config',
+      label: 'Open Config: AI',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'Settings',
+      submenu: true,
+    });
+    ctx.actions.register({
+      id: 'sh3-ai:open-config.conversations',
+      label: 'Conversations',
+      scope: ['home', 'app'],
+      submenuOf: 'sh3-ai:open-config',
+      run() {
+        focusOrOpenConversations();
+      },
+    });
 
     registerShellMode(
       ctx,
@@ -345,22 +396,6 @@ export const shard: SourceShard = {
       }
       await store.delete(id);
     }
-
-    ctx.registerVerb({
-      name: 'browse',
-      globalVerb: true,
-      summary: 'Open the AI Conversations browser into the current layout.',
-      async run(vctx) {
-        const result = vctx.shell.openViewInCurrentLayout('ai:conversations');
-        if (!result.ok) {
-          vctx.scrollback.push({
-            kind: 'status',
-            text: `ai: failed to open Conversations view${result.error ? ': ' + result.error : ''}`,
-            level: 'error', ts: Date.now(),
-          });
-        }
-      },
-    });
 
     ctx.registerVerb({
       name: 'config',

@@ -7,17 +7,16 @@
 ### New capabilities
 
 - **Conversation persistence**: every conversation is autosaved as `conversations/{id}.json` in the shard's document namespace. Reloading the host re-binds the previously active conversation, restoring the original provider + model when both are still registered.
-- **Conversations browser view** (`ai:conversations`): standalone, dockable view summonable from the Command Palette or via the new `ai:browse` verb. Lists every conversation sorted by recency; per-row activate / rename / delete; `+ New` button. Live-updates via `handle.watch()` so cross-tab/window edits stay in sync.
+- **Conversations browser view** (`ai:conversations`): standalone view, summoned via the Command Palette under `Open Config: AI > Conversations`. Opens as a float (matching the gemini/deepseek settings UX) and is dockable from there. Lists every conversation sorted by recency; per-row activate / rename / delete; `+ New` button. Live-updates via `handle.watch()` so cross-tab/window edits stay in sync.
 - **Lifecycle rotation**: `ai:reset` now starts a fresh conversation (the old one stays browseable). Provider switches and scope switches rotate the same way — no more silent history loss.
 - **Auto-titling**: first user prompt becomes the conversation title (truncated to 60 chars). Configurable to `llm-summarize` via `ai:config titleStrategy llm-summarize` for higher-quality titles at the cost of one extra API call per new conversation.
 
 ### New verbs
 
-- `ai:browse` — open the Conversations browser into the current layout
 - `ai:config titleStrategy <first-message|llm-summarize>` — set the title strategy
 - `ai:reset` — rewired to rotate (was: clear in place)
 
-All other CRUD (new / open / rename / delete) is driven through the view, not verbs.
+All other CRUD (new / open / rename / delete) is driven through the view, not verbs. The browser is reached via the Command Palette (`Open Config: AI > Conversations`).
 
 ### Default behavior
 

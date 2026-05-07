@@ -1,6 +1,6 @@
 {
   "name": "sh3-ai",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Abstract AI-chat shard for SH3: owns the `ai` shell mode, the `ai:*` verbs, and the sh3-ai.provider contribution point",
   "author": "@unfinished-lair",
   "type": "module",

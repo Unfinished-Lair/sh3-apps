@@ -530,6 +530,7 @@ export const shard: SourceShard = {
     ctx.registerVerb({
       name: 'open',
       summary: 'Load a saved AI conversation into this terminal. Usage: ai:open <id>',
+      globalVerb: true,
       async run(vctx, args) {
         if (args.length === 0) {
           vctx.scrollback.push({

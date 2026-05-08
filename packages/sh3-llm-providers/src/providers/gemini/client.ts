@@ -1,5 +1,14 @@
-const ENDPOINT = (modelId: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
+import type { AiProvider, ChatChunk, ChatMessage, ChatOptions } from 'sh3-ai';
+import { redactKey } from '../../shared/redact';
+import { encodeToolName, decodeToolName } from '../../shared/tool-name-codec';
+import { readErrorEnvelope } from '../../shared/error-envelope';
+import { parseSseStream } from '../../shared/sse';
+import type { ModelInfo, ProviderDeps } from '../types';
+
+const STREAM_ENDPOINT = (modelId: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent`;
+
+const LIST_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export class GeminiError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -9,8 +18,6 @@ export class GeminiError extends Error {
 }
 
 export interface GeminiGenerationConfig {
-  /** Empty/omitted → do not send `systemInstruction`. */
-  systemInstruction?: string;
   /** null/omitted → do not send `generationConfig.temperature`. */
   temperature?: number | null;
   /** null/omitted → do not send `generationConfig.maxOutputTokens`. */
@@ -18,11 +25,12 @@ export interface GeminiGenerationConfig {
 }
 
 function buildGenerationFields(
+  systemInstruction: string | undefined,
   config: GeminiGenerationConfig | undefined,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (config?.systemInstruction) {
-    out.systemInstruction = { parts: [{ text: config.systemInstruction }] };
+  if (systemInstruction) {
+    out.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
   const generationConfig: Record<string, number> = {};
   if (typeof config?.temperature === 'number') {
@@ -35,65 +43,6 @@ function buildGenerationFields(
     out.generationConfig = generationConfig;
   }
   return out;
-}
-
-export async function askOnce(
-  apiKey: string,
-  prompt: string,
-  modelId: string,
-  signal?: AbortSignal,
-  config?: GeminiGenerationConfig,
-): Promise<string> {
-  const url = `${ENDPOINT(modelId)}?key=${apiKey}`;
-  const composed = signal
-    ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
-    : AbortSignal.timeout(30_000);
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        ...buildGenerationFields(config),
-      }),
-      signal: composed,
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new GeminiError(redactKey(msg, apiKey));
-  }
-
-  if (!res.ok) {
-    let envelopeMsg: string | undefined;
-    try {
-      const body = await res.json();
-      envelopeMsg = body?.error?.message;
-    } catch {
-      // body wasn't JSON — fall through to status fallback
-    }
-    const raw = envelopeMsg ?? `HTTP ${res.status}`;
-    throw new GeminiError(redactKey(raw, apiKey), res.status);
-  }
-
-  const data = await res.json();
-  const parts = data?.candidates?.[0]?.content?.parts as Array<{ text?: string }> | undefined;
-  if (!parts || parts.length === 0) {
-    throw new GeminiError('unexpected response shape');
-  }
-  return parts.map((p) => p.text ?? '').join('');
-}
-
-function redactKey(message: string, apiKey: string): string {
-  if (!apiKey) return message;
-  return message.split(apiKey).join('***');
-}
-
-const LIST_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-
-export interface ModelInfo {
-  id: string;
-  displayName: string;
 }
 
 export async function listModels(apiKey: string): Promise<ModelInfo[]> {
@@ -110,14 +59,7 @@ export async function listModels(apiKey: string): Promise<ModelInfo[]> {
   }
 
   if (!res.ok) {
-    let envelopeMsg: string | undefined;
-    try {
-      const body = await res.json();
-      envelopeMsg = body?.error?.message;
-    } catch {
-      // body wasn't JSON — fall through to status fallback
-    }
-    const raw = envelopeMsg ?? `HTTP ${res.status}`;
+    const raw = await readErrorEnvelope(res);
     throw new GeminiError(redactKey(raw, apiKey), res.status);
   }
 
@@ -132,46 +74,6 @@ export async function listModels(apiKey: string): Promise<ModelInfo[]> {
       displayName: m.displayName ?? m.name.replace(/^models\//, ''),
     }))
     .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
-}
-
-export async function iterateChain<T>(
-  chain: string[],
-  isAuthFailure: (err: unknown) => boolean,
-  run: (model: string) => Promise<T>,
-): Promise<{ model: string; value: T }> {
-  if (chain.length === 0) {
-    throw new Error('iterateChain: chain is empty');
-  }
-  const attempts: { model: string; error: string }[] = [];
-  for (const model of chain) {
-    try {
-      const value = await run(model);
-      return { model, value };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      attempts.push({ model, error: msg });
-      if (isAuthFailure(err)) break;
-    }
-  }
-  const tried = attempts.map((a) => a.model).join(', ');
-  const last = attempts[attempts.length - 1]?.error ?? 'unknown error';
-  throw new Error(`all models failed (tried ${tried}); last error: ${last}`);
-}
-
-import type { ChatMessage, ChatChunk, ChatOptions } from 'sh3-ai';
-
-const STREAM_ENDPOINT = (modelId: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent`;
-
-/** Gemini function names must match `[a-zA-Z_][a-zA-Z0-9_-]{0,63}` — '.' is
- *  rejected. sh3-ai tool names use '.' as the segment separator, so we
- *  encode '.' → '__' on the wire and decode the inverse on incoming
- *  functionCall.name fields. Round-trip-safe for any sh3-ai-shaped name. */
-function encodeToolName(name: string): string {
-  return name.replace(/\./g, '__');
-}
-function decodeToolName(name: string): string {
-  return name.replace(/__/g, '.');
 }
 
 function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
@@ -229,7 +131,7 @@ export async function* chatStream(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [...baseContents, ...toolResultsToContents(options, callIdToName)],
-        ...buildGenerationFields(config),
+        ...buildGenerationFields(options?.systemInstruction, config),
         ...buildToolsField(options),
       }),
       signal: composed,
@@ -240,14 +142,7 @@ export async function* chatStream(
   }
 
   if (!res.ok) {
-    let envelopeMsg: string | undefined;
-    try {
-      const body = await res.json();
-      envelopeMsg = body?.error?.message;
-    } catch {
-      // body wasn't JSON
-    }
-    const raw = envelopeMsg ?? `HTTP ${res.status}`;
+    const raw = await readErrorEnvelope(res);
     throw new GeminiError(redactKey(raw, apiKey), res.status);
   }
 
@@ -286,25 +181,7 @@ export async function* chatStream(
     }
   }
 
-  function* parseSseEvent(event: string): Iterable<SsePart> {
-    for (const line of event.split(/\r?\n/)) {
-      if (!line.startsWith('data:')) continue;
-      // SSE allows an optional single space after the colon; trim handles both forms.
-      const data = line.slice(5).trim();
-      if (!data || data === '[DONE]') continue;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        continue;
-      }
-      yield* extractParts(parsed);
-    }
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let raw = '';
+  const rawTextRef = { value: '' };
   let yieldedAny = false;
   let yieldedToolCall = false;
 
@@ -322,44 +199,26 @@ export async function* chatStream(
   }
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
-      raw += chunk;
-
-      // Split on blank-line event boundary, tolerating CRLF and LF.
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() ?? '';
-      for (const event of events) {
-        for (const part of parseSseEvent(event)) {
-          yield* yieldPart(part);
-        }
+    for await (const data of parseSseStream(reader, rawTextRef)) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(data); } catch { continue; }
+      for (const part of extractParts(parsed)) {
+        yield* yieldPart(part);
       }
     }
-    const tail = decoder.decode();
-    buffer += tail;
-    raw += tail;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new GeminiError(redactKey(msg, apiKey));
   }
 
-  // Drain trailing SSE event (no terminating blank line).
-  if (buffer.trim().length > 0) {
-    for (const part of parseSseEvent(buffer)) {
-      yield* yieldPart(part);
-    }
-  }
-
   // Fallback: if SSE parsing yielded nothing but we got bytes, try JSON-array.
   // `streamGenerateContent` without alt=sse honored returns
   // `[GenerateContentResponse, ...]` with Content-Type application/json.
-  if (!yieldedAny && raw.trim().length > 0) {
+  // (We never gate on Content-Type — see memory note about Gemini's quirk.)
+  if (!yieldedAny && rawTextRef.value.trim().length > 0) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(raw);
+      parsed = JSON.parse(rawTextRef.value);
     } catch {
       parsed = undefined;
     }
@@ -374,7 +233,7 @@ export async function* chatStream(
   }
 
   if (!yieldedAny) {
-    const preview = raw.slice(0, 200).replace(/\s+/g, ' ');
+    const preview = rawTextRef.value.slice(0, 200).replace(/\s+/g, ' ');
     throw new GeminiError(
       `streamGenerateContent: empty stream${preview ? ` (body preview: ${preview})` : ''}`,
     );
@@ -384,17 +243,7 @@ export async function* chatStream(
     : { type: 'done' };
 }
 
-import type { AiProvider } from 'sh3-ai';
-
-export interface GeminiProviderDeps {
-  getApiKey: () => string;
-  getChain: () => string[];
-  getSystemInstruction: () => string;
-  getTemperature: () => number | null;
-  getMaxOutputTokens: () => number | null;
-}
-
-export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
+export function geminiProvider(deps: ProviderDeps): AiProvider {
   // Persist the encoded-name ↔ decoded-name map across turns of the same
   // dispatch loop so functionResponse.name can be addressed correctly.
   // sh3-ai's dispatch loop uses the same provider instance per loop.
@@ -408,7 +257,6 @@ export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
       return chatStream(
         deps.getApiKey(), messages, model, signal,
         {
-          systemInstruction: deps.getSystemInstruction(),
           temperature: deps.getTemperature(),
           maxOutputTokens: deps.getMaxOutputTokens(),
         },
@@ -425,7 +273,7 @@ export function geminiProvider(deps: GeminiProviderDeps): AiProvider {
     isReady() {
       return deps.getApiKey().length > 0
         ? true
-        : 'gemini: no API key configured. Open the Gemini app to set one.';
+        : 'gemini: no API key configured. Open the Gemini settings (palette: "AI Configuration..." → "Gemini") to set one.';
     },
   };
 }

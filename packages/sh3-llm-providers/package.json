@@ -1,7 +1,7 @@
 {
-  "name": "sh3-gemini-shell",
-  "version": "0.6.2",
-  "description": "Gemini integration for the SH3 shell — registers as an sh3-ai.provider; appless, settings reachable via command palette",
+  "name": "sh3-llm-providers",
+  "version": "0.1.1",
+  "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini as sh3-ai.providers, plus per-provider settings views; replaces sh3-deepseek-shell and sh3-gemini-shell",
   "author": "@unfinished-lair",
   "type": "module",
   "main": "dist/index.js",
@@ -14,12 +14,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-ai": "^0.4.5",
+    "sh3-ai": "^0.5.0",
     "sh3-core": "^0.15.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-ai": "^0.4.5",
+    "sh3-ai": "^0.5.0",
     "sh3-core": "^0.15.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",

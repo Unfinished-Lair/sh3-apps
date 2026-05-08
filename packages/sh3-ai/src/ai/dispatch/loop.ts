@@ -17,12 +17,15 @@ export interface DispatchLoopOptions {
   transcript: Transcript;
   maxRounds?: number;        // default 16
   maxResultBytes?: number;   // default 4096
+  /** Sh3-ai-owned shared system instruction; forwarded to the provider on
+   *  every round via `ChatOptions.systemInstruction`. */
+  systemInstruction?: string;
 }
 
 export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   const {
     prompt, catalog, scope, conversation, provider, model, signal,
-    transcript, maxRounds = 16, maxResultBytes,
+    transcript, maxRounds = 16, maxResultBytes, systemInstruction,
   } = opts;
   const tools: ToolSpec[] | undefined = catalog.length > 0
     ? catalog.map((t) => ({
@@ -50,7 +53,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     for await (const chunk of provider.chat(
       conversation.messages, model, signal,
-      { tools, toolCalls, toolResults, reasoningContent },
+      { tools, toolCalls, toolResults, reasoningContent, systemInstruction },
     )) {
       if (chunk.type === 'token') {
         assistantText += chunk.text;

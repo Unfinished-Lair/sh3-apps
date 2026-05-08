@@ -4,7 +4,7 @@ import {
   listModels,
   deepseekProvider,
   DeepseekError,
-} from './deepseek-client';
+} from './client';
 import type { ChatChunk } from 'sh3-ai';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -509,7 +509,7 @@ describe('chatStream generation config', () => {
     expect(body).not.toHaveProperty('max_tokens');
   });
 
-  it('prepends a system message when systemInstruction is non-empty', async () => {
+  it('prepends a system message when options.systemInstruction is non-empty', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
     ]));
@@ -519,6 +519,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'deepseek-chat',
         new AbortController().signal,
+        undefined,
         { systemInstruction: 'be brief' },
       ),
     );
@@ -529,7 +530,7 @@ describe('chatStream generation config', () => {
     ]);
   });
 
-  it('omits the system message when systemInstruction is empty', async () => {
+  it('omits the system message when options.systemInstruction is empty', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
     ]));
@@ -539,6 +540,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'deepseek-chat',
         new AbortController().signal,
+        undefined,
         { systemInstruction: '' },
       ),
     );
@@ -614,7 +616,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
@@ -627,7 +628,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => chain,
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
@@ -644,7 +644,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
@@ -659,11 +658,33 @@ describe('deepseekProvider', () => {
     expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe('Bearer second-key');
   });
 
+  it('chat() forwards options.systemInstruction into the request body', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
+    ]));
+    const p = deepseekProvider({
+      getApiKey: () => 'k',
+      getChain: () => ['m'],
+      getTemperature: () => null,
+      getMaxOutputTokens: () => null,
+    });
+    async function drain(it: AsyncIterable<unknown>) {
+      for await (const _ of it) void _;
+    }
+    await drain(p.chat(
+      [{ role: 'user', content: 'hi' }],
+      'deepseek-chat',
+      new AbortController().signal,
+      { systemInstruction: 'be brief' },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.messages[0]).toEqual({ role: 'system', content: 'be brief' });
+  });
+
   it('isAuthFailure returns true for DeepseekError with status 400/401/402/403', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
@@ -677,7 +698,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
@@ -692,7 +712,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getSystemInstruction: () => '',
       getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });

@@ -1,6 +1,6 @@
 /*
  * Abstract AI provider contract for the sh3-ai shard. Concrete providers
- * (e.g. sh3-gemini-shell) register `AiProvider` instances against
+ * (e.g. sh3-llm-providers) register `AiProvider` instances against
  * `SH3_AI_PROVIDER_CONTRIBUTION` via `ctx.contributions.register(...)`.
  */
 
@@ -47,6 +47,12 @@ export interface ChatOptions {
    *  `reasoning_content` field). Provider attaches it to the assistant turn
    *  carrying `toolCalls`; ignored on non-reasoning models. */
   reasoningContent?: string;
+  /** User's system instruction. Shared across all providers. Each provider
+   *  injects it into its native wire shape (Gemini: `systemInstruction.parts`;
+   *  OpenAI-compat: prepended `role:'system'` message). Empty/undefined → no
+   *  system message is sent. Owned by sh3-ai's user state and forwarded by
+   *  the dispatcher on every `chat()` call. */
+  systemInstruction?: string;
 }
 
 export interface AiProvider {

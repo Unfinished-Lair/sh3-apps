@@ -27,6 +27,10 @@ export interface AiModeDeps {
   /** Hook fired after a successful turn (chat-only or tool path). The shard
    *  uses this to apply the title strategy on the first turn. */
   onTurnComplete?: () => Promise<void>;
+  /** Live read of sh3-ai's shared system instruction. Forwarded to the
+   *  provider via `ChatOptions.systemInstruction` on every chat call.
+   *  Empty/undefined → no system message is sent. */
+  getSystemInstruction?: () => string | undefined;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -70,9 +74,13 @@ function makeAiDispatch(deps: AiModeDeps) {
       }
     }
 
+    const systemInstruction = deps.getSystemInstruction?.();
     const catalog = deps.getCatalog?.() ?? [];
     if (catalog.length > 0) {
-      await runToolDispatch(provider, conversation, catalog, deps.getScope!(), input, output);
+      await runToolDispatch(
+        provider, conversation, catalog, deps.getScope!(),
+        input, output, systemInstruction,
+      );
       if (deps.onTurnComplete) {
         try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
       }
@@ -95,7 +103,7 @@ function makeAiDispatch(deps: AiModeDeps) {
       __aiCard: true,
     });
 
-    await runChatTurn(provider, conversation, chain, input.signal, handle);
+    await runChatTurn(provider, conversation, chain, input.signal, handle, systemInstruction);
 
     if (deps.onTurnComplete) {
       try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
@@ -116,6 +124,7 @@ async function runToolDispatch(
   scope: ResolvedScope,
   input: { line: string; cwd: string; signal: AbortSignal },
   output: ShellModeOutput,
+  systemInstruction: string | undefined,
 ): Promise<void> {
   const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
   if (chain.length === 0) {
@@ -137,6 +146,7 @@ async function runToolDispatch(
       model,
       signal: input.signal,
       transcript,
+      systemInstruction,
     });
   } catch (err) {
     transcript.error(err);
@@ -151,6 +161,7 @@ async function runChatTurn(
   chain: string[],
   signal: AbortSignal,
   handle: StreamHandle,
+  systemInstruction: string | undefined,
 ): Promise<void> {
   const attempts: { model: string; error: string }[] = [];
 
@@ -160,7 +171,9 @@ async function runChatTurn(
     let succeeded = false;
 
     try {
-      for await (const chunk of provider.chat(conversation.messages, model, signal)) {
+      for await (const chunk of provider.chat(
+        conversation.messages, model, signal, { systemInstruction },
+      )) {
         if (signal.aborted) {
           handle.error(new DOMException('aborted', 'AbortError'));
           conversation.popLastUser();

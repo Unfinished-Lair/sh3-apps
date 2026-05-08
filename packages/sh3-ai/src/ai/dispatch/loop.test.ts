@@ -319,6 +319,46 @@ describe('dispatchLoop', () => {
     expect(seenOptions[1]?.reasoningContent).toBe('I should call a.b');
   });
 
+  it('forwards systemInstruction to the provider on every round', async () => {
+    const tool = fakeTool('a.b', async () => 'ok');
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake',
+      chain: () => ['m1'],
+      capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: {} };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'token', text: 'done' };
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false,
+      isReady: () => true,
+    };
+    const sb = fakeScrollback();
+    const conv = new ConversationState();
+    const scope: ResolvedScope = { id: 's', whitelist: ['a.*'], blacklist: [] };
+
+    await dispatchLoop({
+      prompt: 'go',
+      catalog: [tool],
+      scope,
+      conversation: conv,
+      provider,
+      model: 'm1',
+      signal: new AbortController().signal,
+      transcript: makeTranscript(sb),
+      systemInstruction: 'be brief',
+    });
+
+    expect(seenOptions[0]?.systemInstruction).toBe('be brief');
+    expect(seenOptions[1]?.systemInstruction).toBe('be brief');
+  });
+
   it('rejects unknown tool names from the model', async () => {
     const provider = fakeProvider([
       [

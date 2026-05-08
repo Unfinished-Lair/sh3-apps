@@ -1,5 +1,49 @@
 # sh3-ai changelog
 
+## 0.5.2 — 2026-05-08 — AI Defaults: rename `state` prop on destructure
+
+The `Defaults.svelte` view destructured the bindable `state` prop with the
+same local name. In Svelte 5, a local variable named `state` collides with
+`$state` rune detection when the prop is also bind-mutated through nested
+keys, breaking the runtime with `e.subscribe is not a function` when the
+view loaded. Rename to `user` on destructure; matches the pattern the old
+per-provider shells already used (`let { state: gemini } = $props()`).
+
+## 0.5.1 — 2026-05-08 — AI Defaults radios use shell-base-radio
+
+The titleStrategy `<input type="radio">` elements in the AI Defaults view now
+carry the `shell-base-radio` class so they pick up sh3-core's themed styling
+(accent fill, focus ring, disabled state) from `primitives/base.css`.
+
+## 0.5.0 — 2026-05-08 — System instruction promoted; AI Defaults view; ai:config retired
+
+**Headline:** the system instruction is now an sh3-ai-owned setting, shared
+across every provider, edited from a new "AI Defaults" view. The `ai:config`
+verb is gone — its only knob (`titleStrategy`) lives in the new view too.
+
+### Breaking
+
+- **`ChatOptions` gains `systemInstruction?: string`.** The dispatcher reads
+  sh3-ai's user state and forwards it on every `provider.chat()` call.
+  Providers must read `options.systemInstruction` instead of carrying their
+  own per-provider state slot. Providers older than sh3-ai 0.5.0 (DeepSeek
+  ≤ 0.2.5, Gemini ≤ 0.6.2) keep working with sh3-ai ≤ 0.4.x but will receive
+  no system message under sh3-ai 0.5.0 — bump the provider package.
+- **`ai:config` verb removed.** The only setting it exposed (`titleStrategy`)
+  is now editable in the AI Defaults view. No deprecation cycle; pre-release.
+
+### New
+
+- **AI Defaults view (`ai:defaults`).** Standalone view registered by sh3-ai
+  with two fields: shared system instruction (textarea) and conversation
+  title strategy (radio group, bound to the existing `state.user.titleStrategy`).
+  Reachable via the palette under `AI Configuration...` → `AI Defaults`.
+- **`AiModeDeps.getSystemInstruction`.** Optional getter consumed by
+  `makeAiModeDescriptor`; sh3-ai's shard wires it from
+  `state.user.systemInstruction`.
+- **`DispatchLoopOptions.systemInstruction`.** Forwarded through every
+  `provider.chat()` call inside the tool-dispatch loop.
+
 ## 0.4.11 — 2026-05-08 — Clickable scope listing
 
 `ai:scope` (no-args) now renders as a `kind:'rich'` entry with clickable scope IDs — switching takes one click instead of typing `ai:scope <id>`. The active row's button is disabled. CLI subpaths (`clear`, `save`, `delete`, switch-by-id, errors) are unchanged. Click handler re-dispatches `ai:scope <id>`, so all the existing rotate/status logic runs unchanged.

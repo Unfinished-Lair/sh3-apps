@@ -1,53 +1,52 @@
 <script lang="ts">
-  import { Select, type SelectOption } from 'sh3-core';
-  import { listModels, type ModelInfo } from '../deepseek-client';
+  import { Select, shell, type SelectOption } from 'sh3-core';
+  import type { ProviderDef, ProviderUserState, ProviderSessionState } from '../providers/types';
 
   interface Props {
-    state: {
-      apiKey: string;
-      modelChain: string[];
-      systemInstruction: string;
-      temperature: number | null;
-      maxOutputTokens: number | null;
-    };
-    session: { knownModels: ModelInfo[]; modelsLastFetchedAt: number | null };
+    def: ProviderDef;
+    state: ProviderUserState;
+    session: ProviderSessionState;
   }
 
-  let { state: deepseek, session }: Props = $props();
+  // Rename `state` → `user` on destructure: a local variable named `state`
+  // collides with Svelte 5's `$state` rune detection when the prop is also
+  // bind-mutated through nested keys, breaking the runtime with
+  // `e.subscribe is not a function`.
+  let { def, state: user, session }: Props = $props();
   let reveal = $state(false);
 
   const lastFour = $derived(
-    deepseek.apiKey.length >= 4 ? deepseek.apiKey.slice(-4) : deepseek.apiKey,
+    user.apiKey.length >= 4 ? user.apiKey.slice(-4) : user.apiKey,
   );
 
   function moveUp(i: number) {
     if (i === 0) return;
-    const next = [...deepseek.modelChain];
+    const next = [...user.modelChain];
     [next[i - 1], next[i]] = [next[i], next[i - 1]];
-    deepseek.modelChain = next;
+    user.modelChain = next;
   }
 
   function moveDown(i: number) {
-    if (i >= deepseek.modelChain.length - 1) return;
-    const next = [...deepseek.modelChain];
+    if (i >= user.modelChain.length - 1) return;
+    const next = [...user.modelChain];
     [next[i + 1], next[i]] = [next[i], next[i + 1]];
-    deepseek.modelChain = next;
+    user.modelChain = next;
   }
 
   function removeAt(i: number) {
-    if (deepseek.modelChain.length <= 1) return;
-    deepseek.modelChain = deepseek.modelChain.filter((_, j) => j !== i);
+    if (user.modelChain.length <= 1) return;
+    user.modelChain = user.modelChain.filter((_, j) => j !== i);
   }
 
   let refreshing = $state(false);
   let refreshError = $state<string | null>(null);
 
   async function refresh() {
-    if (refreshing || deepseek.apiKey.length === 0) return;
+    if (refreshing || user.apiKey.length === 0) return;
     refreshing = true;
     refreshError = null;
     try {
-      const models = await listModels(deepseek.apiKey);
+      const models = await def.listModels(user.apiKey);
       session.knownModels = models;
       session.modelsLastFetchedAt = Date.now();
     } catch (err) {
@@ -65,57 +64,65 @@
 
   const addableOptions = $derived<SelectOption[]>(
     session.knownModels
-      .filter((m) => !deepseek.modelChain.includes(m.id))
+      .filter((m) => !user.modelChain.includes(m.id))
       .map((m) => ({ value: m.id, label: m.id })),
   );
 
   function onPickModel(next: string | string[]) {
     if (typeof next !== 'string' || !next) return;
-    if (deepseek.modelChain.includes(next)) return;
-    deepseek.modelChain = [...deepseek.modelChain, next];
+    if (user.modelChain.includes(next)) return;
+    user.modelChain = [...user.modelChain, next];
   }
 
   const temperatureDisplay = $derived(
-    deepseek.temperature == null ? '' : String(deepseek.temperature),
+    user.temperature == null ? '' : String(user.temperature),
   );
   const maxOutputTokensDisplay = $derived(
-    deepseek.maxOutputTokens == null ? '' : String(deepseek.maxOutputTokens),
+    user.maxOutputTokens == null ? '' : String(user.maxOutputTokens),
   );
 
   function onTemperatureChange(e: Event) {
     const raw = (e.target as HTMLInputElement).value;
     if (raw.trim() === '') {
-      deepseek.temperature = null;
+      user.temperature = null;
       return;
     }
     const n = Number(raw);
-    if (Number.isFinite(n)) deepseek.temperature = n;
+    if (Number.isFinite(n)) user.temperature = n;
   }
 
   function onMaxOutputTokensChange(e: Event) {
     const raw = (e.target as HTMLInputElement).value;
     if (raw.trim() === '') {
-      deepseek.maxOutputTokens = null;
+      user.maxOutputTokens = null;
       return;
     }
     const n = Number(raw);
-    if (Number.isFinite(n) && n > 0) deepseek.maxOutputTokens = Math.floor(n);
+    if (Number.isFinite(n) && n > 0) user.maxOutputTokens = Math.floor(n);
+  }
+
+  // Cross-shard deep-link to sh3-ai's AI Defaults view (where the shared
+  // system instruction lives). View id is sh3-ai's contract — it's a
+  // registered standalone view, so opening by id via shell.float works
+  // without a runtime dep.
+  function openAiDefaults() {
+    shell.float.open('ai:defaults', {
+      title: 'AI Defaults',
+      size: { w: 520, h: 520 },
+    });
   }
 </script>
 
-<section class="deepseek-settings">
-  <h2>DeepSeek API key</h2>
-  <p class="note">
-    Stored locally in your user zone. Used by the <code>ai</code> shell mode and
-    <code>ai:ask</code> verb to call DeepSeek's OpenAI-compatible Chat Completions API.
-  </p>
+<section class="provider-settings">
+  <h2>{def.label} API key</h2>
+  <p class="note">{def.copy.apiKeyHelp}</p>
 
   <label>
     <span class="visually-hidden">API key</span>
     <input
       type={reveal ? 'text' : 'password'}
-      bind:value={deepseek.apiKey}
-      placeholder="paste your DeepSeek API key"
+      bind:value={user.apiKey}
+      placeholder={def.copy.apiKeyPlaceholder}
       autocomplete="off"
       spellcheck="false"
     />
@@ -125,16 +132,16 @@
   </button>
 
   <p class="status">
-    {#if deepseek.apiKey.length === 0}
+    {#if user.apiKey.length === 0}
       No key set.
     {:else}
       Key set (last 4: …{lastFour}).
     {/if}
   </p>
 
-  <p class="help">
-    Run <code>ai:ask hello</code> in the shell to test.
-  </p>
+  {#if def.copy.apiKeyTestHint}
+    <p class="help">{def.copy.apiKeyTestHint}</p>
+  {/if}
 
   <hr />
 
@@ -142,20 +149,20 @@
   <p class="note">Tried in order. The first one that succeeds answers the prompt.</p>
 
   <ol class="chain">
-    {#each deepseek.modelChain as modelId, i (modelId)}
+    {#each user.modelChain as modelId, i (modelId)}
       <li>
         <span class="model-id">{modelId}</span>
         <button type="button" onclick={() => moveUp(i)} disabled={i === 0} aria-label="Move up">↑</button>
         <button
           type="button"
           onclick={() => moveDown(i)}
-          disabled={i === deepseek.modelChain.length - 1}
+          disabled={i === user.modelChain.length - 1}
           aria-label="Move down"
         >↓</button>
         <button
           type="button"
           onclick={() => removeAt(i)}
-          disabled={deepseek.modelChain.length <= 1}
+          disabled={user.modelChain.length <= 1}
           aria-label="Remove"
         >×</button>
       </li>
@@ -176,7 +183,7 @@
     <button
       type="button"
       onclick={refresh}
-      disabled={refreshing || deepseek.apiKey.length === 0}
+      disabled={refreshing || user.apiKey.length === 0}
     >
       {refreshing ? 'Refreshing…' : 'Refresh list'}
     </button>
@@ -194,17 +201,11 @@
   <hr />
 
   <h2>Generation</h2>
-  <p class="note">Steer how the model responds. All fields optional.</p>
-
-  <label class="field">
-    <span class="field-label">System instruction</span>
-    <textarea
-      bind:value={deepseek.systemInstruction}
-      placeholder="Optional. Steer model behavior — e.g., 'You are a concise assistant.'"
-      rows="4"
-      spellcheck="false"
-    ></textarea>
-  </label>
+  <p class="note">
+    Steer how the model responds. All fields optional. The system instruction is shared
+    across providers — edit it in
+    <button type="button" class="link" onclick={openAiDefaults}>AI Defaults</button>.
+  </p>
 
   <label class="field">
     <span class="field-label">Temperature</span>
@@ -230,12 +231,12 @@
       oninput={onMaxOutputTokensChange}
       placeholder="(API default)"
     />
-    <span class="help">Blank = use API default. Sent as <code>max_tokens</code>.</span>
+    <span class="help">Blank = use API default.</span>
   </label>
 </section>
 
 <style>
-  .deepseek-settings {
+  .provider-settings {
     box-sizing: border-box;
     height: 100%;
     overflow-y: auto;
@@ -262,6 +263,17 @@
     font: inherit;
     cursor: pointer;
   }
+  button.link {
+    background: none;
+    border: none;
+    color: var(--shell-accent, #4a90e2);
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    font: inherit;
+    align-self: auto;
+    display: inline;
+  }
   .visually-hidden {
     position: absolute;
     width: 1px;
@@ -271,10 +283,6 @@
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     border: 0;
-  }
-  code {
-    font-family: var(--shell-mono, ui-monospace, monospace);
-    font-size: 0.95em;
   }
   hr {
     border: 0;
@@ -330,12 +338,5 @@
   .field-label {
     font-size: 0.9em;
     color: var(--shell-fg-muted, inherit);
-  }
-  textarea {
-    width: 100%;
-    padding: 0.4rem 0.5rem;
-    font: inherit;
-    font-family: var(--shell-mono, ui-monospace, monospace);
-    resize: vertical;
   }
 </style>

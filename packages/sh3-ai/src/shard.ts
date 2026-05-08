@@ -10,9 +10,12 @@ import { registerShellMode, shell } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
+import Defaults from './ai/Defaults.svelte';
 
 const CONVERSATIONS_VIEW_ID = 'ai:conversations';
 const CONVERSATIONS_FLOAT_TITLE = 'AI Conversations';
+const DEFAULTS_VIEW_ID = 'ai:defaults';
+const DEFAULTS_FLOAT_TITLE = 'AI Defaults';
 
 function nodeContainsView(node: LayoutNode, viewId: string): boolean {
   if (node.type === 'slot') return node.viewId === viewId;
@@ -31,6 +34,19 @@ function focusOrOpenConversations(): void {
   shell.float.open(CONVERSATIONS_VIEW_ID, {
     title: CONVERSATIONS_FLOAT_TITLE,
     size: { w: 480, h: 560 },
+  });
+}
+
+function focusOrOpenDefaults(): void {
+  for (const f of shell.float.list()) {
+    if (nodeContainsView(f.content, DEFAULTS_VIEW_ID)) {
+      shell.float.focus(f.id);
+      return;
+    }
+  }
+  shell.float.open(DEFAULTS_VIEW_ID, {
+    title: DEFAULTS_FLOAT_TITLE,
+    size: { w: 520, h: 520 },
   });
 }
 import { ConversationState } from './ai/conversation';
@@ -68,6 +84,7 @@ async function runOneShot(
   provider: AiProvider,
   prompt: string,
   signal: AbortSignal,
+  systemInstruction?: string,
 ): Promise<string> {
   const chain = provider.chain();
   if (chain.length === 0) {
@@ -79,7 +96,7 @@ async function runOneShot(
       const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
       let text = '';
       let done = false;
-      for await (const chunk of provider.chat(messages, model, signal)) {
+      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction })) {
         if (chunk.type === 'token') {
           text += chunk.text;
         } else if (chunk.type === 'tool-call') {
@@ -110,6 +127,7 @@ export const shard: SourceShard = {
     label: 'AI',
     views: [
       { id: CONVERSATIONS_VIEW_ID, label: 'AI Conversations', standalone: true },
+      { id: DEFAULTS_VIEW_ID, label: 'AI Defaults', standalone: true },
     ],
   },
 
@@ -121,6 +139,7 @@ export const shard: SourceShard = {
         scopes: UserScopes;
         activeConversationId: string | null;
         titleStrategy: 'first-message' | 'llm-summarize';
+        systemInstruction: string;
       };
     }>({
       user: {
@@ -129,6 +148,7 @@ export const shard: SourceShard = {
         scopes: {},
         activeConversationId: null,
         titleStrategy: 'first-message',
+        systemInstruction: '',
       },
     });
 
@@ -236,7 +256,7 @@ export const shard: SourceShard = {
         const provider = getActive();
         if (provider) {
           title = await llmSummarizeTitle(
-            (p, sig) => runOneShot(provider, p, sig),
+            (p, sig) => runOneShot(provider, p, sig, state.user.systemInstruction || undefined),
             firstUser.content,
             firstAssistant.content,
             new AbortController().signal,
@@ -276,9 +296,24 @@ export const shard: SourceShard = {
     };
     ctx.registerView(CONVERSATIONS_VIEW_ID, conversationsFactory);
 
-    // Command Palette: parent submenu "AI Configuration..." with a built-in
-    // "Conversations" child plus dynamic children registered by other shards
-    // against SH3_AI_CONFIG_MENU_CONTRIBUTION (e.g. provider settings).
+    const defaultsFactory: ViewFactory = {
+      mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
+        const instance = mount(Defaults, {
+          target: container,
+          props: { state: state.user },
+        });
+        return {
+          unmount() { unmount(instance); },
+          closable: true,
+        };
+      },
+    };
+    ctx.registerView(DEFAULTS_VIEW_ID, defaultsFactory);
+
+    // Command Palette: parent submenu "AI Configuration..." with built-in
+    // "Conversations" + "Defaults" children, plus dynamic children registered
+    // by other shards against SH3_AI_CONFIG_MENU_CONTRIBUTION (e.g. provider
+    // settings).
     ctx.actions.register({
       id: 'sh3-ai:open-config',
       label: 'AI Configuration...',
@@ -295,6 +330,15 @@ export const shard: SourceShard = {
       submenuOf: 'sh3-ai:open-config',
       run() {
         focusOrOpenConversations();
+      },
+    });
+    ctx.actions.register({
+      id: 'sh3-ai:open-config.defaults',
+      label: 'AI Defaults',
+      scope: ['home', 'app'],
+      submenuOf: 'sh3-ai:open-config',
+      run() {
+        focusOrOpenDefaults();
       },
     });
 
@@ -331,6 +375,7 @@ export const shard: SourceShard = {
         getScope: () => currentResolvedScope(),
         ensureActiveConversation,
         onTurnComplete,
+        getSystemInstruction: () => state.user.systemInstruction || undefined,
       }),
     );
 
@@ -373,7 +418,10 @@ export const shard: SourceShard = {
         const prompt = args.join(' ');
         const controller = new AbortController();
         try {
-          const text = await runOneShot(provider, prompt, controller.signal);
+          const text = await runOneShot(
+            provider, prompt, controller.signal,
+            state.user.systemInstruction || undefined,
+          );
           vctx.scrollback.push({
             kind: 'text',
             stream: 'stdout',
@@ -446,43 +494,6 @@ export const shard: SourceShard = {
       }
       await store.delete(id);
     }
-
-    ctx.registerVerb({
-      name: 'config',
-      globalVerb: true,
-      summary: 'Get/set AI shard config. Usage: ai:config [titleStrategy <first-message|llm-summarize>]',
-      async run(vctx, args) {
-        if (args.length === 0) {
-          vctx.scrollback.push({
-            kind: 'status',
-            text: `titleStrategy: ${state.user.titleStrategy}`,
-            level: 'info', ts: Date.now(),
-          });
-          return;
-        }
-        if (args[0] === 'titleStrategy') {
-          const value = args[1];
-          if (value !== 'first-message' && value !== 'llm-summarize') {
-            vctx.scrollback.push({
-              kind: 'status',
-              text: 'usage: ai:config titleStrategy <first-message|llm-summarize>',
-              level: 'error', ts: Date.now(),
-            });
-            return;
-          }
-          state.user.titleStrategy = value;
-          vctx.scrollback.push({
-            kind: 'status', text: `titleStrategy: ${value}`,
-            level: 'info', ts: Date.now(),
-          });
-          return;
-        }
-        vctx.scrollback.push({
-          kind: 'status', text: `ai: unknown config key '${args[0]}'`,
-          level: 'error', ts: Date.now(),
-        });
-      },
-    });
 
     ctx.registerVerb({
       name: 'reset',

@@ -1,4 +1,9 @@
 import type { AiProvider, ChatChunk, ChatMessage, ChatOptions } from 'sh3-ai';
+import { redactKey } from '../../shared/redact';
+import { encodeToolName, decodeToolName } from '../../shared/tool-name-codec';
+import { readErrorEnvelope } from '../../shared/error-envelope';
+import { parseSseStream } from '../../shared/sse';
+import type { ModelInfo, ProviderDeps } from '../types';
 
 const BASE_URL = 'https://api.deepseek.com';
 
@@ -10,8 +15,6 @@ export class DeepseekError extends Error {
 }
 
 export interface DeepseekGenerationConfig {
-  /** Empty/omitted → no `system` message is prepended. */
-  systemInstruction?: string;
   /** null/omitted → do not send `temperature`. */
   temperature?: number | null;
   /** null/omitted → do not send `max_tokens`. */
@@ -86,17 +89,6 @@ function buildMessages(
   return out;
 }
 
-/** OpenAI-compatible providers (DeepSeek included) validate function names
- *  against `^[a-zA-Z0-9_-]+$` — '.' is rejected. sh3-ai tool names use '.'
- *  as the segment separator, so we encode '.' → '__' on the wire and decode
- *  the inverse on incoming `tool_calls[i].function.name`. */
-function encodeToolName(name: string): string {
-  return name.replace(/\./g, '__');
-}
-function decodeToolName(name: string): string {
-  return name.replace(/__/g, '.');
-}
-
 function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
   if (!options?.tools || options.tools.length === 0) return {};
   return {
@@ -120,34 +112,13 @@ function buildBody(
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: modelId,
-    messages: buildMessages(messages, config?.systemInstruction, options),
+    messages: buildMessages(messages, options?.systemInstruction, options),
     stream,
     ...buildToolsField(options),
   };
   if (typeof config?.temperature === 'number') body.temperature = config.temperature;
   if (typeof config?.maxOutputTokens === 'number') body.max_tokens = config.maxOutputTokens;
   return body;
-}
-
-function redactKey(message: string, apiKey: string): string {
-  if (!apiKey) return message;
-  return message.split(apiKey).join('***');
-}
-
-async function readErrorEnvelope(res: Response): Promise<string> {
-  let envelopeMsg: string | undefined;
-  try {
-    const body = await res.json();
-    envelopeMsg = body?.error?.message;
-  } catch {
-    // body wasn't JSON — fall through to status fallback
-  }
-  return envelopeMsg ?? `HTTP ${res.status}`;
-}
-
-export interface ModelInfo {
-  id: string;
-  displayName: string;
 }
 
 export async function listModels(apiKey: string): Promise<ModelInfo[]> {
@@ -258,17 +229,6 @@ export async function* chatStream(
     }
   }
 
-  function* parseSseEvent(event: string): Iterable<Delta> {
-    for (const line of event.split(/\r?\n/)) {
-      if (!line.startsWith('data:')) continue;
-      const data = line.slice(5).trim();
-      if (!data || data === '[DONE]') continue;
-      let parsed: unknown;
-      try { parsed = JSON.parse(data); } catch { continue; }
-      yield* extractDeltas(parsed);
-    }
-  }
-
   function applyDelta(d: Delta): ChatChunk[] {
     if (d.toolDeltas) {
       for (const td of d.toolDeltas) {
@@ -297,40 +257,22 @@ export async function* chatStream(
     return chunks;
   }
 
-  const decoder = new TextDecoder();
-  let buffer = '';
   let yieldedAny = false;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() ?? '';
-      for (const event of events) {
-        for (const delta of parseSseEvent(event)) {
-          for (const chunk of applyDelta(delta)) {
-            yieldedAny = true;
-            yield chunk;
-          }
+    for await (const data of parseSseStream(reader)) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(data); } catch { continue; }
+      for (const delta of extractDeltas(parsed)) {
+        for (const chunk of applyDelta(delta)) {
+          yieldedAny = true;
+          yield chunk;
         }
       }
     }
-    buffer += decoder.decode();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new DeepseekError(redactKey(msg, apiKey));
-  }
-
-  if (buffer.trim().length > 0) {
-    for (const delta of parseSseEvent(buffer)) {
-      for (const chunk of applyDelta(delta)) {
-        yieldedAny = true;
-        yield chunk;
-      }
-    }
   }
 
   // Emit accumulated tool-calls as discrete chunks before the done chunk.
@@ -351,15 +293,7 @@ export async function* chatStream(
     : { type: 'done' };
 }
 
-export interface DeepseekProviderDeps {
-  getApiKey: () => string;
-  getChain: () => string[];
-  getSystemInstruction: () => string;
-  getTemperature: () => number | null;
-  getMaxOutputTokens: () => number | null;
-}
-
-export function deepseekProvider(deps: DeepseekProviderDeps): AiProvider {
+export function deepseekProvider(deps: ProviderDeps): AiProvider {
   return {
     id: 'deepseek',
     label: 'DeepSeek',
@@ -369,7 +303,6 @@ export function deepseekProvider(deps: DeepseekProviderDeps): AiProvider {
       return chatStream(
         deps.getApiKey(), messages, model, signal,
         {
-          systemInstruction: deps.getSystemInstruction(),
           temperature: deps.getTemperature(),
           maxOutputTokens: deps.getMaxOutputTokens(),
         },
@@ -390,7 +323,7 @@ export function deepseekProvider(deps: DeepseekProviderDeps): AiProvider {
     isReady() {
       return deps.getApiKey().length > 0
         ? true
-        : 'deepseek: no API key configured. Open the DeepSeek settings (palette: "Open Settings: DeepSeek") to set one.';
+        : 'deepseek: no API key configured. Open the DeepSeek settings (palette: "AI Configuration..." → "DeepSeek") to set one.';
     },
   };
 }

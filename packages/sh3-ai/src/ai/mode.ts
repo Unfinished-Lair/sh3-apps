@@ -123,6 +123,10 @@ async function runToolDispatch(
     return;
   }
   const model = chain[0];
+  const transcript = makeOutputTranscript(output, {
+    model,
+    locked: !!conversation.lockedModel,
+  });
   try {
     await dispatchLoop({
       prompt: input.line,
@@ -132,9 +136,10 @@ async function runToolDispatch(
       provider,
       model,
       signal: input.signal,
-      transcript: makeOutputTranscript(output),
+      transcript,
     });
   } catch (err) {
+    transcript.error(err);
     const msg = err instanceof Error ? err.message : String(err);
     output.status('error', `sh3-ai: ${msg}`);
   }

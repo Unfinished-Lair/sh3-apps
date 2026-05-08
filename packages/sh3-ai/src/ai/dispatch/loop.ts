@@ -59,7 +59,11 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
         assistantReasoning += chunk.text;
       } else if (chunk.type === 'tool-call') {
         pendingCalls.push({ id: chunk.id, name: chunk.name, arguments: chunk.arguments });
-        transcript.status('info', `→ ${chunk.name}(${transcript.preview(chunk.arguments)})`);
+        transcript.toolCall({
+          id: chunk.id,
+          name: chunk.name,
+          argsPreview: transcript.preview(chunk.arguments),
+        });
       } else if (chunk.type === 'done') {
         finishReason = chunk.finishReason;
         break;
@@ -87,7 +91,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
         const msg = decision.reason === 'blacklisted'
           ? `denied: blacklisted (matched ${decision.matchedPattern})`
           : `denied: not in whitelist`;
-        transcript.status('warn', `× ${call.name}: ${msg}`);
+        transcript.toolResult({ id: call.id, resultPreview: msg, error: true });
         const r: ToolResult = { toolCallId: call.id, content: { error: msg } };
         toolResults.push(r);
         conversation.appendToolResult({ callId: call.id, content: r.content });
@@ -96,7 +100,9 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
       const tool = catalog.find((t) => t.name === call.name);
       if (!tool) {
-        const r: ToolResult = { toolCallId: call.id, content: { error: `unknown tool: ${call.name}` } };
+        const msg = `unknown tool: ${call.name}`;
+        transcript.toolResult({ id: call.id, resultPreview: msg, error: true });
+        const r: ToolResult = { toolCallId: call.id, content: { error: msg } };
         toolResults.push(r);
         conversation.appendToolResult({ callId: call.id, content: r.content });
         continue;
@@ -105,12 +111,15 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
       try {
         const result = await tool.run(call.arguments, { signal });
         const serialized = serializeResult(result, { maxBytes: maxResultBytes });
-        transcript.status('info', `← ${call.name}: ${transcript.preview(serialized)}`);
+        transcript.toolResult({
+          id: call.id,
+          resultPreview: transcript.preview(serialized),
+        });
         toolResults.push({ toolCallId: call.id, content: serialized });
         conversation.appendToolResult({ callId: call.id, content: serialized });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        transcript.status('error', `× ${call.name}: ${msg}`);
+        transcript.toolResult({ id: call.id, resultPreview: msg, error: true });
         const content = { error: msg };
         toolResults.push({ toolCallId: call.id, content });
         conversation.appendToolResult({ callId: call.id, content });
@@ -121,4 +130,5 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   if (signal.aborted) {
     transcript.status('warn', 'aborted');
   }
+  transcript.complete();
 }

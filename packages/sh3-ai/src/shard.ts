@@ -61,6 +61,8 @@ import {
 import { ConversationStore } from './ai/conversations/store';
 import type { ConversationDocument } from './ai/conversations/types';
 import { firstMessageTitle, llmSummarizeTitle } from './ai/conversations/title-strategy';
+import { DocsStore } from './ai/docs/store';
+import { makeDocTools } from './ai/docs/tools';
 
 async function runOneShot(
   provider: AiProvider,
@@ -139,6 +141,11 @@ export const shard: SourceShard = {
     const docHandle = ctx.documents({ format: 'text', extensions: ['.json'] });
     const store = new ConversationStore(docHandle);
 
+    // Separate handle (no extensions filter) for the AI-managed docs zone.
+    // Same backend, different scope — the store filters to `docs/` paths.
+    const docsHandle = ctx.documents({ format: 'text' });
+    const docsStore = new DocsStore(docsHandle);
+
     // Restore the previously-active conversation (if any) so the user
     // re-enters where they left off after a reload.
     if (state.user.activeConversationId) {
@@ -179,13 +186,25 @@ export const shard: SourceShard = {
     }
 
     function buildCatalog() {
-      const verbs = ctx.listVerbs();
+      // Programmatic-only: skip verbs that can only be driven from a real
+      // terminal (e.g. ai:provider, ai:lock). They'd reject under runVerb
+      // anyway and previously enticed the LLM into infinite retry loops.
+      const verbs = ctx.listVerbs({ programmaticOnly: true });
       const verbTools = verbsToTools(verbs, (shardId, name, args, opts) =>
         ctx.runVerb(shardId, name, args, opts),
       );
       const contribs = ctx.contributions.list<ToolContribution>(SH3_AI_TOOL_CONTRIBUTION);
       const contributionTools = toolContributionsToTools(contribs);
-      const all = assembleCatalog({ verbTools, contributionTools });
+      // Built per-turn so the active provider id is baked into the
+      // descriptions the LLM sees — no self-introspection needed.
+      const docTools = makeDocTools({
+        store: docsStore,
+        activeProviderId: state.user.activeProviderId,
+      });
+      const all = assembleCatalog({
+        verbTools,
+        contributionTools: [...contributionTools, ...docTools],
+      });
       return filterByScope(all, currentResolvedScope());
     }
 

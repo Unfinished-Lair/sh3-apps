@@ -1,6 +1,6 @@
 {
   "name": "sh3-ai",
-  "version": "0.4.11",
+  "version": "0.4.15",
   "description": "Abstract AI-chat shard for SH3: owns the `ai` shell mode, the `ai:*` verbs, and the sh3-ai.provider contribution point",
   "author": "@unfinished-lair",
   "type": "module",
@@ -16,7 +16,9 @@
       "default": "./dist/contributions.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "build:artifact": "vite build --config vite.artifact.ts",
@@ -24,12 +26,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-core": "^0.15.0"
+    "sh3-core": "^0.15.1"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "marked": "^15.0.0",
-    "sh3-core": "^0.15.0",
+    "sh3-core": "0.15.1",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",
     "vite": "^6.0.0",

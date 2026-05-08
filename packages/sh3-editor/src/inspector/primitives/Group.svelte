@@ -20,7 +20,7 @@
 
 <style>
   .group {
-    border-top: 1px solid var(--shell-border);
+    border-top: 1px solid var(--sh3-border);
   }
   .header {
     width: 100%;
@@ -32,15 +32,15 @@
     padding: 0.25em 0.5em;
     text-align: left;
     cursor: pointer;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-mono);
     font-size: 13px;
   }
   .header:hover {
-    background: var(--shell-bg-hover, rgba(255, 255, 255, 0.03));
+    background: var(--sh3-bg-hover, rgba(255, 255, 255, 0.03));
   }
   .caret {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     font-size: 0.85em;
   }
   .label {

@@ -355,9 +355,9 @@
 
 <style>
   .reg-view {
-    font-family: var(--shell-font-ui);
-    color: var(--shell-fg, #e0e0e0);
-    background: var(--shell-bg, #1e1e1e);
+    font-family: var(--sh3-font-ui);
+    color: var(--sh3-fg, #e0e0e0);
+    background: var(--sh3-bg, #1e1e1e);
     padding: 16px;
     height: 100%;
     overflow-y: auto;
@@ -376,10 +376,10 @@
   }
   .reg-refresh-btn {
     padding: 6px 14px;
-    background: var(--shell-accent, #007acc);
+    background: var(--sh3-accent, #007acc);
     color: #fff;
     border: none;
-    border-radius: var(--shell-radius);
+    border-radius: var(--sh3-radius);
     cursor: pointer;
     font-family: inherit;
     font-size: 0.875rem;
@@ -391,25 +391,25 @@
   .reg-error {
     padding: 8px 12px;
     margin-bottom: 12px;
-    background: color-mix(in srgb, var(--shell-error, #d32f2f) 15%, transparent);
-    color: var(--shell-error, #d32f2f);
-    border: 1px solid var(--shell-error, #d32f2f);
-    border-radius: var(--shell-radius);
+    background: color-mix(in srgb, var(--sh3-error, #d32f2f) 15%, transparent);
+    color: var(--sh3-error, #d32f2f);
+    border: 1px solid var(--sh3-error, #d32f2f);
+    border-radius: var(--sh3-radius);
     font-size: 0.8125rem;
   }
   .reg-success {
     padding: 8px 12px;
     margin-bottom: 12px;
-    background: color-mix(in srgb, var(--shell-success, #4caf50) 15%, transparent);
-    color: var(--shell-success, #4caf50);
-    border: 1px solid var(--shell-success, #4caf50);
-    border-radius: var(--shell-radius);
+    background: color-mix(in srgb, var(--sh3-success, #4caf50) 15%, transparent);
+    color: var(--sh3-success, #4caf50);
+    border: 1px solid var(--sh3-success, #4caf50);
+    border-radius: var(--sh3-radius);
     font-size: 0.8125rem;
   }
   .reg-publish-section {
     padding: 8px 12px;
-    border: 1px solid var(--shell-border, #444);
-    border-radius: var(--shell-radius-md);
+    border: 1px solid var(--sh3-border, #444);
+    border-radius: var(--sh3-radius-md);
     margin-bottom: 16px;
     font-size: 0.875rem;
   }
@@ -431,10 +431,10 @@
   .reg-input {
     flex: 1;
     padding: 6px 10px;
-    background: var(--shell-input-bg, #2a2a2a);
-    color: var(--shell-fg, #e0e0e0);
-    border: 1px solid var(--shell-border, #444);
-    border-radius: var(--shell-radius);
+    background: var(--sh3-input-bg, #2a2a2a);
+    color: var(--sh3-fg, #e0e0e0);
+    border: 1px solid var(--sh3-border, #444);
+    border-radius: var(--sh3-radius);
     font-family: inherit;
     font-size: 0.8125rem;
   }
@@ -442,12 +442,12 @@
     opacity: 0.5;
   }
   .reg-input::placeholder {
-    color: var(--shell-fg-muted, #888);
+    color: var(--sh3-fg-muted, #888);
   }
   .reg-btn {
     padding: 6px 14px;
     border: none;
-    border-radius: var(--shell-radius);
+    border-radius: var(--sh3-radius);
     cursor: pointer;
     font-family: inherit;
     font-size: 0.8125rem;
@@ -459,21 +459,21 @@
     cursor: not-allowed;
   }
   .reg-btn-primary {
-    background: var(--shell-accent, #007acc);
+    background: var(--sh3-accent, #007acc);
     color: #fff;
   }
   .reg-btn-secondary {
-    background: var(--shell-input-bg, #2a2a2a);
-    color: var(--shell-fg, #e0e0e0);
-    border: 1px solid var(--shell-border, #444);
+    background: var(--sh3-input-bg, #2a2a2a);
+    color: var(--sh3-fg, #e0e0e0);
+    border: 1px solid var(--sh3-border, #444);
   }
   .reg-btn-danger {
     background: transparent;
-    color: var(--shell-error, #d32f2f);
-    border: 1px solid var(--shell-error, #d32f2f);
+    color: var(--sh3-error, #d32f2f);
+    border: 1px solid var(--sh3-error, #d32f2f);
   }
   .reg-btn-danger:hover:not(:disabled) {
-    background: var(--shell-error, #d32f2f);
+    background: var(--sh3-error, #d32f2f);
     color: #fff;
   }
   .reg-list {
@@ -482,16 +482,16 @@
     gap: 10px;
   }
   .reg-card {
-    background: var(--shell-input-bg, #2a2a2a);
-    border: 1px solid var(--shell-border, #444);
-    border-radius: var(--shell-radius-md);
+    background: var(--sh3-input-bg, #2a2a2a);
+    border: 1px solid var(--sh3-border, #444);
+    border-radius: var(--sh3-radius-md);
     padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
   .reg-card:hover {
-    border-color: var(--shell-accent, #007acc);
+    border-color: var(--sh3-accent, #007acc);
   }
   .reg-card-body {
     display: flex;
@@ -511,47 +511,47 @@
   .reg-badge {
     font-size: 0.6875rem;
     padding: 1px 6px;
-    border-radius: var(--shell-radius-sm);
+    border-radius: var(--sh3-radius-sm);
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.04em;
   }
   .badge-shard {
-    background: color-mix(in srgb, var(--shell-accent, #007acc) 25%, transparent);
-    color: var(--shell-accent, #007acc);
+    background: color-mix(in srgb, var(--sh3-accent, #007acc) 25%, transparent);
+    color: var(--sh3-accent, #007acc);
   }
   .badge-app {
-    background: color-mix(in srgb, var(--shell-success, #4caf50) 25%, transparent);
-    color: var(--shell-success, #4caf50);
+    background: color-mix(in srgb, var(--sh3-success, #4caf50) 25%, transparent);
+    color: var(--sh3-success, #4caf50);
   }
   .badge-combo {
-    background: color-mix(in srgb, var(--shell-warning, #ff9800) 25%, transparent);
-    color: var(--shell-warning, #ff9800);
+    background: color-mix(in srgb, var(--sh3-warning, #ff9800) 25%, transparent);
+    color: var(--sh3-warning, #ff9800);
   }
   .reg-hint {
     font-size: 0.75rem;
-    color: var(--shell-fg-muted, #888);
+    color: var(--sh3-fg-muted, #888);
   }
   .reg-manifest-preview {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
-    background: var(--shell-input-bg, #2a2a2a);
-    border: 1px solid var(--shell-border, #444);
-    border-radius: var(--shell-radius);
+    background: var(--sh3-input-bg, #2a2a2a);
+    border: 1px solid var(--sh3-border, #444);
+    border-radius: var(--sh3-radius);
     font-size: 0.8125rem;
   }
   .reg-preview-desc {
-    color: var(--shell-fg-muted, #aaa);
+    color: var(--sh3-fg-muted, #aaa);
   }
   .reg-card-meta {
     font-size: 0.75rem;
-    color: var(--shell-fg-muted, #888);
+    color: var(--sh3-fg-muted, #888);
   }
   .reg-card-desc {
     font-size: 0.8125rem;
-    color: var(--shell-fg-muted, #aaa);
+    color: var(--sh3-fg-muted, #aaa);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -559,7 +559,7 @@
   }
   .reg-card-author {
     font-size: 0.75rem;
-    color: var(--shell-fg-muted, #777);
+    color: var(--sh3-fg-muted, #777);
   }
   .reg-card-actions {
     display: flex;
@@ -571,7 +571,7 @@
     flex-direction: column;
     gap: 8px;
     padding-top: 8px;
-    border-top: 1px solid var(--shell-border, #444);
+    border-top: 1px solid var(--sh3-border, #444);
   }
   .reg-delete-confirm {
     flex-direction: row;
@@ -585,7 +585,7 @@
   .reg-empty {
     text-align: center;
     padding: 32px 16px;
-    color: var(--shell-fg-muted, #888);
+    color: var(--sh3-fg-muted, #888);
     font-size: 0.875rem;
   }
 </style>

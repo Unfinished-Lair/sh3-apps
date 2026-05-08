@@ -21,8 +21,8 @@
 
 <style>
   .leaf {
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 13px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
 </style>

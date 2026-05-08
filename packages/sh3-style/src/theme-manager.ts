@@ -143,9 +143,9 @@ export function updateToken(
   theme.tokens[token] = value;
 
   const semanticPair: Partial<Record<ThemeToken, ThemeToken>> = {
-    'shell-error':   'shell-fg-on-error',
-    'shell-warning': 'shell-fg-on-warning',
-    'shell-success': 'shell-fg-on-success',
+    'sh3-error':   'sh3-fg-on-error',
+    'sh3-warning': 'sh3-fg-on-warning',
+    'sh3-success': 'sh3-fg-on-success',
   };
 
   // Cascade 1: semantic surface change → re-drive its paired fg-on-*.
@@ -154,8 +154,8 @@ export function updateToken(
   if (pairToken) {
     const resolved = resolveTokens(theme);
     const driven = driveOppositeColor(value, {
-      light: resolved['shell-fg']!,
-      dark:  resolved['shell-bg']!,
+      light: resolved['sh3-fg']!,
+      dark:  resolved['sh3-bg']!,
     });
     if (driven) theme.tokens[pairToken] = driven.color;
   }
@@ -163,11 +163,11 @@ export function updateToken(
   // Cascade 2: endpoint source changed → re-drive all three semantic pairs.
   // shell-fg-on-accent is not touched here; AccentPairRow handles accent re-drive
   // via its own reactive $effect because the accent pair can be in Custom mode.
-  if (token === 'shell-fg' || token === 'shell-bg') {
+  if (token === 'sh3-fg' || token === 'sh3-bg') {
     const resolved = resolveTokens(theme);
     const endpoints = {
-      light: resolved['shell-fg']!,
-      dark:  resolved['shell-bg']!,
+      light: resolved['sh3-fg']!,
+      dark:  resolved['sh3-bg']!,
     };
     for (const [surfaceTok, fgOnTok] of Object.entries(semanticPair) as Array<[ThemeToken, ThemeToken]>) {
       const surface = resolved[surfaceTok];

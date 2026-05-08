@@ -11,7 +11,7 @@
  */
 
 import type { SourceShard } from 'sh3-core';
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import type { ToolbarAction } from '@unfinished-lair/sh3-editor';
 import type {
   InspectorInstanceContribution,
@@ -343,11 +343,11 @@ export const inspectorFiddleShard: SourceShard & {
         // for the new view; we register the EditorDocumentContribution
         // for that slot synchronously so the editor mounts with our
         // content instead of the bundled fallback.
-        const floatId = shell.float.open('sh3-editor:editor', {
+        const floatId = sh3.float.open('sh3-editor:editor', {
           title: 'Available types',
           size: { w: 520, h: 360 },
         });
-        const entry = shell.float.list().find((f) => f.id === floatId);
+        const entry = sh3.float.list().find((f) => f.id === floatId);
         if (!entry) return;
         const tabs = (entry.content as { type: 'tabs'; tabs: Array<{ slotId: string }> }).tabs;
         const slotId = tabs[0]?.slotId;

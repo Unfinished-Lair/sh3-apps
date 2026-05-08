@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { shell, type DocStatus } from 'sh3-core';
+  import { sh3, type DocStatus } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { createR2Client } from '../r2/client';
@@ -41,7 +41,7 @@
   let permissionBlocked = $state(false);
   let summary = $state<Stats | null>(null);
 
-  const conflictsAvailable = typeof shell?.conflicts?.resolve === 'function';
+  const conflictsAvailable = typeof sh3?.conflicts?.resolve === 'function';
 
   const selectedNodes = $derived(nodes.filter((n) => selected.has(n.path)));
   const selectedNew = $derived(selectedNodes.filter((n) => !n.existsLocal));
@@ -173,7 +173,7 @@
       stats.errors.push(`${node.path}: binary not supported`);
     }
     if (existingUsable.length === 0) return true;
-    if (!shell?.conflicts) return true;
+    if (!sh3?.conflicts) return true;
 
     const inputs: ImportConflictInput[] = [];
     for (const node of existingUsable) {
@@ -199,7 +199,7 @@
 
     if (inputs.length === 0) return true;
 
-    const decisions = await presentImportConflicts(shell.conflicts, inputs);
+    const decisions = await presentImportConflicts(sh3.conflicts, inputs);
     if (decisions === 'cancelled') {
       stats.cancelled += inputs.length;
       return true;

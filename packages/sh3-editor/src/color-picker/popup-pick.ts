@@ -31,7 +31,7 @@ export function normalizeOrFallback(initial: string | undefined): string {
   return '#000000';
 }
 
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import type { ColorPickOptions } from 'sh3-core';
 import type { ColorPalette } from '../types';
 
@@ -42,7 +42,7 @@ export interface PickDeps {
 }
 
 /**
- * Meta payload threaded from `openColorPickerPopup` → `shell.float.open`
+ * Meta payload threaded from `openColorPickerPopup` → `sh3.float.open`
  * → `MountContext.meta` → `sh3-editor:color-pick` view factory →
  * `PopupPickWrapper` props. Kept here so the shard's view factory and
  * the opener share one type.
@@ -84,7 +84,7 @@ export function openColorPickerPopup(
       onDeleteUserPalette: deps.onDeleteUserPalette,
       onResolve: resolve,
     };
-    shell.float.open('sh3-editor:color-pick', {
+    sh3.float.open('sh3-editor:color-pick', {
       dismissable: true,
       anchor: opts.anchor,
       meta: meta as unknown as Record<string, unknown>,

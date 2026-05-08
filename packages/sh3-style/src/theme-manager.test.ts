@@ -187,32 +187,32 @@ describe('buildStylesRows — state markers', () => {
 
 describe('DARK preset fg-on-* values', () => {
   const endpoints = () => ({
-    light: DARK.tokens['shell-fg']!,
-    dark: DARK.tokens['shell-bg']!,
+    light: DARK.tokens['sh3-fg']!,
+    dark: DARK.tokens['sh3-bg']!,
   });
 
   it('declares fg-on-accent matching Algorithm A', () => {
-    const driven = driveOppositeColor(DARK.tokens['shell-accent']!, endpoints());
-    expect(DARK.tokens['shell-fg-on-accent']).toBe(driven!.color);
+    const driven = driveOppositeColor(DARK.tokens['sh3-accent']!, endpoints());
+    expect(DARK.tokens['sh3-fg-on-accent']).toBe(driven!.color);
   });
   it('declares fg-on-error matching Algorithm A', () => {
-    const driven = driveOppositeColor(DARK.tokens['shell-error']!, endpoints());
-    expect(DARK.tokens['shell-fg-on-error']).toBe(driven!.color);
+    const driven = driveOppositeColor(DARK.tokens['sh3-error']!, endpoints());
+    expect(DARK.tokens['sh3-fg-on-error']).toBe(driven!.color);
   });
   it('declares fg-on-warning matching Algorithm A', () => {
-    const driven = driveOppositeColor(DARK.tokens['shell-warning']!, endpoints());
-    expect(DARK.tokens['shell-fg-on-warning']).toBe(driven!.color);
+    const driven = driveOppositeColor(DARK.tokens['sh3-warning']!, endpoints());
+    expect(DARK.tokens['sh3-fg-on-warning']).toBe(driven!.color);
   });
   it('declares fg-on-success matching Algorithm A', () => {
-    const driven = driveOppositeColor(DARK.tokens['shell-success']!, endpoints());
-    expect(DARK.tokens['shell-fg-on-success']).toBe(driven!.color);
+    const driven = driveOppositeColor(DARK.tokens['sh3-success']!, endpoints());
+    expect(DARK.tokens['sh3-fg-on-success']).toBe(driven!.color);
   });
   it('every declared pair meets AA for text', () => {
-    const pairs: Array<['shell-accent' | 'shell-error' | 'shell-warning' | 'shell-success', 'shell-fg-on-accent' | 'shell-fg-on-error' | 'shell-fg-on-warning' | 'shell-fg-on-success']> = [
-      ['shell-accent', 'shell-fg-on-accent'],
-      ['shell-error', 'shell-fg-on-error'],
-      ['shell-warning', 'shell-fg-on-warning'],
-      ['shell-success', 'shell-fg-on-success'],
+    const pairs: Array<['sh3-accent' | 'sh3-error' | 'sh3-warning' | 'sh3-success', 'sh3-fg-on-accent' | 'sh3-fg-on-error' | 'sh3-fg-on-warning' | 'sh3-fg-on-success']> = [
+      ['sh3-accent', 'sh3-fg-on-accent'],
+      ['sh3-error', 'sh3-fg-on-error'],
+      ['sh3-warning', 'sh3-fg-on-warning'],
+      ['sh3-success', 'sh3-fg-on-success'],
     ];
     for (const [surfaceKey, fgKey] of pairs) {
       const r = contrastRatio(DARK.tokens[fgKey]!, DARK.tokens[surfaceKey]!);
@@ -225,50 +225,50 @@ describe('updateToken semantic cascade', () => {
   function makeState(): ThemeState {
     const state: ThemeState = { activeThemeId: '', useDefault: false, userThemes: [] };
     const t = createTheme('Test', state);
-    t.tokens['shell-fg'] = '#e4e6eb';
-    t.tokens['shell-bg'] = '#1a1b1e';
+    t.tokens['sh3-fg'] = '#e4e6eb';
+    t.tokens['sh3-bg'] = '#1a1b1e';
     return state;
   }
 
-  it('updating shell-error also writes shell-fg-on-error via Algorithm A', () => {
+  it('updating sh3-error also writes sh3-fg-on-error via Algorithm A', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-error', '#ff3300', state);
+    updateToken(id, 'sh3-error', '#ff3300', state);
     const theme = state.userThemes[0];
-    expect(theme.tokens['shell-error']).toBe('#ff3300');
+    expect(theme.tokens['sh3-error']).toBe('#ff3300');
     // For #ff3300 against fg=#e4e6eb / bg=#1a1b1e, dark endpoint wins.
-    expect(theme.tokens['shell-fg-on-error']).toBe('#1a1b1e');
+    expect(theme.tokens['sh3-fg-on-error']).toBe('#1a1b1e');
   });
 
-  it('updating shell-warning cascades the pair', () => {
+  it('updating sh3-warning cascades the pair', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-warning', '#ffcc00', state);
-    expect(state.userThemes[0].tokens['shell-fg-on-warning']).toBeDefined();
+    updateToken(id, 'sh3-warning', '#ffcc00', state);
+    expect(state.userThemes[0].tokens['sh3-fg-on-warning']).toBeDefined();
   });
 
-  it('updating shell-success cascades the pair', () => {
+  it('updating sh3-success cascades the pair', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-success', '#00cc66', state);
-    expect(state.userThemes[0].tokens['shell-fg-on-success']).toBeDefined();
+    updateToken(id, 'sh3-success', '#00cc66', state);
+    expect(state.userThemes[0].tokens['sh3-fg-on-success']).toBeDefined();
   });
 
   it('updating a non-semantic token does NOT cascade', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-border', '#444444', state);
-    expect(state.userThemes[0].tokens['shell-fg-on-error']).toBeUndefined();
-    expect(state.userThemes[0].tokens['shell-fg-on-warning']).toBeUndefined();
-    expect(state.userThemes[0].tokens['shell-fg-on-success']).toBeUndefined();
+    updateToken(id, 'sh3-border', '#444444', state);
+    expect(state.userThemes[0].tokens['sh3-fg-on-error']).toBeUndefined();
+    expect(state.userThemes[0].tokens['sh3-fg-on-warning']).toBeUndefined();
+    expect(state.userThemes[0].tokens['sh3-fg-on-success']).toBeUndefined();
   });
 
-  it('updating shell-accent does NOT cascade (ColorSection owns this)', () => {
+  it('updating sh3-accent does NOT cascade (ColorSection owns this)', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-accent', '#6ea8fe', state);
-    expect(state.userThemes[0].tokens['shell-accent']).toBe('#6ea8fe');
-    expect(state.userThemes[0].tokens['shell-fg-on-accent']).toBeUndefined();
+    updateToken(id, 'sh3-accent', '#6ea8fe', state);
+    expect(state.userThemes[0].tokens['sh3-accent']).toBe('#6ea8fe');
+    expect(state.userThemes[0].tokens['sh3-fg-on-accent']).toBeUndefined();
   });
 });
 
@@ -276,59 +276,59 @@ describe('updateToken endpoint cascade', () => {
   function makeState(): ThemeState {
     const state: ThemeState = { activeThemeId: '', useDefault: false, userThemes: [] };
     const t = createTheme('Test', state);
-    t.tokens['shell-fg'] = '#e4e6eb';
-    t.tokens['shell-bg'] = '#1a1b1e';
-    t.tokens['shell-error']   = '#f87171';
-    t.tokens['shell-warning'] = '#fbbf24';
-    t.tokens['shell-success'] = '#34d399';
-    t.tokens['shell-fg-on-error']   = '#1a1b1e';
-    t.tokens['shell-fg-on-warning'] = '#1a1b1e';
-    t.tokens['shell-fg-on-success'] = '#1a1b1e';
+    t.tokens['sh3-fg'] = '#e4e6eb';
+    t.tokens['sh3-bg'] = '#1a1b1e';
+    t.tokens['sh3-error']   = '#f87171';
+    t.tokens['sh3-warning'] = '#fbbf24';
+    t.tokens['sh3-success'] = '#34d399';
+    t.tokens['sh3-fg-on-error']   = '#1a1b1e';
+    t.tokens['sh3-fg-on-warning'] = '#1a1b1e';
+    t.tokens['sh3-fg-on-success'] = '#1a1b1e';
     return state;
   }
 
-  it('changing shell-bg re-drives fg-on-error/warning/success', () => {
+  it('changing sh3-bg re-drives fg-on-error/warning/success', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-bg', '#f5f5f7', state);
+    updateToken(id, 'sh3-bg', '#f5f5f7', state);
     const theme = state.userThemes[0];
-    expect(theme.tokens['shell-bg']).toBe('#f5f5f7');
-    expect(theme.tokens['shell-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(theme.tokens['shell-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(theme.tokens['shell-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-bg']).toBe('#f5f5f7');
+    expect(theme.tokens['sh3-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 
-  it('changing shell-fg re-drives fg-on-error/warning/success', () => {
+  it('changing sh3-fg re-drives fg-on-error/warning/success', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    updateToken(id, 'shell-fg', '#000000', state);
+    updateToken(id, 'sh3-fg', '#000000', state);
     const theme = state.userThemes[0];
-    expect(theme.tokens['shell-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(theme.tokens['shell-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(theme.tokens['shell-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-fg-on-error']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-fg-on-warning']).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(theme.tokens['sh3-fg-on-success']).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 
   it('endpoint change does NOT touch fg-on-accent (ColorSection owns it)', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
-    state.userThemes[0].tokens['shell-fg-on-accent'] = '#abcdef';
-    updateToken(id, 'shell-bg', '#f5f5f7', state);
-    expect(state.userThemes[0].tokens['shell-fg-on-accent']).toBe('#abcdef');
+    state.userThemes[0].tokens['sh3-fg-on-accent'] = '#abcdef';
+    updateToken(id, 'sh3-bg', '#f5f5f7', state);
+    expect(state.userThemes[0].tokens['sh3-fg-on-accent']).toBe('#abcdef');
   });
 
-  it('shell-bg change actually recomputes values against the new endpoint', () => {
+  it('sh3-bg change actually recomputes values against the new endpoint', () => {
     const state = makeState();
     const id = state.userThemes[0].id;
     // Start: fg=#e4e6eb, bg=#1a1b1e — fg-on-error drove to dark (#1a1b1e).
     // After flipping fg to pure black, both endpoints are dark; bg=#1a1b1e
     // is the "dark" endpoint and it's still the winning choice. But if we
     // flip bg to near-white, we should see the value change for some surface.
-    updateToken(id, 'shell-bg', '#ffffff', state);
+    updateToken(id, 'sh3-bg', '#ffffff', state);
     const theme = state.userThemes[0];
     // fg=#e4e6eb (light endpoint), bg=#ffffff (dark endpoint now — but whiter than fg).
     // For #f87171 (error): vs #e4e6eb contrast is ~2.2, vs #ffffff contrast is ~3.0.
     // Dark (#ffffff) wins. So fg-on-error becomes #ffffff.
-    expect(theme.tokens['shell-fg-on-error']).toBe('#ffffff');
+    expect(theme.tokens['sh3-fg-on-error']).toBe('#ffffff');
   });
 });
 
@@ -336,20 +336,20 @@ describe('every built-in preset has AA-compliant fg-on-* pairs', () => {
   for (const preset of BUILTIN_PRESETS) {
     describe(preset.name, () => {
       it('declares every fg-on-* token', () => {
-        expect(preset.tokens['shell-fg-on-accent']).toBeDefined();
-        expect(preset.tokens['shell-fg-on-error']).toBeDefined();
-        expect(preset.tokens['shell-fg-on-warning']).toBeDefined();
-        expect(preset.tokens['shell-fg-on-success']).toBeDefined();
+        expect(preset.tokens['sh3-fg-on-accent']).toBeDefined();
+        expect(preset.tokens['sh3-fg-on-error']).toBeDefined();
+        expect(preset.tokens['sh3-fg-on-warning']).toBeDefined();
+        expect(preset.tokens['sh3-fg-on-success']).toBeDefined();
       });
       it('every pair meets AA for text (ratio >= 4.5)', () => {
         const pairs: Array<['accent' | 'error' | 'warning' | 'success']> = [
           ['accent'], ['error'], ['warning'], ['success'],
         ];
         for (const [key] of pairs) {
-          const surface = preset.tokens[`shell-${key}` as const]!;
-          const fg = preset.tokens[`shell-fg-on-${key}` as const]!;
+          const surface = preset.tokens[`sh3-${key}` as const]!;
+          const fg = preset.tokens[`sh3-fg-on-${key}` as const]!;
           const ratio = contrastRatio(fg, surface);
-          expect(ratio, `${preset.name}: shell-fg-on-${key} vs shell-${key}`)
+          expect(ratio, `${preset.name}: sh3-fg-on-${key} vs sh3-${key}`)
             .toBeGreaterThanOrEqual(4.5);
         }
       });

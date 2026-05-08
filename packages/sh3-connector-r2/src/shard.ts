@@ -1,5 +1,5 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import type { SelectionAction, DocumentBadgeProvider } from 'sh3-file-explorer';
 
 // Inlined to avoid a runtime import from sh3-file-explorer. The loader's
@@ -72,7 +72,7 @@ export const shard: SourceShard = {
         if (!runtime) return;
         const targets = runtime.targets;
         if (targets.length === 0) {
-          shell.toast.notify('No R2 targets configured. Open the R2 Backup app to add one.', { level: 'warn' });
+          sh3.toast.notify('No R2 targets configured. Open the R2 Backup app to add one.', { level: 'warn' });
           return;
         }
         const target = targets.length === 1
@@ -97,11 +97,11 @@ export const shard: SourceShard = {
         if (result.status === 'uploaded' && result.entry) runtime.recordBadgeUpload(result.entry);
         const path = `${sel.shardId}/${sel.path}`;
         if (result.status === 'uploaded') {
-          shell.toast.notify(`Backed up ${path}`, { level: 'success' });
+          sh3.toast.notify(`Backed up ${path}`, { level: 'success' });
         } else if (result.status === 'skipped-unchanged') {
-          shell.toast.notify(`Already up to date — ${path}`, { level: 'info' });
+          sh3.toast.notify(`Already up to date — ${path}`, { level: 'info' });
         } else {
-          shell.toast.notify(`Backup failed: ${result.reason ?? 'unknown'} — ${path}`, { level: 'error' });
+          sh3.toast.notify(`Backup failed: ${result.reason ?? 'unknown'} — ${path}`, { level: 'error' });
         }
       },
       kind: 'secondary',

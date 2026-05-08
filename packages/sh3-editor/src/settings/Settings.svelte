@@ -75,21 +75,21 @@
 
 <style>
   .settings {
-    padding: var(--shell-pad-lg);
-    font-family: var(--shell-font-ui);
-    color: var(--shell-fg);
-    background: var(--shell-bg);
+    padding: var(--sh3-pad-lg);
+    font-family: var(--sh3-font-ui);
+    color: var(--sh3-fg);
+    background: var(--sh3-bg);
     min-height: 100%;
     box-sizing: border-box;
   }
   .title {
-    margin: 0 0 var(--shell-pad-md);
+    margin: 0 0 var(--sh3-pad-md);
     font-size: 16px;
     font-weight: 600;
   }
   .empty {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     font-style: italic;
-    padding: var(--shell-pad-md) 0;
+    padding: var(--sh3-pad-md) 0;
   }
 </style>

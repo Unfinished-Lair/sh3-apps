@@ -83,9 +83,9 @@
 </div>
 
 <style>
-  .hotkeys-tab { padding: 12px 16px; color: var(--shell-fg); }
+  .hotkeys-tab { padding: 12px 16px; color: var(--sh3-fg); }
   .ctx { font-size: 12px; opacity: 0.8; margin-bottom: 12px; }
-  .ctx code { font-family: var(--shell-mono, monospace); }
+  .ctx code { font-family: var(--sh3-mono, monospace); }
   .group { margin-bottom: 16px; }
   .group-title { font-size: 13px; font-weight: 600; margin: 0 0 6px; opacity: 0.9; }
   .list { list-style: none; margin: 0; padding: 0; }
@@ -95,7 +95,7 @@
     gap: 8px;
     align-items: center;
     padding: 4px 0;
-    border-bottom: 1px solid var(--shell-border, #2a2a2a);
+    border-bottom: 1px solid var(--sh3-border, #2a2a2a);
   }
   .row.disabled { opacity: 0.5; }
   .label {
@@ -106,16 +106,16 @@
     white-space: nowrap;
   }
   .kbd {
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
     font-size: 12px;
     padding: 2px 6px;
     border-radius: 3px;
-    background: var(--shell-surface-2, #2a2a2a);
+    background: var(--sh3-surface-2, #2a2a2a);
   }
   .badge {
     font-size: 11px;
     opacity: 0.6;
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
   }
   .empty { opacity: 0.6; padding: 16px 0; }
 </style>

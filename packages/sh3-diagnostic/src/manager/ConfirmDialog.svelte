@@ -40,14 +40,14 @@
     z-index: 1000;
   }
   .dialog {
-    background: var(--shell-bg-elevated);
-    border: 1px solid var(--shell-border);
+    background: var(--sh3-bg-elevated);
+    border: 1px solid var(--sh3-border);
     border-radius: 8px;
     padding: 16px 20px;
     min-width: 300px;
     max-width: 400px;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
   }
   .dialog h3 {
     margin: 0 0 8px;
@@ -55,8 +55,8 @@
   }
   .dialog p {
     margin: 0 0 16px;
-    font-size: var(--shell-font-size);
-    color: var(--shell-fg-muted);
+    font-size: var(--sh3-font-size);
+    color: var(--sh3-fg-muted);
   }
   .actions {
     display: flex;
@@ -71,11 +71,11 @@
     cursor: pointer;
   }
   .cancel {
-    background: var(--shell-bg-sunken);
-    color: var(--shell-fg);
+    background: var(--sh3-bg-sunken);
+    color: var(--sh3-fg);
   }
   .cancel:hover {
-    background: var(--shell-border);
+    background: var(--sh3-border);
   }
   .confirm {
     background: #ff6b6b;

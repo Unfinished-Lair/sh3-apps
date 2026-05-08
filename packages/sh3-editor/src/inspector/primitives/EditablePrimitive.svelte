@@ -76,21 +76,21 @@
 
 <style>
   .primitive {
-    background: var(--shell-bg-sunken);
-    color: var(--shell-fg);
-    border: 1px solid var(--shell-border);
+    background: var(--sh3-bg-sunken);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border);
     border-radius: 2px;
     padding: 0.1em 0.3em;
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 13px;
     width: 100%;
     box-sizing: border-box;
   }
   .primitive:focus {
-    outline: 1px solid var(--shell-accent, #61afef);
+    outline: 1px solid var(--sh3-accent, #61afef);
   }
   .primitive:disabled {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     cursor: default;
   }
 </style>

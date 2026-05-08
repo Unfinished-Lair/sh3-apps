@@ -1,5 +1,5 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry.svelte';
 import { createApi } from './model/api';
@@ -126,7 +126,7 @@ export const shard: SourceShard = {
     // by registering at priority > 10.
     unregisterBuiltinWidgets = registerBuiltinWidgets(ctx);
 
-    // Register sh3-editor as the sh3.color-picker contributor. shell.color.pick()
+    // Register sh3-editor as the sh3.color-picker contributor. sh3.color.pick()
     // from any shard now routes here; falls back to native <input type="color">
     // when sh3-editor is inactive.
     const colorContribution: ColorContribution = {
@@ -245,7 +245,7 @@ export const shard: SourceShard = {
       },
     });
 
-    // Internal float view used by `shell.color.pick()` — mounts the
+    // Internal float view used by `sh3.color.pick()` — mounts the
     // popup-style picker surface inside a dismissable float so it can stack
     // above modals via FloatOptions.anchor portaling.
     ctx.registerView('sh3-editor:color-pick', {
@@ -256,7 +256,7 @@ export const shard: SourceShard = {
         }
         const requestClose = () => {
           const loc = context.location();
-          if (loc?.kind === 'float') shell.float.close(loc.floatId);
+          if (loc?.kind === 'float') sh3.float.close(loc.floatId);
         };
         const component = mount(PopupPickWrapper, {
           target: container,
@@ -407,7 +407,7 @@ export const shard: SourceShard = {
       run() {
         if (helpOpen) return;
         helpOpen = true;
-        shell.modal.open(
+        sh3.modal.open(
           Help,
           { surface: 'modal', ctx, onClose: () => { helpOpen = false; } },
           { dismissOnBackdrop: true },
@@ -553,7 +553,7 @@ export const shard: SourceShard = {
 
   // Self-start so the color-picker (and other shell-level) contributions
   // registered in `activate` go live at framework boot — without this,
-  // `shell.color.pick()` would fall through to the native <input type="color">
+  // `sh3.color.pick()` would fall through to the native <input type="color">
   // until some app first launches sh3-editor.
   autostart() { /* contributions are wired in `activate`; no work to do here. */ },
 

@@ -19,17 +19,17 @@
     column-gap: 0.75em;
     align-items: center;
     padding: 0.15em 0.5em;
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 13px;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
   .label {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .readonly .value {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
 </style>

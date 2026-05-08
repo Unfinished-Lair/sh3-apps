@@ -1,4 +1,4 @@
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import DeleteConfirmModal from './DeleteConfirmModal.svelte';
 import type { PreviewState } from './readPreview';
 
@@ -22,7 +22,7 @@ export function confirmDelete(args: ConfirmDeleteArgs): Promise<boolean> {
       handle.close();
       resolve(result);
     };
-    const handle = shell.modal.open(
+    const handle = sh3.modal.open(
       DeleteConfirmModal,
       {
         target: args.target,

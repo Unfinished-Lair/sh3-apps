@@ -4,7 +4,7 @@ const close = vi.fn();
 const open = vi.fn();
 
 vi.mock('sh3-core', () => ({
-  shell: {
+  sh3: {
     modal: {
       open: (...args: unknown[]) => {
         open(...args);

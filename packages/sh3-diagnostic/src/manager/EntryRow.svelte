@@ -37,46 +37,46 @@
     gap: 8px;
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: var(--shell-font-size);
+    font-size: var(--sh3-font-size);
   }
   .entry-row:hover {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
   }
   .entry-label {
     min-width: 120px;
-    font-family: var(--shell-font-mono);
-    color: var(--shell-fg);
+    font-family: var(--sh3-font-mono);
+    color: var(--sh3-fg);
   }
   .entry-keys {
     flex: 1;
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
-    color: var(--shell-fg-muted);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-fg-muted);
+    font-family: var(--sh3-font-mono);
     font-size: 11px;
   }
   .kv {
     display: inline;
   }
   .key {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
   }
   .type {
-    color: var(--shell-accent-muted);
+    color: var(--sh3-accent-muted);
   }
   .sep {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     margin-right: 4px;
   }
   .empty {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-style: italic;
   }
   .clear-btn {
     all: unset;
     cursor: pointer;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-size: 11px;
     padding: 2px 4px;
     border-radius: 3px;
@@ -87,6 +87,6 @@
   }
   .clear-btn:hover {
     color: #ff6b6b;
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
 </style>

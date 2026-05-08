@@ -7,7 +7,7 @@ const { notify, confirmDelete, readPreview } = vi.hoisted(() => ({
 }));
 
 vi.mock('sh3-core', () => ({
-  shell: { toast: { notify, clear: vi.fn() } },
+  sh3: { toast: { notify, clear: vi.fn() } },
 }));
 
 vi.mock('./confirmDelete', () => ({ confirmDelete }));

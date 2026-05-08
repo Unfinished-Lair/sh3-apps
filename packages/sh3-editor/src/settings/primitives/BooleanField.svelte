@@ -32,7 +32,7 @@
     appearance: none;
     width: 34px;
     height: 18px;
-    background: var(--shell-border);
+    background: var(--sh3-border);
     border: none;
     border-radius: 9px;
     position: relative;
@@ -40,7 +40,7 @@
     padding: 0;
     transition: background 0.1s;
   }
-  .toggle.on { background: var(--shell-accent); }
+  .toggle.on { background: var(--sh3-accent); }
   .toggle[disabled] { cursor: not-allowed; }
   .knob {
     position: absolute;

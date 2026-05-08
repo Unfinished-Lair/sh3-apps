@@ -92,7 +92,7 @@
 
   .channel-label {
     font-size: 0.75rem;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     flex: 0 0 auto;
     min-width: 60px;
   }

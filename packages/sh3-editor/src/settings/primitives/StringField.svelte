@@ -27,11 +27,11 @@
 
 <style>
   .input {
-    background: var(--shell-bg-sunken);
-    border: 1px solid var(--shell-border);
-    color: var(--shell-fg);
+    background: var(--sh3-bg-sunken);
+    border: 1px solid var(--sh3-border);
+    color: var(--sh3-fg);
     padding: 5px 8px;
-    border-radius: var(--shell-radius-sm);
+    border-radius: var(--sh3-radius-sm);
     font: inherit;
     font-size: 12px;
     width: 100%;
@@ -39,8 +39,8 @@
   }
   .input:focus {
     outline: none;
-    border-color: var(--shell-accent);
+    border-color: var(--sh3-accent);
   }
-  .input.error { border-color: var(--shell-error, #ff7a7a); }
+  .input.error { border-color: var(--sh3-error, #ff7a7a); }
   .input[disabled] { cursor: not-allowed; }
 </style>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { shell } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
   import type { ColorPalette, ColorPickerPrefs } from '../types';
   import type { ApiInternals } from '../model/api';
   import { normalizeHex } from '../util/color';
@@ -133,7 +133,7 @@
 
   function openFullPicker() {
     if (readonly || !previewEl) return;
-    shell.popup.show(
+    sh3.popup.show(
       ColorPickerSurface,
       { anchor: previewEl },
       {
@@ -262,7 +262,7 @@
   .cp {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 6px;
     width: fit-content;
   }
@@ -271,7 +271,7 @@
   .cp-compact {
     position: relative;
     display: inline-block;
-    font-family: var(--shell-font-ui);
+    font-family: var(--sh3-font-ui);
   }
   .cp-compact.disabled { opacity: 0.5; pointer-events: none; }
 
@@ -280,25 +280,25 @@
     width: 20px;
     height: 20px;
     cursor: pointer;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 4px;
     flex-shrink: 0;
     outline: none;
   }
   .cp-compact-preview:focus-visible {
-    box-shadow: 0 0 0 2px var(--shell-accent, #3a7eff);
+    box-shadow: 0 0 0 2px var(--sh3-accent, #3a7eff);
   }
   .cp-preview {
     width: 28px; height: 28px; border-radius: 4px;
-    border: 1px solid var(--shell-border); flex-shrink: 0;
+    border: 1px solid var(--sh3-border); flex-shrink: 0;
   }
   .cp-hex-input {
     flex: 1; padding: 4px 8px;
-    background: var(--shell-input-bg); color: var(--shell-fg);
-    border: 1px solid var(--shell-border); border-radius: 4px;
+    background: var(--sh3-input-bg); color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border); border-radius: 4px;
     font-size: var(--font-size); font-family: inherit; outline: none;
   }
-  .cp-hex-input:focus { border-color: var(--shell-accent, #3a7eff); }
+  .cp-hex-input:focus { border-color: var(--sh3-accent, #3a7eff); }
   .cp-compact-hex {
     width: 90px; font-size: 12px;
   }

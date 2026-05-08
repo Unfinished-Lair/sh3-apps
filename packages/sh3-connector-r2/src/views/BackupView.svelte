@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { shell } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { listRecentLog, type UploadLogEntry } from '../upload-log';
@@ -36,7 +36,7 @@
   async function run() {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
     if (!target || !rt.ctx.browse) return;
-    if (!shardId) { shell.toast.notify('Pick a shard to back up.', { level: 'warn' }); return; }
+    if (!shardId) { sh3.toast.notify('Pick a shard to back up.', { level: 'warn' }); return; }
 
     rt.progress.running = true;
     rt.progress.currentLabel = '';
@@ -150,18 +150,18 @@
   label { display: flex; flex-direction: column; gap: 2px; max-width: 420px; flex: 0 0 auto; }
   .log-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; border: 1px solid var(--sh3-border, #2a2a2a); border-radius: 3px; padding: 8px; }
   select {
-    padding: var(--shell-pad-md) var(--shell-pad-lg);
-    background: var(--shell-input-bg);
-    color: var(--shell-fg);
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius);
+    padding: var(--sh3-pad-md) var(--sh3-pad-lg);
+    background: var(--sh3-input-bg);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius);
     font-family: inherit;
     font-size: 0.8125rem;
-    line-height: var(--shell-line);
+    line-height: var(--sh3-line);
   }
   select:focus-visible {
-    border-color: var(--shell-input-border-focus);
-    box-shadow: var(--shell-focus-ring);
+    border-color: var(--sh3-input-border-focus);
+    box-shadow: var(--sh3-focus-ring);
     outline: none;
   }
   select:disabled { opacity: 0.55; cursor: not-allowed; }

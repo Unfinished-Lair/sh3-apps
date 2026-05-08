@@ -40,8 +40,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--shell-border);
-    background: var(--shell-bg);
+    border-bottom: 1px solid var(--sh3-border);
+    background: var(--sh3-bg);
     gap: 12px;
   }
   .left {
@@ -55,7 +55,7 @@
   }
   .view-toggle {
     display: flex;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 4px;
     overflow: hidden;
   }
@@ -64,15 +64,15 @@
     padding: 4px 10px;
     font-size: 12px;
     cursor: pointer;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     background: transparent;
   }
   .toggle-opt.active {
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
   }
   .toggle-opt:hover:not(.active) {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
   }
   .clear-all-btn {
     all: unset;

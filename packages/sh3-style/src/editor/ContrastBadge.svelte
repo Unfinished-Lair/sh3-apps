@@ -31,12 +31,12 @@
     align-items: center;
     gap: 4px;
     padding: 1px 6px;
-    border-radius: var(--shell-radius-sm, 3px);
+    border-radius: var(--sh3-radius-sm, 3px);
     font-size: 10px;
     line-height: 1.2;
-    background: var(--shell-bg-sunken);
-    color: var(--shell-fg-muted);
-    border: 1px solid var(--shell-border);
+    background: var(--sh3-bg-sunken);
+    color: var(--sh3-fg-muted);
+    border: 1px solid var(--sh3-border);
   }
   .level {
     font-weight: 600;
@@ -46,7 +46,7 @@
     font-variant-numeric: tabular-nums;
     opacity: 0.85;
   }
-  .badge.aaa { color: var(--shell-success); border-color: var(--shell-success); }
-  .badge.aa { color: var(--shell-fg); }
-  .badge.fail { color: var(--shell-error); border-color: var(--shell-error); }
+  .badge.aaa { color: var(--sh3-success); border-color: var(--sh3-success); }
+  .badge.aa { color: var(--sh3-fg); }
+  .badge.fail { color: var(--sh3-error); border-color: var(--sh3-error); }
 </style>

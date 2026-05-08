@@ -98,19 +98,19 @@
     inset: 0;
     padding: 12px 16px;
     overflow: auto;
-    background: var(--shell-grad-bg, var(--shell-bg));
-    color: var(--shell-fg);
+    background: var(--sh3-grad-bg, var(--sh3-bg));
+    color: var(--sh3-fg);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
   }
   h2 {
     margin: 0 0 12px;
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
     font-size: 14px;
   }
   h3 {
     margin: 12px 0 4px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;

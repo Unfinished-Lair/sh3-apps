@@ -6,7 +6,7 @@
    * stack cooperating.
    */
 
-  import { shell } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
 
   let { close }: { close: () => void } = $props();
 
@@ -19,7 +19,7 @@
 
   function pick(label: string, level: 'info' | 'success' | 'warn' | 'error') {
     close();
-    shell.toast.notify(`${label} from popup`, { level });
+    sh3.toast.notify(`${label} from popup`, { level });
   }
 </script>
 
@@ -47,7 +47,7 @@
     text-align: left;
     appearance: none;
     background: transparent;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
     border: none;
     font: inherit;
     font-size: 12px;
@@ -56,6 +56,6 @@
     cursor: pointer;
   }
   .menu button:hover {
-    background: var(--shell-accent-muted);
+    background: var(--sh3-accent-muted);
   }
 </style>

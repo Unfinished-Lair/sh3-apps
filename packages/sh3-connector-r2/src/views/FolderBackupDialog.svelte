@@ -167,10 +167,10 @@
     z-index: 9999;
   }
   .r2-folder-dialog {
-    background: var(--shell-bg, #1e1e1e);
-    color: var(--shell-fg, #ddd);
-    border: 1px solid var(--shell-border, #444);
-    border-radius: var(--shell-radius, 4px);
+    background: var(--sh3-bg, #1e1e1e);
+    color: var(--sh3-fg, #ddd);
+    border: 1px solid var(--sh3-border, #444);
+    border-radius: var(--sh3-radius, 4px);
     padding: 16px;
     min-width: 360px;
     max-width: 520px;
@@ -180,19 +180,19 @@
   }
   .r2-folder-dialog header h2 { margin: 0; font-size: 1rem; }
   .r2-folder-dialog__check { display: flex; align-items: center; gap: 6px; }
-  .r2-folder-dialog__count { color: var(--shell-fg-muted, #888); margin: 0; }
+  .r2-folder-dialog__count { color: var(--sh3-fg-muted, #888); margin: 0; }
   .r2-folder-dialog__errors { font-size: 0.85em; color: #e66; margin: 4px 0 0; padding-left: 18px; }
   .r2-folder-dialog footer { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
   .r2-folder-dialog button {
-    background: var(--shell-bg-elevated, #2a2a2a);
+    background: var(--sh3-bg-elevated, #2a2a2a);
     color: inherit;
-    border: 1px solid var(--shell-border, #444);
+    border: 1px solid var(--sh3-border, #444);
     padding: 4px 12px;
     font: inherit;
     cursor: pointer;
-    border-radius: var(--shell-radius-sm, 3px);
+    border-radius: var(--sh3-radius-sm, 3px);
   }
-  .r2-folder-dialog button.primary { border-color: var(--shell-accent, #4a90e2); }
+  .r2-folder-dialog button.primary { border-color: var(--sh3-accent, #4a90e2); }
   .r2-folder-dialog button[disabled] { opacity: 0.5; cursor: not-allowed; }
   .r2-folder-dialog label { display: flex; flex-direction: column; gap: 2px; }
 </style>

@@ -45,12 +45,12 @@
   .sh3-style-styles button {
     background: none;
     border: 0;
-    color: var(--shell-link, #6cf);
+    color: var(--sh3-link, #6cf);
     cursor: pointer;
     padding: 0;
     font: inherit;
   }
   .sh3-style-styles button:hover { text-decoration: underline; }
-  .sh3-style-styles .dot.active { color: var(--shell-accent, #6ea8fe); }
-  .sh3-style-styles .dot.preview { color: var(--shell-fg-muted, #9aa0aa); }
+  .sh3-style-styles .dot.active { color: var(--sh3-accent, #6ea8fe); }
+  .sh3-style-styles .dot.preview { color: var(--sh3-fg-muted, #9aa0aa); }
 </style>

@@ -95,13 +95,13 @@
     padding: 3px 8px;
     font-size: 10px;
     border-radius: 3px;
-    background: var(--shell-bg);
-    color: var(--shell-fg-muted);
+    background: var(--sh3-bg);
+    color: var(--sh3-fg-muted);
     cursor: pointer;
   }
   .mode-btn.active {
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
   }
   .mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .color-stops {
@@ -118,7 +118,7 @@
   .stop input[type="color"] {
     width: 28px;
     height: 28px;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 4px;
     padding: 2px;
     cursor: pointer;
@@ -126,11 +126,11 @@
   }
   .stop-label {
     font-size: 9px;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
   }
   .preview {
     height: 24px;
     border-radius: 4px;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
   }
 </style>

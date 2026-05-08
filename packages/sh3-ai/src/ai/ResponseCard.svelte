@@ -81,11 +81,11 @@
 <style>
   .ai-card {
     padding: 0.5em 0.75em;
-    border-left: 2px solid var(--shell-fg-dim, #888);
+    border-left: 2px solid var(--sh3-fg-dim, #888);
     margin: 0.25em 0;
   }
   .ai-card[data-stream-state='error'] {
-    border-left-color: var(--shell-error, #c66);
+    border-left-color: var(--sh3-error, #c66);
   }
   .ai-card-header {
     font-size: 0.85em;
@@ -96,25 +96,25 @@
     /* Bare paragraph spacing inside a streamed card. */
   }
   .ai-card-body :global(pre) {
-    background: var(--shell-code-bg, rgba(0, 0, 0, 0.2));
+    background: var(--sh3-code-bg, rgba(0, 0, 0, 0.2));
     padding: 0.5em;
     border-radius: 4px;
     overflow-x: auto;
   }
   .ai-card-body :global(code) {
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
   }
   .ai-tool {
     margin: 0.4em 0;
     padding: 0.25em 0.5em;
     font-size: 0.85em;
-    background: var(--shell-code-bg, rgba(0, 0, 0, 0.15));
-    border-left: 2px solid var(--shell-fg-dim, #888);
+    background: var(--sh3-code-bg, rgba(0, 0, 0, 0.15));
+    border-left: 2px solid var(--sh3-fg-dim, #888);
     border-radius: 3px;
     opacity: 0.85;
   }
   .ai-tool-error {
-    border-left-color: var(--shell-error, #c66);
+    border-left-color: var(--sh3-error, #c66);
   }
   .ai-tool-head {
     display: flex;
@@ -126,11 +126,11 @@
     opacity: 0.6;
   }
   .ai-tool-name {
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
     font-weight: 600;
   }
   .ai-tool-args {
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
     opacity: 0.7;
     word-break: break-all;
   }
@@ -143,7 +143,7 @@
   }
   .ai-tool-result {
     margin-top: 0.2em;
-    font-family: var(--shell-mono, monospace);
+    font-family: var(--sh3-mono, monospace);
     opacity: 0.7;
     white-space: pre-wrap;
     word-break: break-all;

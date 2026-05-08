@@ -40,7 +40,7 @@
     <label>
       <input
         type="radio"
-        class="shell-base-radio"
+        class="sh3-base-radio"
         name="titleStrategy"
         value="first-message"
         checked={user.titleStrategy === 'first-message'}
@@ -52,7 +52,7 @@
     <label>
       <input
         type="radio"
-        class="shell-base-radio"
+        class="sh3-base-radio"
         name="titleStrategy"
         value="llm-summarize"
         checked={user.titleStrategy === 'llm-summarize'}
@@ -78,16 +78,16 @@
   .note,
   .help {
     margin: 0;
-    color: var(--shell-fg-muted, inherit);
+    color: var(--sh3-fg-muted, inherit);
     font-size: 0.9em;
   }
   code {
-    font-family: var(--shell-mono, ui-monospace, monospace);
+    font-family: var(--sh3-mono, ui-monospace, monospace);
     font-size: 0.95em;
   }
   hr {
     border: 0;
-    border-top: 1px solid var(--shell-border, rgba(127, 127, 127, 0.3));
+    border-top: 1px solid var(--sh3-border, rgba(127, 127, 127, 0.3));
     margin: 0.5rem 0;
   }
   .field {
@@ -99,7 +99,7 @@
     width: 100%;
     padding: 0.4rem 0.5rem;
     font: inherit;
-    font-family: var(--shell-mono, ui-monospace, monospace);
+    font-family: var(--sh3-mono, ui-monospace, monospace);
     resize: vertical;
   }
   .visually-hidden {

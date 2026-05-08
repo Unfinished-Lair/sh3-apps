@@ -17,7 +17,7 @@
    * `workspace.countersBySlot[slotId]` inside the template is live.
    */
 
-  import { shell, focusTab, spliceIntoActiveLayout } from 'sh3-core';
+  import { sh3, focusTab, spliceIntoActiveLayout } from 'sh3-core';
   import type { MountContext } from 'sh3-core';
   import DemoModalContent from './DemoModalContent.svelte';
   import DemoPopupMenu from './DemoPopupMenu.svelte';
@@ -56,16 +56,16 @@
   // --- Phase 5 overlay demo ---------------------------------------------
 
   function openModal() {
-    shell.modal.open(DemoModalContent, { depth: 1 }, { boxStyle: randomModalBoxStyle() });
+    sh3.modal.open(DemoModalContent, { depth: 1 }, { boxStyle: randomModalBoxStyle() });
   }
 
   function openMenu(e: MouseEvent) {
     const anchor = e.currentTarget as HTMLElement;
-    shell.popup.show(DemoPopupMenu, { anchor });
+    sh3.popup.show(DemoPopupMenu, { anchor });
   }
 
   function fireToast() {
-    shell.toast.notify(`hello from ${slotId}`, { level: 'info' });
+    sh3.toast.notify(`hello from ${slotId}`, { level: 'info' });
   }
 
   /**
@@ -127,27 +127,27 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    background: var(--shell-bg);
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
+    background: var(--sh3-bg);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
   }
   .mock-header {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--shell-pad-sm) var(--shell-pad-md);
-    background: var(--shell-bg-elevated);
-    border-bottom: 1px solid var(--shell-border);
+    padding: var(--sh3-pad-sm) var(--sh3-pad-md);
+    background: var(--sh3-bg-elevated);
+    border-bottom: 1px solid var(--sh3-border);
     font-size: 11px;
   }
   .mock-title {
-    color: var(--shell-accent);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-accent);
+    font-family: var(--sh3-font-mono);
   }
   .mock-slot-id {
-    color: var(--shell-fg-muted);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-fg-muted);
+    font-family: var(--sh3-font-mono);
   }
   .mock-body {
     flex: 1 1 auto;
@@ -155,64 +155,64 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--shell-pad-md);
-    padding: var(--shell-pad-lg);
+    gap: var(--sh3-pad-md);
+    padding: var(--sh3-pad-lg);
     min-height: 0;
     min-width: 0;
   }
   .mock-counter {
     font-size: 48px;
-    font-family: var(--shell-font-mono);
-    color: var(--shell-fg);
+    font-family: var(--sh3-font-mono);
+    color: var(--sh3-fg);
     line-height: 1;
   }
   .mock-actions {
     display: flex;
-    gap: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
   }
   .mock-actions button {
     appearance: none;
     font: inherit;
     font-size: 12px;
-    padding: var(--shell-pad-sm) var(--shell-pad-md);
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
-    border: 1px solid var(--shell-border-strong);
+    padding: var(--sh3-pad-sm) var(--sh3-pad-md);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border-strong);
     border-radius: 3px;
     cursor: pointer;
   }
   .mock-actions button:hover {
-    background: var(--shell-accent);
+    background: var(--sh3-accent);
   }
   .mock-actions button.secondary {
     background: transparent;
   }
   .mock-actions button.secondary:hover {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
   }
   .mock-hint {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-size: 11px;
   }
   .mock-overlays {
     display: flex;
-    gap: var(--shell-pad-sm);
-    margin-top: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
+    margin-top: var(--sh3-pad-sm);
   }
   .mock-overlays .overlay {
     appearance: none;
     font: inherit;
     font-size: 11px;
-    padding: 2px var(--shell-pad-sm);
-    background: var(--shell-bg-sunken);
-    color: var(--shell-fg-muted);
-    border: 1px solid var(--shell-border);
+    padding: 2px var(--sh3-pad-sm);
+    background: var(--sh3-bg-sunken);
+    color: var(--sh3-fg-muted);
+    border: 1px solid var(--sh3-border);
     border-radius: 2px;
     cursor: pointer;
   }
   .mock-overlays .overlay:hover {
-    color: var(--shell-fg);
-    border-color: var(--shell-accent-muted);
+    color: var(--sh3-fg);
+    border-color: var(--sh3-accent-muted);
   }
   .mock-focus,
   .mock-context {
@@ -223,41 +223,41 @@
   }
   .mock-section-label {
     font-size: 10px;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
   .mock-focus-buttons {
     display: flex;
-    gap: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
   }
   .mock-focus-buttons button {
     appearance: none;
     font: inherit;
     font-size: 11px;
-    padding: 2px var(--shell-pad-sm);
-    background: var(--shell-bg-sunken);
-    color: var(--shell-fg-muted);
-    border: 1px solid var(--shell-border);
+    padding: 2px var(--sh3-pad-sm);
+    background: var(--sh3-bg-sunken);
+    color: var(--sh3-fg-muted);
+    border: 1px solid var(--sh3-border);
     border-radius: 2px;
     cursor: pointer;
   }
   .mock-focus-buttons button:hover {
-    color: var(--shell-fg);
-    border-color: var(--shell-accent-muted);
+    color: var(--sh3-fg);
+    border-color: var(--sh3-accent-muted);
   }
   .mock-context code {
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 10px;
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
   }
   .mock-footer {
     flex: 0 0 auto;
-    padding: var(--shell-pad-xs) var(--shell-pad-md);
-    background: var(--shell-bg-sunken);
-    border-top: 1px solid var(--shell-border);
-    color: var(--shell-fg-subtle);
-    font-family: var(--shell-font-mono);
+    padding: var(--sh3-pad-xs) var(--sh3-pad-md);
+    background: var(--sh3-bg-sunken);
+    border-top: 1px solid var(--sh3-border);
+    color: var(--sh3-fg-subtle);
+    font-family: var(--sh3-font-mono);
     font-size: 10px;
     text-align: right;
   }

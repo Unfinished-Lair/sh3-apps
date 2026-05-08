@@ -41,16 +41,16 @@
 <style>
   .slider {
     flex: 1;
-    accent-color: var(--shell-accent);
+    accent-color: var(--sh3-accent);
     cursor: pointer;
   }
   .slider[disabled] { cursor: not-allowed; }
-  .slider.error { accent-color: var(--shell-error, #ff7a7a); }
+  .slider.error { accent-color: var(--sh3-error, #ff7a7a); }
   .value {
     min-width: 56px;
     text-align: right;
     font-size: 12px;
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
     font-variant-numeric: tabular-nums;
   }
 </style>

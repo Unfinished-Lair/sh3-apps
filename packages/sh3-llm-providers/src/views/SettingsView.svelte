@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Select, shell, type SelectOption } from 'sh3-core';
+  import { Select, sh3, type SelectOption } from 'sh3-core';
   import type { ProviderDef, ProviderUserState, ProviderSessionState } from '../providers/types';
 
   interface Props {
@@ -103,10 +103,10 @@
 
   // Cross-shard deep-link to sh3-ai's AI Defaults view (where the shared
   // system instruction lives). View id is sh3-ai's contract — it's a
-  // registered standalone view, so opening by id via shell.float works
+  // registered standalone view, so opening by id via sh3.float works
   // without a runtime dep.
   function openAiDefaults() {
-    shell.float.open('ai:defaults', {
+    sh3.float.open('ai:defaults', {
       title: 'AI Defaults',
       size: { w: 520, h: 520 },
     });
@@ -250,7 +250,7 @@
   .status,
   .help {
     margin: 0;
-    color: var(--shell-fg-muted, inherit);
+    color: var(--sh3-fg-muted, inherit);
     font-size: 0.9em;
   }
   input {
@@ -266,7 +266,7 @@
   button.link {
     background: none;
     border: none;
-    color: var(--shell-accent, #4a90e2);
+    color: var(--sh3-accent, #4a90e2);
     padding: 0;
     cursor: pointer;
     text-decoration: underline;
@@ -286,7 +286,7 @@
   }
   hr {
     border: 0;
-    border-top: 1px solid var(--shell-border, rgba(127, 127, 127, 0.3));
+    border-top: 1px solid var(--sh3-border, rgba(127, 127, 127, 0.3));
     margin: 0.5rem 0;
   }
   .chain {
@@ -304,7 +304,7 @@
   }
   .model-id {
     flex: 1;
-    font-family: var(--shell-mono, ui-monospace, monospace);
+    font-family: var(--sh3-mono, ui-monospace, monospace);
     font-size: 0.95em;
   }
   .refresh-row {
@@ -314,12 +314,12 @@
     flex-wrap: wrap;
   }
   .refresh-meta {
-    color: var(--shell-fg-muted, inherit);
+    color: var(--sh3-fg-muted, inherit);
     font-size: 0.85em;
   }
   .refresh-error {
     margin: 0;
-    color: var(--shell-error, #c33);
+    color: var(--sh3-error, #c33);
     font-size: 0.85em;
   }
   .add-row {
@@ -337,6 +337,6 @@
   }
   .field-label {
     font-size: 0.9em;
-    color: var(--shell-fg-muted, inherit);
+    color: var(--sh3-fg-muted, inherit);
   }
 </style>

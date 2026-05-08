@@ -6,7 +6,7 @@ import type {
   ViewHandle,
   LayoutNode,
 } from 'sh3-core';
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import SettingsView from './views/SettingsView.svelte';
 import { PROVIDERS } from './providers/registry';
@@ -36,13 +36,13 @@ function nodeContainsView(node: LayoutNode, viewId: string): boolean {
 }
 
 function focusOrOpenSettings(viewId: string, title: string): void {
-  for (const f of shell.float.list()) {
+  for (const f of sh3.float.list()) {
     if (nodeContainsView(f.content, viewId)) {
-      shell.float.focus(f.id);
+      sh3.float.focus(f.id);
       return;
     }
   }
-  shell.float.open(viewId, {
+  sh3.float.open(viewId, {
     title,
     size: { w: 520, h: 640 },
   });

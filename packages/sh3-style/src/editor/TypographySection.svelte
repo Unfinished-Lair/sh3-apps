@@ -29,9 +29,9 @@
       <input
         type="text"
         class="field-input"
-        value={resolved['shell-font-ui'] ?? ''}
+        value={resolved['sh3-font-ui'] ?? ''}
         {disabled}
-        onchange={(e) => handleChange('shell-font-ui', e.currentTarget.value)}
+        onchange={(e) => handleChange('sh3-font-ui', e.currentTarget.value)}
       />
     </div>
     <div class="field">
@@ -39,9 +39,9 @@
       <input
         type="text"
         class="field-input mono"
-        value={resolved['shell-font-mono'] ?? ''}
+        value={resolved['sh3-font-mono'] ?? ''}
         {disabled}
-        onchange={(e) => handleChange('shell-font-mono', e.currentTarget.value)}
+        onchange={(e) => handleChange('sh3-font-mono', e.currentTarget.value)}
       />
     </div>
     <div class="field">
@@ -49,9 +49,9 @@
       <input
         type="text"
         class="field-input small"
-        value={resolved['shell-font-size'] ?? '13px'}
+        value={resolved['sh3-font-size'] ?? '13px'}
         {disabled}
-        onchange={(e) => handleChange('shell-font-size', e.currentTarget.value)}
+        onchange={(e) => handleChange('sh3-font-size', e.currentTarget.value)}
       />
     </div>
     <div class="field">
@@ -59,9 +59,9 @@
       <input
         type="text"
         class="field-input small"
-        value={resolved['shell-line'] ?? '1.45'}
+        value={resolved['sh3-line'] ?? '1.45'}
         {disabled}
-        onchange={(e) => handleChange('shell-line', e.currentTarget.value)}
+        onchange={(e) => handleChange('sh3-line', e.currentTarget.value)}
       />
     </div>
   </div>
@@ -69,14 +69,14 @@
 
 <style>
   .section {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
     border-radius: 6px;
     padding: 12px;
   }
   .section-title {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     margin-bottom: 8px;
   }
   .typo-grid {
@@ -91,19 +91,19 @@
   }
   .field-label {
     font-size: 10px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
   .field-input {
-    background: var(--shell-bg);
-    border: 1px solid var(--shell-border);
+    background: var(--sh3-bg);
+    border: 1px solid var(--sh3-border);
     border-radius: 4px;
     padding: 4px 8px;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
     font-size: 12px;
   }
   .field-input.mono {
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
   }
   .field-input.small {
     max-width: 80px;

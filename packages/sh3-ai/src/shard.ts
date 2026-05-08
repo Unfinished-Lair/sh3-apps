@@ -6,7 +6,7 @@ import type {
   MountContext,
   LayoutNode,
 } from 'sh3-core';
-import { registerShellMode, shell } from 'sh3-core';
+import { registerShellMode, sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
@@ -25,26 +25,26 @@ function nodeContainsView(node: LayoutNode, viewId: string): boolean {
 }
 
 function focusOrOpenConversations(): void {
-  for (const f of shell.float.list()) {
+  for (const f of sh3.float.list()) {
     if (nodeContainsView(f.content, CONVERSATIONS_VIEW_ID)) {
-      shell.float.focus(f.id);
+      sh3.float.focus(f.id);
       return;
     }
   }
-  shell.float.open(CONVERSATIONS_VIEW_ID, {
+  sh3.float.open(CONVERSATIONS_VIEW_ID, {
     title: CONVERSATIONS_FLOAT_TITLE,
     size: { w: 480, h: 560 },
   });
 }
 
 function focusOrOpenDefaults(): void {
-  for (const f of shell.float.list()) {
+  for (const f of sh3.float.list()) {
     if (nodeContainsView(f.content, DEFAULTS_VIEW_ID)) {
-      shell.float.focus(f.id);
+      sh3.float.focus(f.id);
       return;
     }
   }
-  shell.float.open(DEFAULTS_VIEW_ID, {
+  sh3.float.open(DEFAULTS_VIEW_ID, {
     title: DEFAULTS_FLOAT_TITLE,
     size: { w: 520, h: 520 },
   });
@@ -77,6 +77,7 @@ import {
 import { ConversationStore } from './ai/conversations/store';
 import type { ConversationDocument } from './ai/conversations/types';
 import { firstMessageTitle, llmSummarizeTitle } from './ai/conversations/title-strategy';
+import { replayConversationToScrollback } from './ai/conversations/replay';
 import { DocsStore } from './ai/docs/store';
 import { makeDocTools } from './ai/docs/tools';
 
@@ -282,7 +283,19 @@ export const shard: SourceShard = {
           props: {
             store,
             getActiveId: () => state.user.activeConversationId,
-            onActivate: (id: string) => openConversationById(id).then(() => undefined),
+            onActivate: async (id: string) => {
+              const r = sh3.dispatchToTerminal(`ai:open ${id}`);
+              if (r.ok) return;
+              // No terminal (or ambiguous focus) — bind silently so the
+              // selection sticks, and tell the user why nothing rendered.
+              await openConversationById(id);
+              sh3.toast.notify(
+                r.error === 'no-terminal'
+                  ? 'AI conversation loaded. Open a terminal to see the transcript.'
+                  : 'AI conversation loaded. Focus a terminal to see the transcript.',
+                { level: 'warn' },
+              );
+            },
             onNew: () => newConversation().then(() => undefined),
             onRename: renameConversationById,
             onDelete: deleteConversationById,
@@ -502,11 +515,47 @@ export const shard: SourceShard = {
       async run(vctx) {
         const prevTitle = conversation.title || conversation.id;
         rotateConversation();
+        vctx.scrollback.clear();
         vctx.scrollback.push({
           kind: 'status',
           text: prevTitle
             ? `ai: new conversation started (was '${prevTitle}')`
             : 'ai: new conversation started',
+          level: 'info',
+          ts: Date.now(),
+        });
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'open',
+      summary: 'Load a saved AI conversation into this terminal. Usage: ai:open <id>',
+      async run(vctx, args) {
+        if (args.length === 0) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: 'usage: ai:open <id>',
+            level: 'info',
+            ts: Date.now(),
+          });
+          return;
+        }
+        const id = args[0];
+        const doc = await openConversationById(id);
+        if (!doc) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `ai: conversation '${id}' not found`,
+            level: 'error',
+            ts: Date.now(),
+          });
+          return;
+        }
+        vctx.scrollback.clear();
+        replayConversationToScrollback(doc, vctx.scrollback, vctx.cwd);
+        vctx.scrollback.push({
+          kind: 'status',
+          text: `ai: opened '${doc.title || doc.id}'`,
           level: 'info',
           ts: Date.now(),
         });

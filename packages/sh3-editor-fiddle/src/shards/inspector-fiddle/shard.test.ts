@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Stub `shell` from sh3-core so the discover-types action can open a fake
+// Stub `sh3` from sh3-core so the discover-types action can open a fake
 // float and tests can introspect what it called. The fake mints slot ids
 // matching the shape sh3-core produces ('float:<viewId>:<n>') so callers
 // downstream see the same wire format. Using vi.hoisted so the references
@@ -45,7 +45,7 @@ const { fakeFloatStore, fakeFloatManager, resetFakeFloatState } = vi.hoisted(() 
 });
 
 vi.mock('sh3-core', () => ({
-  shell: {
+  sh3: {
     float: fakeFloatManager,
   },
 }));

@@ -1,4 +1,4 @@
-import { shell, type ShardContext } from 'sh3-core';
+import { sh3, type ShardContext } from 'sh3-core';
 import type { Action } from 'sh3-core';
 import type { ExplorerStore } from '../explorerShard.svelte';
 import { SELECTION_TYPE, type DeleteTargetRef } from '../explorerSelection.svelte';
@@ -19,13 +19,13 @@ export async function runDelete(
 ): Promise<void> {
   const sel = dCtx.selection;
   if (!sel || sel.type !== SELECTION_TYPE) {
-    shell.toast.notify(NO_SELECTION_TOAST, { level: 'warn' });
+    sh3.toast.notify(NO_SELECTION_TOAST, { level: 'warn' });
     return;
   }
 
   const browse = ctx.browse;
   if (!browse || typeof browse.deleteFrom !== 'function') {
-    shell.toast.notify(FEATURE_GATE_TOAST, { level: 'warn' });
+    sh3.toast.notify(FEATURE_GATE_TOAST, { level: 'warn' });
     return;
   }
 
@@ -54,10 +54,10 @@ export async function runDelete(
   if (ref.kind === 'file') {
     try {
       await browse.deleteFrom(ref.shardId, ref.path);
-      shell.toast.notify(`Deleted ${ref.path}`, { level: 'success' });
+      sh3.toast.notify(`Deleted ${ref.path}`, { level: 'success' });
       store.setSelection(null);
     } catch (err) {
-      shell.toast.notify(
+      sh3.toast.notify(
         `Failed to delete ${ref.path}: ${err instanceof Error ? err.message : String(err)}`,
         { level: 'error' },
       );
@@ -72,12 +72,12 @@ export async function runDelete(
   );
   const failed = results.filter((r) => r.status === 'rejected').length;
   if (failed === 0) {
-    shell.toast.notify(
+    sh3.toast.notify(
       `Deleted folder /${ref.path} (${targets.length} files)`,
       { level: 'success' },
     );
   } else {
-    shell.toast.notify(
+    sh3.toast.notify(
       `Deleted ${targets.length - failed}/${targets.length}; ${failed} failed`,
       { level: 'error' },
     );

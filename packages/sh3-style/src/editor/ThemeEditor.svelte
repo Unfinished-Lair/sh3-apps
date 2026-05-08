@@ -176,9 +176,9 @@
   .theme-editor {
     display: flex;
     height: 100%;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
-    font-size: var(--shell-font-size);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
+    font-size: var(--sh3-font-size);
   }
   .editor-panel {
     flex: 1;
@@ -199,29 +199,29 @@
     all: unset;
     font-size: 16px;
     font-weight: bold;
-    color: var(--shell-fg);
-    border-bottom: 1px solid var(--shell-border);
+    color: var(--sh3-fg);
+    border-bottom: 1px solid var(--sh3-border);
     padding: 0 2px 2px;
     min-width: 100px;
   }
   .name-input:focus {
-    border-bottom-color: var(--shell-accent);
+    border-bottom-color: var(--sh3-accent);
   }
   .badge {
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 3px;
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
     white-space: nowrap;
   }
   .badge.builtin {
-    background: var(--shell-accent);
-    color: var(--shell-bg);
+    background: var(--sh3-accent);
+    color: var(--sh3-bg);
   }
   .badge.default {
-    background: var(--shell-accent);
-    color: var(--shell-bg);
+    background: var(--sh3-accent);
+    color: var(--sh3-bg);
   }
   .header-actions {
     margin-left: auto;
@@ -234,7 +234,7 @@
     gap: 16px;
   }
   .default-message {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     padding: 24px 0;
   }
   .default-message p {

@@ -30,7 +30,7 @@
 
 <style>
   .cp-leaf-fallback {
-    font-family: var(--shell-font-mono, monospace);
-    color: var(--shell-text-dim);
+    font-family: var(--sh3-font-mono, monospace);
+    color: var(--sh3-text-dim);
   }
 </style>

@@ -123,9 +123,9 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
-    font-size: var(--shell-font-size);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
+    font-size: var(--sh3-font-size);
   }
   .content {
     flex: 1;

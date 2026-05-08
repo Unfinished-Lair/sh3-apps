@@ -196,22 +196,22 @@
 
 <style>
   .sh3-fe-tree, .sh3-fe-tree ul { list-style: none; padding: 0; margin: 0; }
-  .sh3-fe-node { background: none; border: 0; color: var(--shell-fg); cursor: pointer; padding: 2px 4px; text-align: left; width: 100%; font: inherit; }
-  .sh3-fe-node:hover { background: var(--shell-bg-elevated); }
-  .sh3-fe-node.selected { background: var(--shell-accent-muted); }
-  .sh3-fe-empty { color: var(--shell-fg-muted); padding: 8px; }
+  .sh3-fe-node { background: none; border: 0; color: var(--sh3-fg); cursor: pointer; padding: 2px 4px; text-align: left; width: 100%; font: inherit; }
+  .sh3-fe-node:hover { background: var(--sh3-bg-elevated); }
+  .sh3-fe-node.selected { background: var(--sh3-accent-muted); }
+  .sh3-fe-empty { color: var(--sh3-fg-muted); padding: 8px; }
   .sh3-fe-row { display: flex; align-items: center; gap: 2px; }
   .sh3-fe-twisty {
     background: none;
     border: 0;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     cursor: pointer;
     padding: 2px 4px;
     font: inherit;
     width: 1.4em;
     flex: 0 0 auto;
   }
-  .sh3-fe-twisty:hover { color: var(--shell-fg); }
+  .sh3-fe-twisty:hover { color: var(--sh3-fg); }
   .sh3-fe-node--folder { flex: 1 1 auto; }
   .sh3-fe-node--file { flex: 1 1 auto; }
   .sh3-fe-badge {
@@ -219,11 +219,11 @@
     padding: 0 4px;
     margin-left: 6px;
     font-size: 0.85em;
-    border-radius: var(--shell-radius-sm, 3px);
+    border-radius: var(--sh3-radius-sm, 3px);
     flex: 0 0 auto;
     cursor: default;
   }
-  .sh3-fe-badge--ok { color: var(--shell-accent, #4a90e2); }
+  .sh3-fe-badge--ok { color: var(--sh3-accent, #4a90e2); }
   .sh3-fe-badge--warn { color: #e6a23c; }
-  .sh3-fe-badge--muted { color: var(--shell-fg-muted, #888); }
+  .sh3-fe-badge--muted { color: var(--sh3-fg-muted, #888); }
 </style>

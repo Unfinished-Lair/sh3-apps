@@ -41,15 +41,15 @@
   .sh3-ai-scopes button {
     background: none;
     border: 0;
-    color: var(--shell-link, #6cf);
+    color: var(--sh3-link, #6cf);
     cursor: pointer;
     padding: 0;
     font: inherit;
   }
   .sh3-ai-scopes button:hover:not(:disabled) { text-decoration: underline; }
   .sh3-ai-scopes button:disabled {
-    color: var(--shell-fg-muted, #9aa0aa);
+    color: var(--sh3-fg-muted, #9aa0aa);
     cursor: default;
   }
-  .sh3-ai-scopes tr.active td.dot { color: var(--shell-accent, #6ea8fe); }
+  .sh3-ai-scopes tr.active td.dot { color: var(--sh3-accent, #6ea8fe); }
 </style>

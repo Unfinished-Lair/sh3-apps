@@ -52,18 +52,18 @@
     inset: 0;
     padding: 12px 16px;
     overflow: auto;
-    background: var(--shell-grad-bg, var(--shell-bg));
-    color: var(--shell-fg);
+    background: var(--sh3-grad-bg, var(--sh3-bg));
+    color: var(--sh3-fg);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
   }
   h2 {
     margin: 0 0 12px;
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
     font-size: 14px;
   }
   .muted {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     margin: 0 0 8px;
   }
   ul {
@@ -80,20 +80,20 @@
   }
   .method {
     min-width: 6ch;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     flex-shrink: 0;
   }
   .method.get {
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
   }
   a {
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
     text-decoration: none;
   }
   a:hover {
     text-decoration: underline;
   }
   .path {
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
 </style>

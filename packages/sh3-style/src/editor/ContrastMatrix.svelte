@@ -12,16 +12,16 @@
   const resolved = $derived(resolveTokens(theme));
 
   const SURFACES: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-bg',          label: 'bg' },
-    { token: 'shell-bg-elevated', label: 'elevated' },
-    { token: 'shell-bg-sunken',   label: 'sunken' },
-    { token: 'shell-input-bg',    label: 'input' },
+    { token: 'sh3-bg',          label: 'bg' },
+    { token: 'sh3-bg-elevated', label: 'elevated' },
+    { token: 'sh3-bg-sunken',   label: 'sunken' },
+    { token: 'sh3-input-bg',    label: 'input' },
   ];
 
   const FOREGROUNDS: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-fg',        label: 'fg' },
-    { token: 'shell-fg-muted',  label: 'muted' },
-    { token: 'shell-fg-subtle', label: 'subtle' },
+    { token: 'sh3-fg',        label: 'fg' },
+    { token: 'sh3-fg-muted',  label: 'muted' },
+    { token: 'sh3-fg-subtle', label: 'subtle' },
   ];
 </script>
 
@@ -56,23 +56,23 @@
   .matrix {
     border-collapse: collapse;
     font-size: 10px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
   .matrix th,
   .matrix td {
-    padding: var(--shell-pad-xs, 2px) var(--shell-pad-sm, 4px);
+    padding: var(--sh3-pad-xs, 2px) var(--sh3-pad-sm, 4px);
     text-align: left;
   }
   .matrix thead th {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-weight: 400;
     text-transform: uppercase;
     font-size: 9px;
   }
   .matrix tbody th {
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-weight: 400;
     text-align: right;
-    padding-right: var(--shell-pad-md, 8px);
+    padding-right: var(--sh3-pad-md, 8px);
   }
 </style>

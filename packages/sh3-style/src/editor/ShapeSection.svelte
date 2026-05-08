@@ -14,10 +14,10 @@
   } = $props();
 
   const RADIUS_TOKENS: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-radius-sm', label: 'Small' },
-    { token: 'shell-radius', label: 'Default' },
-    { token: 'shell-radius-md', label: 'Medium' },
-    { token: 'shell-radius-lg', label: 'Large' },
+    { token: 'sh3-radius-sm', label: 'Small' },
+    { token: 'sh3-radius', label: 'Default' },
+    { token: 'sh3-radius-md', label: 'Medium' },
+    { token: 'sh3-radius-lg', label: 'Large' },
   ];
 
   const resolved = $derived(resolveTokens(theme));
@@ -54,14 +54,14 @@
 
 <style>
   .section {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
     border-radius: 6px;
     padding: 12px;
   }
   .section-title {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     margin-bottom: 8px;
   }
   .radius-grid {
@@ -76,7 +76,7 @@
   }
   .field-label {
     font-size: 10px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
   .radius-row {
     display: flex;
@@ -84,12 +84,12 @@
     gap: 6px;
   }
   .field-input {
-    background: var(--shell-bg);
-    border: 1px solid var(--shell-border);
+    background: var(--sh3-bg);
+    border: 1px solid var(--sh3-border);
     border-radius: 4px;
     padding: 4px 8px;
-    color: var(--shell-fg);
-    font-family: var(--shell-font-ui);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
     font-size: 12px;
     max-width: 80px;
   }
@@ -100,7 +100,7 @@
   .radius-preview {
     width: 28px;
     height: 28px;
-    background: var(--shell-accent);
+    background: var(--sh3-accent);
     flex-shrink: 0;
   }
 </style>

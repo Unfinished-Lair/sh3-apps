@@ -50,19 +50,19 @@
   .semantic-row {
     display: flex;
     align-items: center;
-    gap: var(--shell-pad-md, 8px);
+    gap: var(--sh3-pad-md, 8px);
   }
   .swatch {
     display: flex;
     align-items: center;
-    gap: var(--shell-pad-sm, 4px);
+    gap: var(--sh3-pad-sm, 4px);
     cursor: pointer;
   }
   .swatch input[type="color"] {
     width: 26px;
     height: 22px;
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius-sm, 3px);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm, 3px);
     padding: 2px;
     cursor: pointer;
     background: none;
@@ -73,6 +73,6 @@
   }
   .label {
     font-size: 11px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
 </style>

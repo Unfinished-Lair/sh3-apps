@@ -18,9 +18,9 @@
 
 <style>
   .section {
-    padding-bottom: var(--shell-pad-md);
-    margin-bottom: var(--shell-pad-md);
-    border-bottom: 1px solid var(--shell-border);
+    padding-bottom: var(--sh3-pad-md);
+    margin-bottom: var(--sh3-pad-md);
+    border-bottom: 1px solid var(--sh3-border);
   }
   .section:last-child {
     border-bottom: none;
@@ -28,13 +28,13 @@
     margin-bottom: 0;
   }
   .section-label {
-    margin: 0 0 var(--shell-pad-sm);
+    margin: 0 0 var(--sh3-pad-sm);
     font-size: 11px;
     font-weight: 600;
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-family: var(--shell-font-ui);
+    font-family: var(--sh3-font-ui);
   }
   .rows {
     display: flex;

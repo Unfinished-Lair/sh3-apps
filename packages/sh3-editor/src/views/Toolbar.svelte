@@ -59,26 +59,26 @@
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    border-bottom: 1px solid var(--shell-border);
-    background: var(--shell-bg-raised);
-    font-family: var(--shell-font-ui);
+    border-bottom: 1px solid var(--sh3-border);
+    background: var(--sh3-bg-raised);
+    font-family: var(--sh3-font-ui);
     font-size: 12px;
     flex-shrink: 0;
   }
 
   .toolbar-btn {
     padding: 2px 8px;
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 3px;
-    background: var(--shell-bg);
-    color: var(--shell-fg);
+    background: var(--sh3-bg);
+    color: var(--sh3-fg);
     font-size: 11px;
     cursor: pointer;
     white-space: nowrap;
   }
 
   .toolbar-btn:hover:not(:disabled) {
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
 
   .toolbar-btn:disabled {
@@ -87,7 +87,7 @@
   }
 
   .toolbar-accent {
-    color: var(--shell-accent);
+    color: var(--sh3-accent);
   }
 
   .toolbar-spacer {
@@ -97,12 +97,12 @@
   .toolbar-sep {
     width: 1px;
     height: 16px;
-    background: var(--shell-border);
+    background: var(--sh3-border);
   }
 
   .toolbar-path {
-    color: var(--shell-fg-muted);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-fg-muted);
+    font-family: var(--sh3-font-mono);
     font-size: 11px;
     overflow: hidden;
     text-overflow: ellipsis;

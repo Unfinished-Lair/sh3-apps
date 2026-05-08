@@ -30,7 +30,7 @@ import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
 import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
 import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode } from 'sh3-core';
 import {
-  shell,
+  sh3,
   getActiveApp,
   spliceIntoActiveLayout,
   inspectActiveLayout,
@@ -97,7 +97,7 @@ export const diagnosticShard: SourceShard = {
     }
 
     // First-time prompt for this app.
-    shell.modal.open(DiagnosticPromptModal, {
+    sh3.modal.open(DiagnosticPromptModal, {
       appLabel: active.label,
       onChoose: (choice: Behavior) => {
         state.workspace.sessionBehavior[contextKey] = choice;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { shell } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
   import type { MatchingConfig, ToolbarAction, UserPrefs } from '../types';
   import type { RegistryEntry } from '../model/instance-registry.svelte';
   import type { ApiInternals } from '../model/api';
@@ -86,7 +86,7 @@
   };
 
   function openSettingsModal() {
-    shell.modal.open(TextEditorSettings, {
+    sh3.modal.open(TextEditorSettings, {
       indentType,
       prefs: entry.prefs,
       onChange: handlePrefsChange,
@@ -360,20 +360,20 @@
     display: flex;
     height: 100%;
     overflow: hidden;
-    background: var(--shell-bg-sunken);
-    font-family: var(--shell-font-mono);
+    background: var(--sh3-bg-sunken);
+    font-family: var(--sh3-font-mono);
     font-size: var(--editor-font-size, 13px);
     line-height: 1.6;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
 
   .gutter {
     flex-shrink: 0;
     width: 3.5em;
-    background: var(--shell-bg-sunken);
-    border-right: 1px solid var(--shell-border);
+    background: var(--sh3-bg-sunken);
+    border-right: 1px solid var(--sh3-border);
     overflow: hidden;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     font-size: inherit;
     line-height: inherit;
     user-select: none;
@@ -409,7 +409,7 @@
     font-family: inherit;
     font-size: inherit;
     line-height: inherit;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
     tab-size: 2;
   }
 
@@ -428,7 +428,7 @@
     font-size: inherit;
     line-height: inherit;
     color: transparent;
-    caret-color: var(--shell-fg);
+    caret-color: var(--sh3-fg);
     white-space: pre;
     word-wrap: normal;
     overflow: auto;
@@ -460,7 +460,7 @@
   :global(.hl-context) { color: #56b6c2; }
   :global(.hl-parent) { color: #61afef; }
   :global(.hl-ref) { color: #61afef; }
-  :global(.hl-punct) { color: var(--shell-fg-muted); }
+  :global(.hl-punct) { color: var(--sh3-fg-muted); }
   :global(.hl-code) { color: #abb2bf; }
   :global(.hl-heading) { color: #e5c07b; font-weight: 600; }
   :global(.hl-bold) { font-weight: 600; }

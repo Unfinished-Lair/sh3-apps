@@ -19,44 +19,44 @@
   const resolved = $derived(resolveTokens(theme));
 
   const endpoints = $derived({
-    light: resolved['shell-fg']!,
-    dark:  resolved['shell-bg']!,
+    light: resolved['sh3-fg']!,
+    dark:  resolved['sh3-bg']!,
   });
 
   const drivenFg = $derived(
-    driveOppositeColor(resolved['shell-accent']!, endpoints),
+    driveOppositeColor(resolved['sh3-accent']!, endpoints),
   );
 
   // Mode is inferred: Driven iff the stored fg-on-accent equals what Algorithm A would produce.
   const mode = $derived<'driven' | 'custom'>(
-    drivenFg && resolved['shell-fg-on-accent'] === drivenFg.color ? 'driven' : 'custom',
+    drivenFg && resolved['sh3-fg-on-accent'] === drivenFg.color ? 'driven' : 'custom',
   );
 
   function onAccentChange(e: Event) {
     if (disabled) return;
     const newAccent = (e.currentTarget as HTMLInputElement).value;
     const wasDriven = mode === 'driven';
-    updateToken(theme.id, 'shell-accent', newAccent, state);
+    updateToken(theme.id, 'sh3-accent', newAccent, state);
     if (wasDriven) {
       const driven = driveOppositeColor(newAccent, endpoints);
-      if (driven) updateToken(theme.id, 'shell-fg-on-accent', driven.color, state);
+      if (driven) updateToken(theme.id, 'sh3-fg-on-accent', driven.color, state);
     }
   }
 
   function onFgOnAccentChange(e: Event) {
     if (disabled) return;
     const value = (e.currentTarget as HTMLInputElement).value;
-    updateToken(theme.id, 'shell-fg-on-accent', value, state);
+    updateToken(theme.id, 'sh3-fg-on-accent', value, state);
   }
 
   function setMode(next: 'driven' | 'custom') {
     if (disabled) return;
     if (next === 'driven') {
-      if (drivenFg) updateToken(theme.id, 'shell-fg-on-accent', drivenFg.color, state);
+      if (drivenFg) updateToken(theme.id, 'sh3-fg-on-accent', drivenFg.color, state);
     } else {
-      if (drivenFg && resolved['shell-fg-on-accent'] === drivenFg.color) {
+      if (drivenFg && resolved['sh3-fg-on-accent'] === drivenFg.color) {
         const other = drivenFg.endpoint === 'dark' ? endpoints.light : endpoints.dark;
-        updateToken(theme.id, 'shell-fg-on-accent', other, state);
+        updateToken(theme.id, 'sh3-fg-on-accent', other, state);
       }
     }
   }
@@ -72,8 +72,8 @@
   // the stored fg-on-accent in sync with Algorithm A's new answer.
   $effect(() => {
     if (disabled) return;
-    if (mode === 'driven' && drivenFg && resolved['shell-fg-on-accent'] !== drivenFg.color) {
-      updateToken(theme.id, 'shell-fg-on-accent', drivenFg.color, state);
+    if (mode === 'driven' && drivenFg && resolved['sh3-fg-on-accent'] !== drivenFg.color) {
+      updateToken(theme.id, 'sh3-fg-on-accent', drivenFg.color, state);
     }
   });
 </script>
@@ -82,7 +82,7 @@
   <label class="swatch">
     <input
       type="color"
-      value={resolved['shell-accent'] ?? '#000000'}
+      value={resolved['sh3-accent'] ?? '#000000'}
       {disabled}
       onchange={onAccentChange}
     />
@@ -109,7 +109,7 @@
   <label class="swatch">
     <input
       type="color"
-      value={resolved['shell-fg-on-accent'] ?? '#ffffff'}
+      value={resolved['sh3-fg-on-accent'] ?? '#ffffff'}
       disabled={disabled || mode === 'driven'}
       onchange={onFgOnAccentChange}
     />
@@ -117,8 +117,8 @@
   </label>
 
   <ContrastBadge
-    fg={resolved['shell-fg-on-accent']}
-    bg={resolved['shell-accent']}
+    fg={resolved['sh3-fg-on-accent']}
+    bg={resolved['sh3-accent']}
     usage="text"
   />
 </div>
@@ -133,20 +133,20 @@
   .accent-row {
     display: flex;
     align-items: center;
-    gap: var(--shell-pad-md, 8px);
+    gap: var(--sh3-pad-md, 8px);
     flex-wrap: wrap;
   }
   .swatch {
     display: flex;
     align-items: center;
-    gap: var(--shell-pad-sm, 4px);
+    gap: var(--sh3-pad-sm, 4px);
     cursor: pointer;
   }
   .swatch input[type="color"] {
     width: 26px;
     height: 22px;
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius-sm, 3px);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm, 3px);
     padding: 2px;
     cursor: pointer;
     background: none;
@@ -157,12 +157,12 @@
   }
   .label {
     font-size: 11px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
   .mode-toggle {
     display: inline-flex;
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius-sm, 3px);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm, 3px);
     overflow: hidden;
   }
   .chip {
@@ -170,23 +170,23 @@
     padding: 2px 8px;
     font-size: 10px;
     cursor: pointer;
-    color: var(--shell-fg-muted);
-    background: var(--shell-bg-sunken);
+    color: var(--sh3-fg-muted);
+    background: var(--sh3-bg-sunken);
   }
   .chip.selected {
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
   }
   .chip:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
   .caption {
-    margin-top: var(--shell-pad-sm, 4px);
+    margin-top: var(--sh3-pad-sm, 4px);
     font-size: 10px;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
   }
   .preview-pill {
-    margin-top: var(--shell-pad-sm, 4px);
+    margin-top: var(--sh3-pad-sm, 4px);
   }
 </style>

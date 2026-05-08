@@ -86,17 +86,17 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--shell-bg);
-    color: var(--shell-fg);
-    font-family: var(--shell-font-mono);
+    background: var(--sh3-bg);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-mono);
     font-size: 13px;
     outline: none;
     /* Normalize widget background tokens across sh3-core primitives.
-       Field/Textarea/NumberInput/Select default to --shell-input-bg while
-       Segmented/EditablePrimitive default to --shell-bg-sunken. Override
-       --shell-input-bg locally so every input-style widget inherits the
+       Field/Textarea/NumberInput/Select default to --sh3-input-bg while
+       Segmented/EditablePrimitive default to --sh3-bg-sunken. Override
+       --sh3-input-bg locally so every input-style widget inherits the
        same sunken surface used elsewhere in the inspector. */
-    --shell-input-bg: var(--shell-bg-sunken);
+    --sh3-input-bg: var(--sh3-bg-sunken);
   }
   .inspector-body {
     flex: 1;
@@ -110,8 +110,8 @@
      to win source-of-truth for the active appearance. Filed upstream;
      remove once sh3-core ships the fix. */
   .inspector-container :global(.sh3-seg button.sh3-seg__btn--active) {
-    background: var(--shell-accent);
-    color: var(--shell-fg-on-accent);
+    background: var(--sh3-accent);
+    color: var(--sh3-fg-on-accent);
     font-weight: 600;
   }
 </style>

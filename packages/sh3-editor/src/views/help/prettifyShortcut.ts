@@ -10,7 +10,7 @@ const MAC_SYMBOL: Record<string, string> = {
 /**
  * Convert a canonical shortcut string (e.g. "Ctrl+Shift+Z") into a
  * platform-appropriate display string. Assumes `Mod` has already been
- * resolved to `Ctrl` or `Meta` by the caller (shell.actions.listActive
+ * resolved to `Ctrl` or `Meta` by the caller (sh3.actions.listActive
  * does this; our shim does too).
  */
 export function prettifyShortcut(canonical: string | null, platform: Platform): string {

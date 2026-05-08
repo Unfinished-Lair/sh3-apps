@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('sh3-core', () => ({
-  shell: {
+  sh3: {
     float: {
       open: vi.fn(() => 'float-1'),
       close: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock('sh3-core', () => ({
   },
 }));
 
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import {
   decideSettleValue,
   normalizeOrFallback,
@@ -17,7 +17,7 @@ import {
   type PickDeps,
 } from './popup-pick';
 
-const floatOpen = shell.float.open as unknown as ReturnType<typeof vi.fn>;
+const floatOpen = sh3.float.open as unknown as ReturnType<typeof vi.fn>;
 
 describe('decideSettleValue', () => {
   it('returns null when Escape was pressed (regardless of touch)', () => {

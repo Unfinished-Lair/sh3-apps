@@ -79,9 +79,9 @@
 
 <style>
   .cp-pick-title {
-    font: var(--shell-font-ui);
-    color: var(--shell-text-dim);
+    font: var(--sh3-font-ui);
+    color: var(--sh3-text-dim);
     padding: 4px 8px;
-    border-bottom: 1px solid var(--shell-border-subtle, rgba(255, 255, 255, 0.1));
+    border-bottom: 1px solid var(--sh3-border-subtle, rgba(255, 255, 255, 0.1));
   }
 </style>

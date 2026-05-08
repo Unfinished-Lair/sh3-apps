@@ -6,7 +6,7 @@
    * them one at a time, top to bottom.
    */
 
-  import { shell } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
   import Self from './DemoModalContent.svelte';
   import { randomModalBoxStyle } from './randomModalStyle';
 
@@ -19,7 +19,7 @@
   } = $props();
 
   function openAnother() {
-    shell.modal.open(Self, { depth: depth + 1 }, { boxStyle: randomModalBoxStyle() });
+    sh3.modal.open(Self, { depth: depth + 1 }, { boxStyle: randomModalBoxStyle() });
   }
 </script>
 
@@ -37,50 +37,50 @@
 
 <style>
   .body {
-    padding: var(--shell-pad-lg);
+    padding: var(--sh3-pad-lg);
     display: flex;
     flex-direction: column;
-    gap: var(--shell-pad-md);
+    gap: var(--sh3-pad-md);
   }
   h2 {
     margin: 0;
     font-size: 16px;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
   p {
     margin: 0;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
     font-size: 13px;
     line-height: 1.5;
   }
   kbd {
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 11px;
     padding: 1px 4px;
-    border: 1px solid var(--shell-border-strong);
+    border: 1px solid var(--sh3-border-strong);
     border-radius: 2px;
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
   .row {
     display: flex;
-    gap: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
   }
   button {
     appearance: none;
     font: inherit;
     font-size: 12px;
-    padding: var(--shell-pad-sm) var(--shell-pad-md);
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
-    border: 1px solid var(--shell-border-strong);
+    padding: var(--sh3-pad-sm) var(--sh3-pad-md);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border-strong);
     border-radius: 3px;
     cursor: pointer;
   }
-  button:hover { background: var(--shell-accent); }
+  button:hover { background: var(--sh3-accent); }
   button.secondary {
     background: transparent;
   }
   button.secondary:hover {
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
 </style>

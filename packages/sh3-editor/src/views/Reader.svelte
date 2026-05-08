@@ -48,7 +48,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--shell-bg);
+    background: var(--sh3-bg);
   }
   .reader-body {
     flex: 1;

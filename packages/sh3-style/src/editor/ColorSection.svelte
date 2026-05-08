@@ -19,18 +19,18 @@
   const resolved = $derived(resolveTokens(theme));
 
   const SURFACES: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-bg',             label: 'Background' },
-    { token: 'shell-bg-elevated',    label: 'Elevated' },
-    { token: 'shell-bg-sunken',      label: 'Sunken' },
-    { token: 'shell-input-bg',       label: 'Input' },
-    { token: 'shell-border',         label: 'Border' },
-    { token: 'shell-border-strong',  label: 'Border Strong' },
+    { token: 'sh3-bg',             label: 'Background' },
+    { token: 'sh3-bg-elevated',    label: 'Elevated' },
+    { token: 'sh3-bg-sunken',      label: 'Sunken' },
+    { token: 'sh3-input-bg',       label: 'Input' },
+    { token: 'sh3-border',         label: 'Border' },
+    { token: 'sh3-border-strong',  label: 'Border Strong' },
   ];
 
   const FOREGROUNDS: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-fg',         label: 'Text' },
-    { token: 'shell-fg-muted',   label: 'Text Muted' },
-    { token: 'shell-fg-subtle',  label: 'Text Subtle' },
+    { token: 'sh3-fg',         label: 'Text' },
+    { token: 'sh3-fg-muted',   label: 'Text Muted' },
+    { token: 'sh3-fg-subtle',  label: 'Text Subtle' },
   ];
 
   function handleChange(token: ThemeToken, value: string) {
@@ -82,9 +82,9 @@
     <label class="swatch-row accent-muted-row">
       <input
         type="color"
-        value={resolved['shell-accent-muted'] ?? '#000000'}
+        value={resolved['sh3-accent-muted'] ?? '#000000'}
         {disabled}
-        onchange={(e) => handleChange('shell-accent-muted', e.currentTarget.value)}
+        onchange={(e) => handleChange('sh3-accent-muted', e.currentTarget.value)}
       />
       <span class="swatch-label">Accent Muted</span>
     </label>
@@ -95,20 +95,20 @@
     <div class="semantic-rows">
       <SemanticRow
         {theme} {state} {disabled}
-        surfaceToken="shell-error"
-        fgOnToken="shell-fg-on-error"
+        surfaceToken="sh3-error"
+        fgOnToken="sh3-fg-on-error"
         label="Error"
       />
       <SemanticRow
         {theme} {state} {disabled}
-        surfaceToken="shell-warning"
-        fgOnToken="shell-fg-on-warning"
+        surfaceToken="sh3-warning"
+        fgOnToken="sh3-fg-on-warning"
         label="Warning"
       />
       <SemanticRow
         {theme} {state} {disabled}
-        surfaceToken="shell-success"
-        fgOnToken="shell-fg-on-success"
+        surfaceToken="sh3-success"
+        fgOnToken="sh3-fg-on-success"
         label="Success"
       />
     </div>
@@ -122,18 +122,18 @@
 
 <style>
   .section {
-    background: var(--shell-bg-elevated);
-    border-radius: var(--shell-radius-md, 6px);
-    padding: var(--shell-pad-lg, 12px);
+    background: var(--sh3-bg-elevated);
+    border-radius: var(--sh3-radius-md, 6px);
+    padding: var(--sh3-pad-lg, 12px);
   }
   .section-title {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
-    margin-bottom: var(--shell-pad-md, 8px);
+    color: var(--sh3-fg-subtle);
+    margin-bottom: var(--sh3-pad-md, 8px);
   }
   .group {
-    margin-bottom: var(--shell-pad-lg, 12px);
+    margin-bottom: var(--sh3-pad-lg, 12px);
   }
   .group:last-child {
     margin-bottom: 0;
@@ -141,25 +141,25 @@
   .group-title {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
-    margin-bottom: var(--shell-pad-sm, 4px);
+    color: var(--sh3-fg-subtle);
+    margin-bottom: var(--sh3-pad-sm, 4px);
   }
   .rows {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--shell-pad-sm, 4px) var(--shell-pad-md, 8px);
+    gap: var(--sh3-pad-sm, 4px) var(--sh3-pad-md, 8px);
   }
   .swatch-row {
     display: flex;
     align-items: center;
-    gap: var(--shell-pad-sm, 4px);
+    gap: var(--sh3-pad-sm, 4px);
     cursor: pointer;
   }
   .swatch-row input[type="color"] {
     width: 26px;
     height: 22px;
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius-sm, 3px);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm, 3px);
     padding: 2px;
     cursor: pointer;
     background: none;
@@ -170,14 +170,14 @@
   }
   .swatch-label {
     font-size: 11px;
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
   .accent-muted-row {
-    margin-top: var(--shell-pad-sm, 4px);
+    margin-top: var(--sh3-pad-sm, 4px);
   }
   .semantic-rows {
     display: flex;
     flex-direction: column;
-    gap: var(--shell-pad-sm, 4px);
+    gap: var(--sh3-pad-sm, 4px);
   }
 </style>

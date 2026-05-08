@@ -144,8 +144,8 @@
   .sidebar {
     width: 180px;
     min-width: 140px;
-    border-right: 1px solid var(--shell-border);
-    padding: var(--shell-pad-md);
+    border-right: 1px solid var(--sh3-border);
+    padding: var(--sh3-pad-md);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -154,7 +154,7 @@
   .section-label {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     padding: 4px 8px;
     margin-top: 8px;
   }
@@ -167,15 +167,15 @@
     padding: 6px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: var(--shell-font-size);
-    color: var(--shell-fg);
+    font-size: var(--sh3-font-size);
+    color: var(--sh3-fg);
   }
   .theme-item:hover {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
   }
   .theme-item.selected {
-    background: var(--shell-accent-muted);
-    border-left: 2px solid var(--shell-accent);
+    background: var(--sh3-accent-muted);
+    border-left: 2px solid var(--sh3-accent);
   }
   .lock { font-size: 10px; }
   .name { flex: 1; }
@@ -183,7 +183,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--shell-accent);
+    background: var(--sh3-accent);
   }
   .sidebar-actions {
     margin-top: auto;
@@ -200,15 +200,15 @@
   .action-btn {
     all: unset;
     padding: 4px 8px;
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
     border-radius: 4px;
     text-align: center;
     font-size: 11px;
     cursor: pointer;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
   .action-btn:hover {
-    background: var(--shell-border);
+    background: var(--sh3-border);
   }
   .action-btn.danger {
     color: #ff6b6b;

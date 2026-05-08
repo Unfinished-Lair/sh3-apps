@@ -69,42 +69,42 @@
 
 <style>
   .body {
-    padding: var(--shell-pad-lg);
+    padding: var(--sh3-pad-lg);
     display: flex;
     flex-direction: column;
-    gap: var(--shell-pad-md);
+    gap: var(--sh3-pad-md);
     min-width: 320px;
-    font-family: var(--shell-font-ui);
+    font-family: var(--sh3-font-ui);
   }
 
   h2 {
     margin: 0;
     font-size: 16px;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
 
   .rows {
     display: flex;
     flex-direction: column;
-    gap: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
   }
 
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--shell-pad-md);
+    gap: var(--sh3-pad-md);
     font-size: 13px;
   }
 
   .label {
-    color: var(--shell-fg-muted);
+    color: var(--sh3-fg-muted);
   }
 
   .seg {
     display: inline-flex;
-    border: 1px solid var(--shell-border);
-    border-radius: var(--shell-radius-sm);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm);
     overflow: hidden;
   }
 
@@ -112,46 +112,46 @@
     appearance: none;
     font: inherit;
     padding: 4px 10px;
-    background: var(--shell-bg);
-    color: var(--shell-fg);
+    background: var(--sh3-bg);
+    color: var(--sh3-fg);
     border: none;
     font-size: 12px;
     cursor: pointer;
   }
 
   .seg button + button {
-    border-left: 1px solid var(--shell-border);
+    border-left: 1px solid var(--sh3-border);
   }
 
   .seg button.active {
-    background: var(--shell-accent);
-    color: var(--shell-bg);
+    background: var(--sh3-accent);
+    color: var(--sh3-bg);
   }
 
   .seg button:hover:not(.active) {
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
 
   .actions {
     display: flex;
     justify-content: flex-end;
-    gap: var(--shell-pad-sm);
+    gap: var(--sh3-pad-sm);
   }
 
   .actions button {
     appearance: none;
     font: inherit;
     font-size: 12px;
-    padding: var(--shell-pad-sm) var(--shell-pad-md);
-    background: var(--shell-accent-muted);
-    color: var(--shell-fg);
-    border: 1px solid var(--shell-border-strong);
-    border-radius: var(--shell-radius-sm);
+    padding: var(--sh3-pad-sm) var(--sh3-pad-md);
+    background: var(--sh3-accent-muted);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border-strong);
+    border-radius: var(--sh3-radius-sm);
     cursor: pointer;
   }
 
   .actions button:hover {
-    background: var(--shell-accent);
+    background: var(--sh3-accent);
   }
 
   .actions button.secondary {
@@ -159,6 +159,6 @@
   }
 
   .actions button.secondary:hover {
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
 </style>

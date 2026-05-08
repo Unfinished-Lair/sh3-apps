@@ -60,7 +60,7 @@
     gap: 4px;
   }
   .shard-section {
-    border: 1px solid var(--shell-border);
+    border: 1px solid var(--sh3-border);
     border-radius: 6px;
     overflow: hidden;
   }
@@ -68,7 +68,7 @@
     display: flex;
     align-items: center;
     padding: 8px 12px;
-    background: var(--shell-bg-sunken);
+    background: var(--sh3-bg-sunken);
   }
   .toggle-btn {
     all: unset;
@@ -77,12 +77,12 @@
     gap: 8px;
     cursor: pointer;
     flex: 1;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
   .caret {
     font-size: 10px;
     transition: transform 0.15s;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
   }
   .caret.open {
     transform: rotate(90deg);
@@ -93,13 +93,13 @@
   }
   .shard-id {
     font-size: 11px;
-    color: var(--shell-fg-subtle);
-    font-family: var(--shell-font-mono);
+    color: var(--sh3-fg-subtle);
+    font-family: var(--sh3-font-mono);
   }
   .zone-count {
     font-size: 11px;
-    color: var(--shell-fg-subtle);
-    background: var(--shell-bg-elevated);
+    color: var(--sh3-fg-subtle);
+    background: var(--sh3-bg-elevated);
     padding: 1px 6px;
     border-radius: 8px;
   }
@@ -113,7 +113,7 @@
     background: transparent;
   }
   .clear-shard-btn:hover {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
   }
   .shard-entries {
     padding: 4px 8px 8px;
@@ -121,7 +121,7 @@
   .empty-state {
     padding: 24px;
     text-align: center;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     font-style: italic;
   }
 </style>

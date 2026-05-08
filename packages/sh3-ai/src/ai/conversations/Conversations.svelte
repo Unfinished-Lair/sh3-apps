@@ -187,9 +187,9 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    color: var(--shell-fg, #ddd);
-    background: var(--shell-bg, #181818);
-    font-family: var(--shell-mono, monospace);
+    color: var(--sh3-fg, #ddd);
+    background: var(--sh3-bg, #181818);
+    font-family: var(--sh3-mono, monospace);
     font-size: 0.92em;
   }
   header {
@@ -197,13 +197,13 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.5em 0.75em;
-    border-bottom: 1px solid var(--shell-fg-dim, #333);
+    border-bottom: 1px solid var(--sh3-fg-dim, #333);
     flex: 0 0 auto;
   }
   .title { font-weight: 600; opacity: 0.9; }
   .new-btn {
     padding: 0.25em 0.6em;
-    background: var(--shell-accent, #4a90e2);
+    background: var(--sh3-accent, #4a90e2);
     color: #fff;
     border: none;
     border-radius: 3px;
@@ -213,7 +213,7 @@
   .new-btn:disabled { opacity: 0.5; cursor: default; }
   .error {
     padding: 0.5em 0.75em;
-    color: var(--shell-error, #c66);
+    color: var(--sh3-error, #c66);
   }
   .empty {
     padding: 1em 0.75em;
@@ -230,11 +230,11 @@
   .row {
     display: flex;
     align-items: stretch;
-    border-bottom: 1px solid var(--shell-fg-dim, #2a2a2a);
+    border-bottom: 1px solid var(--sh3-fg-dim, #2a2a2a);
   }
   .row.active {
-    background: var(--shell-bg-active, rgba(74, 144, 226, 0.15));
-    border-left: 2px solid var(--shell-accent, #4a90e2);
+    background: var(--sh3-bg-active, rgba(74, 144, 226, 0.15));
+    border-left: 2px solid var(--sh3-accent, #4a90e2);
   }
   .row-body {
     flex: 1 1 auto;
@@ -250,7 +250,7 @@
     gap: 0.15em;
     overflow: hidden;
   }
-  .row-body:hover { background: var(--shell-bg-hover, rgba(255,255,255,0.04)); }
+  .row-body:hover { background: var(--sh3-bg-hover, rgba(255,255,255,0.04)); }
   .row-body:disabled { cursor: default; }
   .row-title {
     overflow: hidden;
@@ -267,7 +267,7 @@
   .badge {
     padding: 0 0.4em;
     border-radius: 2px;
-    background: var(--shell-fg-dim, #333);
+    background: var(--sh3-fg-dim, #333);
     font-size: 0.85em;
   }
   .row-actions {
@@ -288,15 +288,15 @@
     border-radius: 3px;
   }
   .row-actions button:hover:not(:disabled) {
-    background: var(--shell-bg-hover, rgba(255,255,255,0.08));
+    background: var(--sh3-bg-hover, rgba(255,255,255,0.08));
   }
   .row-actions button:disabled { opacity: 0.3; cursor: default; }
   .rename-input {
     width: 100%;
-    background: var(--shell-bg, #181818);
+    background: var(--sh3-bg, #181818);
     color: inherit;
     font: inherit;
-    border: 1px solid var(--shell-accent, #4a90e2);
+    border: 1px solid var(--sh3-accent, #4a90e2);
     padding: 0.15em 0.4em;
     border-radius: 2px;
   }

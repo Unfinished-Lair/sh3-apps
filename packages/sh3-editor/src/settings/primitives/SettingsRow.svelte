@@ -28,21 +28,21 @@
   .row {
     display: grid;
     grid-template-columns: 200px 1fr;
-    column-gap: var(--shell-pad-md);
+    column-gap: var(--sh3-pad-md);
     align-items: center;
-    padding: var(--shell-pad-sm) 0;
-    font-family: var(--shell-font-ui);
+    padding: var(--sh3-pad-sm) 0;
+    font-family: var(--sh3-font-ui);
     font-size: 13px;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
   }
   .row.disabled { opacity: 0.5; pointer-events: none; }
-  .label { color: var(--shell-fg); }
-  .desc { font-size: 11px; color: var(--shell-fg-muted); margin-top: 2px; }
-  .control { display: flex; align-items: center; gap: var(--shell-pad-sm); }
+  .label { color: var(--sh3-fg); }
+  .desc { font-size: 11px; color: var(--sh3-fg-muted); margin-top: 2px; }
+  .control { display: flex; align-items: center; gap: var(--sh3-pad-sm); }
   .error {
     grid-column: 2;
     font-size: 11px;
-    color: var(--shell-error, #ff7a7a);
+    color: var(--sh3-error, #ff7a7a);
     margin-top: 4px;
   }
 </style>

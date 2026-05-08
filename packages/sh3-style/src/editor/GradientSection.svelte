@@ -15,9 +15,9 @@
   } = $props();
 
   const SURFACES: { token: ThemeToken; label: string }[] = [
-    { token: 'shell-grad-bg', label: 'Background' },
-    { token: 'shell-grad-bg-elevated', label: 'Elevated' },
-    { token: 'shell-grad-bg-sunken', label: 'Sunken' },
+    { token: 'sh3-grad-bg', label: 'Background' },
+    { token: 'sh3-grad-bg-elevated', label: 'Elevated' },
+    { token: 'sh3-grad-bg-sunken', label: 'Sunken' },
   ];
 
   const resolved = $derived(resolveTokens(theme));
@@ -31,7 +31,7 @@
     if (isEnabled(token)) {
       clearToken(theme.id, token, state);
     } else {
-      const flatToken = token.replace('shell-grad-', 'shell-') as ThemeToken;
+      const flatToken = token.replace('sh3-grad-', 'sh3-') as ThemeToken;
       const base = resolved[flatToken] ?? '#1a1b1e';
       updateToken(theme.id, token, `linear-gradient(180deg, ${base}, ${base})`, state);
     }
@@ -71,20 +71,20 @@
 
 <style>
   .section {
-    background: var(--shell-bg-elevated);
+    background: var(--sh3-bg-elevated);
     border-radius: 6px;
     padding: 12px;
   }
   .section-title {
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--shell-fg-subtle);
+    color: var(--sh3-fg-subtle);
     margin-bottom: 8px;
   }
   .surface-block {
     margin-bottom: 10px;
     padding: 8px;
-    background: var(--shell-bg);
+    background: var(--sh3-bg);
     border-radius: 4px;
   }
   .surface-block:last-child { margin-bottom: 0; }
@@ -96,7 +96,7 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
     cursor: pointer;
   }
   .toggle-label input[type="checkbox"] {

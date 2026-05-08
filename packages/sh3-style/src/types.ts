@@ -1,30 +1,30 @@
 /** All token names that sh3-style can override. */
 export type ThemeToken =
-  | 'shell-bg' | 'shell-bg-elevated' | 'shell-bg-sunken'
-  | 'shell-input-bg'
-  | 'shell-border' | 'shell-border-strong'
-  | 'shell-fg' | 'shell-fg-muted' | 'shell-fg-subtle'
-  | 'shell-fg-on-accent' | 'shell-fg-on-error' | 'shell-fg-on-warning' | 'shell-fg-on-success'
-  | 'shell-accent' | 'shell-accent-muted'
-  | 'shell-error' | 'shell-warning' | 'shell-success'
-  | 'shell-focus-ring' | 'shell-input-border-focus'
-  | 'shell-radius-sm' | 'shell-radius' | 'shell-radius-md' | 'shell-radius-lg'
-  | 'shell-font-ui' | 'shell-font-mono' | 'shell-font-size' | 'shell-line'
-  | 'shell-grad-bg' | 'shell-grad-bg-elevated' | 'shell-grad-bg-sunken';
+  | 'sh3-bg' | 'sh3-bg-elevated' | 'sh3-bg-sunken'
+  | 'sh3-input-bg'
+  | 'sh3-border' | 'sh3-border-strong'
+  | 'sh3-fg' | 'sh3-fg-muted' | 'sh3-fg-subtle'
+  | 'sh3-fg-on-accent' | 'sh3-fg-on-error' | 'sh3-fg-on-warning' | 'sh3-fg-on-success'
+  | 'sh3-accent' | 'sh3-accent-muted'
+  | 'sh3-error' | 'sh3-warning' | 'sh3-success'
+  | 'sh3-focus-ring' | 'sh3-input-border-focus'
+  | 'sh3-radius-sm' | 'sh3-radius' | 'sh3-radius-md' | 'sh3-radius-lg'
+  | 'sh3-font-ui' | 'sh3-font-mono' | 'sh3-font-size' | 'sh3-line'
+  | 'sh3-grad-bg' | 'sh3-grad-bg-elevated' | 'sh3-grad-bg-sunken';
 
 /** Complete list of valid token names, for import validation. */
 export const THEME_TOKENS: ThemeToken[] = [
-  'shell-bg', 'shell-bg-elevated', 'shell-bg-sunken',
-  'shell-input-bg',
-  'shell-border', 'shell-border-strong',
-  'shell-fg', 'shell-fg-muted', 'shell-fg-subtle',
-  'shell-fg-on-accent', 'shell-fg-on-error', 'shell-fg-on-warning', 'shell-fg-on-success',
-  'shell-accent', 'shell-accent-muted',
-  'shell-error', 'shell-warning', 'shell-success',
-  'shell-focus-ring', 'shell-input-border-focus',
-  'shell-radius-sm', 'shell-radius', 'shell-radius-md', 'shell-radius-lg',
-  'shell-font-ui', 'shell-font-mono', 'shell-font-size', 'shell-line',
-  'shell-grad-bg', 'shell-grad-bg-elevated', 'shell-grad-bg-sunken',
+  'sh3-bg', 'sh3-bg-elevated', 'sh3-bg-sunken',
+  'sh3-input-bg',
+  'sh3-border', 'sh3-border-strong',
+  'sh3-fg', 'sh3-fg-muted', 'sh3-fg-subtle',
+  'sh3-fg-on-accent', 'sh3-fg-on-error', 'sh3-fg-on-warning', 'sh3-fg-on-success',
+  'sh3-accent', 'sh3-accent-muted',
+  'sh3-error', 'sh3-warning', 'sh3-success',
+  'sh3-focus-ring', 'sh3-input-border-focus',
+  'sh3-radius-sm', 'sh3-radius', 'sh3-radius-md', 'sh3-radius-lg',
+  'sh3-font-ui', 'sh3-font-mono', 'sh3-font-size', 'sh3-line',
+  'sh3-grad-bg', 'sh3-grad-bg-elevated', 'sh3-grad-bg-sunken',
 ];
 
 export interface ThemeDefinition {

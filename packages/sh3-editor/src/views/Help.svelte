@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, mount as svelteMount, unmount as svelteUnmount } from 'svelte';
-  import { getActiveApp, shell, type ActiveActionDescriptor } from 'sh3-core';
+  import { getActiveApp, sh3, type ActiveActionDescriptor } from 'sh3-core';
 
   import type {
     HelpTabContribution,
@@ -66,7 +66,7 @@
     });
     snapshot = captureHelpSnapshot(inputs);
 
-    hotkeysActions = shell.actions.listActive();
+    hotkeysActions = sh3.actions.listActive();
 
     const contributions = ctx.contributions.list<HelpTabContribution>(
       HELP_TABS_CONTRIBUTION_POINT_ID,
@@ -148,8 +148,8 @@
     flex-direction: column;
     height: 100%;
     min-height: 320px;
-    background: var(--shell-surface, #1a1a1a);
-    color: var(--shell-fg);
+    background: var(--sh3-surface, #1a1a1a);
+    color: var(--sh3-fg);
   }
   .modal-surface {
     width: 640px;
@@ -161,13 +161,13 @@
     display: flex;
     align-items: center;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--shell-border, #2a2a2a);
+    border-bottom: 1px solid var(--sh3-border, #2a2a2a);
   }
   .title { font-weight: 600; flex: 1; }
   .close-btn {
     background: none;
     border: none;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
     font-size: 18px;
     cursor: pointer;
     padding: 0 8px;
@@ -177,13 +177,13 @@
     display: flex;
     gap: 2px;
     padding: 6px 8px 0;
-    border-bottom: 1px solid var(--shell-border, #2a2a2a);
-    background: var(--shell-surface-2, transparent);
+    border-bottom: 1px solid var(--sh3-border, #2a2a2a);
+    background: var(--sh3-surface-2, transparent);
   }
   .tab-btn {
     background: transparent;
     border: none;
-    color: var(--shell-fg);
+    color: var(--sh3-fg);
     padding: 6px 12px;
     cursor: pointer;
     font-size: 13px;
@@ -192,9 +192,9 @@
     gap: 4px;
     align-items: center;
   }
-  .tab-btn:hover { background: var(--shell-hover, rgba(255,255,255,0.05)); }
+  .tab-btn:hover { background: var(--sh3-hover, rgba(255,255,255,0.05)); }
   .tab-btn.active {
-    border-bottom-color: var(--shell-accent, #3ba3ff);
+    border-bottom-color: var(--sh3-accent, #3ba3ff);
     font-weight: 600;
   }
   .tab-icon { font-size: 14px; }

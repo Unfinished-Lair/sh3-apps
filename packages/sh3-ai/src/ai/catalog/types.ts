@@ -12,7 +12,7 @@ export interface Tool {
   name: string;
   description: string;
   inputSchema: JsonSchema;
-  source: 'verb' | 'sh3-ai.tool';
+  source: 'verb' | 'sh3-ai.tool' | 'action';
   run(args: unknown, opts: { signal: AbortSignal }): Promise<unknown>;
 }
 

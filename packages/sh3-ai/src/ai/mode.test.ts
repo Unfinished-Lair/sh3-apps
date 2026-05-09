@@ -209,6 +209,50 @@ describe('makeAiModeDescriptor', () => {
     expect(conversation.lockedModel).toBeNull();
   });
 
+  it('forwards getIdleTimeoutMs() into ChatOptions on every chat call', async () => {
+    const conversation = new ConversationState();
+    const captured: unknown[] = [];
+    const provider = fakeProvider({
+      chat: (_m, _model, _signal, options) => {
+        captured.push(options);
+        return tokenStream(['ok']);
+      },
+    });
+    const desc = makeAiModeDescriptor({
+      conversation,
+      getProvider: () => provider,
+      getIdleTimeoutMs: () => 120_000,
+    });
+    const output = makeOutput();
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    const signal = new AbortController().signal;
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+
+    expect(captured).toHaveLength(1);
+    expect((captured[0] as any).idleTimeoutMs).toBe(120_000);
+  });
+
+  it('omits idleTimeoutMs when getIdleTimeoutMs is not provided', async () => {
+    const conversation = new ConversationState();
+    const captured: unknown[] = [];
+    const provider = fakeProvider({
+      chat: (_m, _model, _signal, options) => {
+        captured.push(options);
+        return tokenStream(['ok']);
+      },
+    });
+    const desc = makeAiModeDescriptor({ conversation, getProvider: () => provider });
+    const output = makeOutput();
+    const handle = output.stream();
+    output.stream.mockReturnValue(handle);
+    const signal = new AbortController().signal;
+    await desc.dispatch!({ line: 'hi', cwd: '/', signal }, output as any);
+
+    expect(captured).toHaveLength(1);
+    expect((captured[0] as any).idleTimeoutMs).toBeUndefined();
+  });
+
   it('resolves provider via getProvider on every dispatch (late registration)', async () => {
     const conversation = new ConversationState();
     let provider: AiProvider | undefined;

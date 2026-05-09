@@ -1,4 +1,5 @@
 import type { AiProvider, ChatChunk, ChatMessage, ChatOptions } from 'sh3-ai';
+import { makeIdleTimer } from '../idle-timer';
 import { redactKey } from '../../shared/redact';
 import { encodeToolName, decodeToolName } from '../../shared/tool-name-codec';
 import { readErrorEnvelope } from '../../shared/error-envelope';
@@ -156,7 +157,7 @@ export async function* chatStream(
   options?: ChatOptions,
 ): AsyncIterable<ChatChunk> {
   const url = `${BASE_URL}/chat/completions`;
-  const composed = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
+  const idle = makeIdleTimer(signal, options?.idleTimeoutMs);
   let res: Response;
   try {
     res = await fetch(url, {
@@ -166,9 +167,10 @@ export async function* chatStream(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(buildBody(messages, modelId, true, config, options)),
-      signal: composed,
+      signal: idle.signal,
     });
   } catch (err) {
+    idle.clear();
     const msg = err instanceof Error ? err.message : String(err);
     throw new DeepseekError(redactKey(msg, apiKey));
   }
@@ -261,6 +263,7 @@ export async function* chatStream(
 
   try {
     for await (const data of parseSseStream(reader)) {
+      idle.bump();
       let parsed: unknown;
       try { parsed = JSON.parse(data); } catch { continue; }
       for (const delta of extractDeltas(parsed)) {
@@ -271,9 +274,12 @@ export async function* chatStream(
       }
     }
   } catch (err) {
+    idle.clear();
     const msg = err instanceof Error ? err.message : String(err);
     throw new DeepseekError(redactKey(msg, apiKey));
   }
+
+  idle.clear();
 
   // Emit accumulated tool-calls as discrete chunks before the done chunk.
   for (const acc of toolCallAcc.values()) {

@@ -53,6 +53,13 @@ export interface ChatOptions {
    *  system message is sent. Owned by sh3-ai's user state and forwarded by
    *  the dispatcher on every `chat()` call. */
   systemInstruction?: string;
+  /** Idle timeout in milliseconds for streaming requests: abort if no
+   *  chunk (token, reasoning, or tool-call) arrives within this window.
+   *  The provider re-arms the timer on every emitted chunk, so a model
+   *  that thinks for a long time but produces output in bursts will not
+   *  trip it. `0` or `undefined` disables the internal watchdog — the
+   *  external `signal` remains the only way to cancel. */
+  idleTimeoutMs?: number;
 }
 
 export interface AiProvider {

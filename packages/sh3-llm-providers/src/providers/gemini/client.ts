@@ -1,4 +1,5 @@
 import type { AiProvider, ChatChunk, ChatMessage, ChatOptions } from 'sh3-ai';
+import { makeIdleTimer } from '../idle-timer';
 import { redactKey } from '../../shared/redact';
 import { encodeToolName, decodeToolName } from '../../shared/tool-name-codec';
 import { readErrorEnvelope } from '../../shared/error-envelope';
@@ -119,7 +120,7 @@ export async function* chatStream(
   callIdToName: Map<string, string> = new Map(),
 ): AsyncIterable<ChatChunk> {
   const url = `${STREAM_ENDPOINT(modelId)}?alt=sse&key=${apiKey}`;
-  const composed = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
+  const idle = makeIdleTimer(signal, options?.idleTimeoutMs);
   let res: Response;
   try {
     const baseContents = messages.map((m) => ({
@@ -134,9 +135,10 @@ export async function* chatStream(
         ...buildGenerationFields(options?.systemInstruction, config),
         ...buildToolsField(options),
       }),
-      signal: composed,
+      signal: idle.signal,
     });
   } catch (err) {
+    idle.clear();
     const msg = err instanceof Error ? err.message : String(err);
     throw new GeminiError(redactKey(msg, apiKey));
   }
@@ -200,6 +202,7 @@ export async function* chatStream(
 
   try {
     for await (const data of parseSseStream(reader, rawTextRef)) {
+      idle.bump();
       let parsed: unknown;
       try { parsed = JSON.parse(data); } catch { continue; }
       for (const part of extractParts(parsed)) {
@@ -207,6 +210,7 @@ export async function* chatStream(
       }
     }
   } catch (err) {
+    idle.clear();
     const msg = err instanceof Error ? err.message : String(err);
     throw new GeminiError(redactKey(msg, apiKey));
   }
@@ -231,6 +235,8 @@ export async function* chatStream(
       }
     }
   }
+
+  idle.clear();
 
   if (!yieldedAny) {
     const preview = rawTextRef.value.slice(0, 200).replace(/\s+/g, ' ');

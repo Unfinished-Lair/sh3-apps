@@ -1,6 +1,6 @@
 {
   "name": "sh3-llm-providers",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini as sh3-ai.providers, plus per-provider settings views; replaces sh3-deepseek-shell and sh3-gemini-shell",
   "author": "@unfinished-lair",
   "type": "module",

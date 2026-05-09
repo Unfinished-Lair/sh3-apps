@@ -3,6 +3,7 @@
     state: {
       systemInstruction: string;
       titleStrategy: 'first-message' | 'llm-summarize';
+      idleTimeoutMs: number;
     };
   }
 
@@ -10,6 +11,39 @@
   // collides with Svelte 5's `$state` rune detection when the prop is also
   // bind-mutated through nested keys.
   let { state: user }: Props = $props();
+
+  // Snap points for the idle-timeout slider. `0` is the rightmost stop
+  // ("No limit") — providers treat 0/undefined as "no internal watchdog".
+  const IDLE_STOPS: ReadonlyArray<{ ms: number; label: string }> = [
+    { ms: 30_000, label: '30s' },
+    { ms: 60_000, label: '1m' },
+    { ms: 120_000, label: '2m' },
+    { ms: 300_000, label: '5m' },
+    { ms: 600_000, label: '10m' },
+    { ms: 0, label: 'No limit' },
+  ];
+
+  function indexFor(ms: number): number {
+    const exact = IDLE_STOPS.findIndex((s) => s.ms === ms);
+    if (exact >= 0) return exact;
+    // Closest non-zero match; fall back to default (60s = index 1).
+    let best = 1;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    IDLE_STOPS.forEach((s, i) => {
+      if (s.ms === 0) return;
+      const d = Math.abs(s.ms - ms);
+      if (d < bestDiff) { bestDiff = d; best = i; }
+    });
+    return best;
+  }
+
+  let idleIndex = $derived(indexFor(user.idleTimeoutMs));
+  let idleLabel = $derived(IDLE_STOPS[idleIndex].label);
+
+  function onIdleSliderInput(e: Event) {
+    const i = Number((e.currentTarget as HTMLInputElement).value);
+    user.idleTimeoutMs = IDLE_STOPS[i].ms;
+  }
 </script>
 
 <section class="ai-defaults">
@@ -61,6 +95,35 @@
       <span>LLM summary</span>
       <span class="help">Ask the active provider to summarize the first exchange.</span>
     </label>
+  </div>
+
+  <hr />
+
+  <h2>Streaming idle timeout</h2>
+  <p class="note">
+    How long to wait between chunks before assuming the request is stuck.
+    The timer resets on every token, reasoning chunk, or tool call — a
+    model that thinks for a long time but produces output in bursts will
+    not trip it. Pick <em>No limit</em> for thinking-heavy models if even
+    10 minutes isn't enough.
+  </p>
+  <div class="idle-slider">
+    <input
+      type="range"
+      min="0"
+      max={IDLE_STOPS.length - 1}
+      step="1"
+      value={idleIndex}
+      oninput={onIdleSliderInput}
+      aria-label="Streaming idle timeout"
+      aria-valuetext={idleLabel}
+    />
+    <span class="idle-value">{idleLabel}</span>
+  </div>
+  <div class="idle-ticks" aria-hidden="true">
+    {#each IDLE_STOPS as stop, i}
+      <span class:current={i === idleIndex}>{stop.label}</span>
+    {/each}
   </div>
 </section>
 
@@ -127,5 +190,30 @@
   .radio-group input {
     grid-row: 1;
     grid-column: 1;
+  }
+  .idle-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .idle-slider input[type='range'] {
+    flex: 1;
+  }
+  .idle-value {
+    min-width: 4.5rem;
+    text-align: right;
+    font-family: var(--sh3-mono, ui-monospace, monospace);
+    font-variant-numeric: tabular-nums;
+  }
+  .idle-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: var(--sh3-fg-muted, inherit);
+    margin-top: -0.25rem;
+  }
+  .idle-ticks .current {
+    color: var(--sh3-fg, inherit);
+    font-weight: 600;
   }
 </style>

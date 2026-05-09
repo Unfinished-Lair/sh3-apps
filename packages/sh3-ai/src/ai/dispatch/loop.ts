@@ -20,12 +20,16 @@ export interface DispatchLoopOptions {
   /** Sh3-ai-owned shared system instruction; forwarded to the provider on
    *  every round via `ChatOptions.systemInstruction`. */
   systemInstruction?: string;
+  /** Forwarded to the provider via `ChatOptions.idleTimeoutMs` on every
+   *  round. `0` or `undefined` disables the watchdog. */
+  idleTimeoutMs?: number;
 }
 
 export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   const {
     prompt, catalog, scope, conversation, provider, model, signal,
     transcript, maxRounds = 16, maxResultBytes, systemInstruction,
+    idleTimeoutMs,
   } = opts;
   const tools: ToolSpec[] | undefined = catalog.length > 0
     ? catalog.map((t) => ({
@@ -53,7 +57,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     for await (const chunk of provider.chat(
       conversation.messages, model, signal,
-      { tools, toolCalls, toolResults, reasoningContent, systemInstruction },
+      { tools, toolCalls, toolResults, reasoningContent, systemInstruction, idleTimeoutMs },
     )) {
       if (chunk.type === 'token') {
         assistantText += chunk.text;

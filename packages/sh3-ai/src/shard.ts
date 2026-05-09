@@ -11,11 +11,16 @@ import { mount, unmount } from 'svelte';
 import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
+import Sketch from './ai/sketch/Sketch.svelte';
+import SaveSketchPrompt from './ai/sketch/SaveSketchPrompt.svelte';
 
 const CONVERSATIONS_VIEW_ID = 'ai:conversations';
 const CONVERSATIONS_FLOAT_TITLE = 'AI Conversations';
 const DEFAULTS_VIEW_ID = 'ai:defaults';
 const DEFAULTS_FLOAT_TITLE = 'AI Defaults';
+const SKETCH_VIEW_ID = 'ai:sketch';
+const SKETCH_FLOAT_TITLE = 'AI Sketch';
+const SAVE_PROMPT_VIEW_ID = 'ai:sketch.save-prompt';
 
 function nodeContainsView(node: LayoutNode, viewId: string): boolean {
   if (node.type === 'slot') return node.viewId === viewId;
@@ -47,6 +52,19 @@ function focusOrOpenDefaults(): void {
   sh3.float.open(DEFAULTS_VIEW_ID, {
     title: DEFAULTS_FLOAT_TITLE,
     size: { w: 520, h: 520 },
+  });
+}
+
+function focusOrOpenSketch(): void {
+  for (const f of sh3.float.list()) {
+    if (nodeContainsView(f.content, SKETCH_VIEW_ID)) {
+      sh3.float.focus(f.id);
+      return;
+    }
+  }
+  sh3.float.open(SKETCH_VIEW_ID, {
+    title: SKETCH_FLOAT_TITLE,
+    size: { w: 720, h: 540 },
   });
 }
 import { ConversationState } from './ai/conversation';
@@ -81,12 +99,15 @@ import { firstMessageTitle, llmSummarizeTitle } from './ai/conversations/title-s
 import { replayConversationToScrollback } from './ai/conversations/replay';
 import { DocsStore } from './ai/docs/store';
 import { makeDocTools } from './ai/docs/tools';
+import { SketchState } from './ai/sketch/state';
+import { makeSketchTools } from './ai/sketch/tools';
 
 async function runOneShot(
   provider: AiProvider,
   prompt: string,
   signal: AbortSignal,
   systemInstruction?: string,
+  idleTimeoutMs?: number,
 ): Promise<string> {
   const chain = provider.chain();
   if (chain.length === 0) {
@@ -98,7 +119,7 @@ async function runOneShot(
       const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
       let text = '';
       let done = false;
-      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction })) {
+      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction, idleTimeoutMs })) {
         if (chunk.type === 'token') {
           text += chunk.text;
         } else if (chunk.type === 'tool-call') {
@@ -130,6 +151,8 @@ export const shard: SourceShard = {
     views: [
       { id: CONVERSATIONS_VIEW_ID, label: 'AI Conversations', standalone: true },
       { id: DEFAULTS_VIEW_ID, label: 'AI Defaults', standalone: true },
+      { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
+      { id: SAVE_PROMPT_VIEW_ID, label: 'Save AI Sketch', standalone: true },
     ],
   },
 
@@ -142,6 +165,11 @@ export const shard: SourceShard = {
         activeConversationId: string | null;
         titleStrategy: 'first-message' | 'llm-summarize';
         systemInstruction: string;
+        /** Streaming idle timeout in milliseconds — abort if no chunk for
+         *  this long. `0` = no internal watchdog (only the external signal
+         *  cancels). Default 60_000 preserves the previous hard-coded
+         *  behavior the providers used. */
+        idleTimeoutMs: number;
       };
     }>({
       user: {
@@ -151,6 +179,7 @@ export const shard: SourceShard = {
         activeConversationId: null,
         titleStrategy: 'first-message',
         systemInstruction: '',
+        idleTimeoutMs: 60_000,
       },
     });
 
@@ -167,6 +196,86 @@ export const shard: SourceShard = {
     // Same backend, different scope — the store filters to `docs/` paths.
     const docsHandle = ctx.documents({ format: 'text' });
     const docsStore = new DocsStore(docsHandle);
+
+    const sketchState = new SketchState();
+
+    function openSavePrompt(): void {
+      const snap = sketchState.current;
+      const providerId = state.user.activeProviderId;
+      if (!snap) {
+        sh3.toast.notify('AI Sketch: nothing to save.', { level: 'warn' });
+        return;
+      }
+      if (!providerId) {
+        sh3.toast.notify('AI Sketch: no active AI provider.', { level: 'warn' });
+        return;
+      }
+      sh3.float.open(SAVE_PROMPT_VIEW_ID, {
+        title: 'Save AI Sketch',
+        size: { w: 360, h: 160 },
+        dismissable: true,
+        meta: { providerId, html: snap.html },
+      });
+    }
+
+    const sketchFactory: ViewFactory = {
+      mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
+        const instance = mount(Sketch, {
+          target: container,
+          props: { state: sketchState, onSave: openSavePrompt },
+        });
+        return {
+          unmount() { unmount(instance); },
+          closable: true,
+        };
+      },
+    };
+    ctx.registerView(SKETCH_VIEW_ID, sketchFactory);
+
+    const savePromptFactory: ViewFactory = {
+      mount(container: HTMLElement, mctx: MountContext): ViewHandle {
+        const meta = (mctx.meta ?? {}) as { providerId?: string; html?: string };
+        const loc = mctx.location();
+        const floatId = loc?.kind === 'float' ? loc.floatId : null;
+        if (!meta.providerId || meta.html == null || !floatId) {
+          return { unmount() {}, closable: true };
+        }
+        const instance = mount(SaveSketchPrompt, {
+          target: container,
+          props: {
+            providerId: meta.providerId,
+            html: meta.html,
+            store: docsStore,
+            onClose: () => sh3.float.close(floatId),
+          },
+        });
+        return {
+          unmount() { unmount(instance); },
+          closable: true,
+        };
+      },
+    };
+    ctx.registerView(SAVE_PROMPT_VIEW_ID, savePromptFactory);
+
+    ctx.actions.register({
+      id: 'sh3-ai:sketch.open',
+      label: 'AI Sketch: Open',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'AI',
+      run() { focusOrOpenSketch(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-ai:sketch.save',
+      label: 'AI Sketch: Save…',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'AI',
+      run() { openSavePrompt(); },
+    });
 
     // Restore the previously-active conversation (if any) so the user
     // re-enters where they left off after a reload.
@@ -223,6 +332,11 @@ export const shard: SourceShard = {
         store: docsStore,
         activeProviderId: state.user.activeProviderId,
       });
+      const sketchTools = makeSketchTools({
+        state: sketchState,
+        isViewOpen: () =>
+          sh3.float.list().some((f) => nodeContainsView(f.content, SKETCH_VIEW_ID)),
+      });
       // Snapshot of currently-dispatchable palette actions, refreshed per
       // turn so the LLM sees the same context-filtered set the user does.
       const active = sh3.actions.listActive();
@@ -231,7 +345,7 @@ export const shard: SourceShard = {
       );
       const all = assembleCatalog({
         verbTools,
-        contributionTools: [...contributionTools, ...docTools],
+        contributionTools: [...contributionTools, ...docTools, ...sketchTools],
         actionTools,
       });
       return filterByScope(all, currentResolvedScope());
@@ -265,7 +379,11 @@ export const shard: SourceShard = {
         const provider = getActive();
         if (provider) {
           title = await llmSummarizeTitle(
-            (p, sig) => runOneShot(provider, p, sig, state.user.systemInstruction || undefined),
+            (p, sig) => runOneShot(
+              provider, p, sig,
+              state.user.systemInstruction || undefined,
+              state.user.idleTimeoutMs,
+            ),
             firstUser.content,
             firstAssistant.content,
             new AbortController().signal,
@@ -397,6 +515,7 @@ export const shard: SourceShard = {
         ensureActiveConversation,
         onTurnComplete,
         getSystemInstruction: () => state.user.systemInstruction || undefined,
+        getIdleTimeoutMs: () => state.user.idleTimeoutMs,
       }),
     );
 
@@ -442,6 +561,7 @@ export const shard: SourceShard = {
           const text = await runOneShot(
             provider, prompt, controller.signal,
             state.user.systemInstruction || undefined,
+            state.user.idleTimeoutMs,
           );
           vctx.scrollback.push({
             kind: 'text',

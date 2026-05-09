@@ -31,6 +31,10 @@ export interface AiModeDeps {
    *  provider via `ChatOptions.systemInstruction` on every chat call.
    *  Empty/undefined → no system message is sent. */
   getSystemInstruction?: () => string | undefined;
+  /** Live read of the user's streaming idle-timeout preference (ms).
+   *  Forwarded to the provider via `ChatOptions.idleTimeoutMs` on every
+   *  chat call. `0` / `undefined` disables the watchdog. */
+  getIdleTimeoutMs?: () => number | undefined;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -75,11 +79,12 @@ function makeAiDispatch(deps: AiModeDeps) {
     }
 
     const systemInstruction = deps.getSystemInstruction?.();
+    const idleTimeoutMs = deps.getIdleTimeoutMs?.();
     const catalog = deps.getCatalog?.() ?? [];
     if (catalog.length > 0) {
       await runToolDispatch(
         provider, conversation, catalog, deps.getScope!(),
-        input, output, systemInstruction,
+        input, output, systemInstruction, idleTimeoutMs,
       );
       if (deps.onTurnComplete) {
         try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
@@ -103,7 +108,9 @@ function makeAiDispatch(deps: AiModeDeps) {
       __aiCard: true,
     });
 
-    await runChatTurn(provider, conversation, chain, input.signal, handle, systemInstruction);
+    await runChatTurn(
+      provider, conversation, chain, input.signal, handle, systemInstruction, idleTimeoutMs,
+    );
 
     if (deps.onTurnComplete) {
       try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
@@ -125,6 +132,7 @@ async function runToolDispatch(
   input: { line: string; cwd: string; signal: AbortSignal },
   output: ShellModeOutput,
   systemInstruction: string | undefined,
+  idleTimeoutMs: number | undefined,
 ): Promise<void> {
   const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
   if (chain.length === 0) {
@@ -147,6 +155,7 @@ async function runToolDispatch(
       signal: input.signal,
       transcript,
       systemInstruction,
+      idleTimeoutMs,
     });
   } catch (err) {
     transcript.error(err);
@@ -162,6 +171,7 @@ async function runChatTurn(
   signal: AbortSignal,
   handle: StreamHandle,
   systemInstruction: string | undefined,
+  idleTimeoutMs: number | undefined,
 ): Promise<void> {
   const attempts: { model: string; error: string }[] = [];
 
@@ -172,7 +182,7 @@ async function runChatTurn(
 
     try {
       for await (const chunk of provider.chat(
-        conversation.messages, model, signal, { systemInstruction },
+        conversation.messages, model, signal, { systemInstruction, idleTimeoutMs },
       )) {
         if (signal.aborted) {
           handle.error(new DOMException('aborted', 'AbortError'));

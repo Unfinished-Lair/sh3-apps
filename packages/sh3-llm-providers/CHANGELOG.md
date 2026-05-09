@@ -1,5 +1,30 @@
 # sh3-llm-providers changelog
 
+## 0.1.3 — 2026-05-09 — Streaming idle watchdog replaces hard 60s overall cap
+
+Both the Gemini and DeepSeek streaming clients used to compose a fixed
+`AbortSignal.timeout(60_000)` on top of the caller-supplied signal.
+Long-thinking turns that produced output in bursts often blew up
+mid-stream with `BodyStreamBuffer was aborted` even though the request
+was perfectly healthy.
+
+- New shared `makeIdleTimer(external, idleTimeoutMs)` helper
+  (`src/providers/idle-timer.ts`). When `idleTimeoutMs` is `0` /
+  `undefined` it's a passthrough: the returned signal is the caller's
+  signal and `bump`/`clear` are no-ops. When set, it composes the
+  external signal with an internal `AbortController` whose timer fires
+  after that many ms of inactivity.
+- `chatStream` in both providers now reads `options?.idleTimeoutMs` and
+  calls `idle.bump()` per SSE event so the timer resets on every token,
+  reasoning chunk, or tool-call delta.
+- The 30s `AbortSignal.timeout` on key validation / non-streaming
+  endpoints is unchanged — it covers the API handshake, not chat
+  duration.
+
+The setting itself is owned by sh3-ai (`state.user.idleTimeoutMs`,
+default 60_000) and forwarded through `ChatOptions` on every `chat()`
+call.
+
 ## 0.1.1 — 2026-05-08 — SettingsView: rename `state` prop on destructure
 
 Provider settings views failed to load with `e.subscribe is not a function`

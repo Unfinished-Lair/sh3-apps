@@ -1,5 +1,47 @@
 # sh3-ai changelog
 
+## 0.5.9 — 2026-05-09 — AI Sketch tool + configurable streaming idle timeout
+
+### AI Sketch
+
+New `ai.sketch.show` tool renders an arbitrary HTML composite into a
+shared, sh3-ai-owned standalone view (`ai:sketch`). Use case: AI sketches
+a UI design, the user reviews it inline, comments in chat, AI iterates.
+
+- `mode: 'inline'` renders the HTML under the host's DOM and inherits SH3
+  styles. `<style>` blocks are stripped before injection — they would
+  otherwise attach globally and hijack the host layout — so inline
+  sketches must use SH3 host classes / CSS variables. `mode: 'isolated'`
+  renders into a sandboxed iframe with scripts disabled and is the right
+  pick when the sketch needs its own stylesheet. Defaults to `inline`.
+- Single shared canvas: each `ai.sketch.show` call replaces the prior
+  sketch. Tool result `{ ok, viewOpen }` lets the LLM ask the user to
+  open the view when it isn't visible.
+- New palette actions `AI Sketch: Open` and `AI Sketch: Save…` (group
+  `AI`). Both are AI-invocable as `sh3-ai.sketch.open` and
+  `sh3-ai.sketch.save`.
+- Save flow writes to `docs/<active-provider>/sketches/<name>.html`
+  through the existing AI docs zone. The naming float prompts for a
+  filesystem-safe name (default `sketch-YYYY-MM-DD-HHMM`, no colons),
+  validates `^[a-zA-Z0-9._-]+$`, and confirms before overwriting.
+
+### Streaming idle timeout
+
+The Gemini and DeepSeek streaming clients used to compose a hard 60-second
+overall `AbortSignal.timeout` on top of the caller-supplied signal — long
+thinking turns blew up mid-stream with `BodyStreamBuffer was aborted`.
+Replaced with a per-chunk idle watchdog (re-armed on every token,
+reasoning chunk, or tool call) and exposed it as a user setting.
+
+- `ChatOptions.idleTimeoutMs`: `0` / `undefined` disables the watchdog,
+  `>0` aborts the stream if no chunk arrives within that window.
+- `state.user.idleTimeoutMs` (default `60_000`) plumbed through
+  `runOneShot`, `AiModeDeps.getIdleTimeoutMs`, `runChatTurn`,
+  `runToolDispatch`, and `dispatchLoop`.
+- AI Defaults view: new "Streaming idle timeout" range slider snapping to
+  30s / 1m / 2m / 5m / 10m / No limit, with a live value label and a
+  per-tick legend.
+
 ## 0.5.6 — 2026-05-09 — Palette actions in the AI catalog
 
 Currently-active palette actions now appear as tools in the AI catalog,

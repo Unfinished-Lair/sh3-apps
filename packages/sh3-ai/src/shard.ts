@@ -63,6 +63,7 @@ import {
 } from './ai/selection';
 import { verbsToTools } from './ai/catalog/verb-adapter';
 import { toolContributionsToTools } from './ai/catalog/tool-contribution';
+import { actionsToTools } from './ai/catalog/action-adapter';
 import { assembleCatalog, filterByScope } from './ai/catalog/assemble';
 import { makeScopeLookup, addUserScope, removeUserScope, type UserScopes } from './ai/scope/store';
 import { resolveScope } from './ai/scope/resolve';
@@ -222,9 +223,16 @@ export const shard: SourceShard = {
         store: docsStore,
         activeProviderId: state.user.activeProviderId,
       });
+      // Snapshot of currently-dispatchable palette actions, refreshed per
+      // turn so the LLM sees the same context-filtered set the user does.
+      const active = sh3.actions.listActive();
+      const actionTools = actionsToTools(active, (id, opts) =>
+        ctx.runAction(id, opts),
+      );
       const all = assembleCatalog({
         verbTools,
         contributionTools: [...contributionTools, ...docTools],
+        actionTools,
       });
       return filterByScope(all, currentResolvedScope());
     }

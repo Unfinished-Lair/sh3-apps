@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.13.15 — 2026-05-09 — Inspector fields surface as AI-controllable
+
+Coalesced patch covering 0.13.13 → 0.13.15 — peer-dep bump to sh3-core
+0.17 plus three layers of `'sh3.controllable-field'` registration so the
+sh3-ai Assistant (and the chat-mode `ai.fields.*` tools shipped in
+sh3-ai 0.5.12) can decorate and drive editor cells.
+
+### Changed
+
+- **Peer-dep `sh3-core` bumped to `^0.17.0`.** Required for the new
+  `ctx.sh3.fields.*` API and the `'sh3.controllable-field'` contribution
+  point used by the registrations below. No call-site change inside
+  sh3-editor today; the bump unlocks the new surface.
+
+### Added
+
+- **Editor body registers as a controllable field.** `Editor.svelte`'s
+  textarea publishes `(shardId: 'sh3-editor', slotId, fieldId: 'body',
+  kind: 'string', shape: 'element')` against the editor's slot. The
+  framework writes through `.value` + dispatches `input` / `change`,
+  which feeds existing `pushContent` history coalescing untouched.
+- **Inspector primitives auto-register.** `EditablePrimitive` (the
+  fallback walker leaf for untyped `string` / `number` / `boolean`
+  values) registers an imperative descriptor with `fieldId` =
+  dot-joined path from the inspected root. `Inspector.svelte` exposes
+  the inspector slot's `(ctx, slotId)` via Svelte context
+  (`'sh3-editor:fields'`); the new `WalkerCell` wraps the
+  `FallbackWalker`'s custom-typed branch so primitive-valued custom
+  renderers (segmented enums, color hex strings, ISO-date strings, …)
+  also surface — only the row, not nested objects/arrays inside custom
+  widgets.
+- **Settings primitives auto-register.** `StringField`, `NumberField`,
+  `NumberRangeField` register as `shape: 'element'` against their
+  native `<input>`; `BooleanField` and `EnumField` use `shape:
+  'imperative'` against the toggle button / segmented div (the widgets
+  aren't `<input>` / `<select>`). `EnumField` includes `enumValues` so
+  the AI can constrain proposals. `fieldId` is prefixed with the
+  contributing shard id (`${descriptorShardId}.${field.key}`) so two
+  shards exposing the same key don't collide.
+- **New public subpath: `@unfinished-lair/sh3-editor/inspector/fields`.**
+  Exports `useInspectorFields()` (call once at component init) and
+  `registerInspectorField(fields, opts)` for custom inspector renderers
+  that own their own subtree of native inputs (e.g. an "object editor"
+  widget that synthesizes one row per user-defined field). The walker
+  doesn't recurse into custom renderers, so this is the opt-in path
+  for those rows. See
+  [docs/sh3-editor/inspector.md § 11](../../docs/sh3-editor/inspector.md).
+
+### Internal
+
+- New `inspector/fields-context.ts` module owns the `FIELDS_CONTEXT_KEY`
+  + `FieldsContext` types shared between `Inspector.svelte` /
+  `Settings.svelte` and the public helper. Re-exported from the public
+  `inspector/fields` entrypoint.
+- `tsconfig.types.json` and `tsconfig.runtime.json` extended to emit
+  the new public modules; `package.json` `exports` and `files` updated
+  to ship them.
+
 ## 0.13.9 — 2026-05-05
 
 Inspector typed-widget commit chain made live and consistent against

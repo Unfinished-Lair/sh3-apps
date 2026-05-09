@@ -1,5 +1,6 @@
 <script lang="ts">
   import { sh3 } from 'sh3-core';
+  import type { ShardContext, ControllableFieldDescriptor } from 'sh3-core';
   import type { MatchingConfig, ToolbarAction, UserPrefs } from '../types';
   import type { RegistryEntry } from '../model/instance-registry.svelte';
   import type { ApiInternals } from '../model/api';
@@ -23,6 +24,8 @@
     transform?: (text: string, language: string | null) => string;
     startInPreview?: boolean;
     onLinkClick?: (e: PreviewLinkEvent) => 'handled' | 'default' | void;
+    ctx?: ShardContext;
+    slotId?: string;
   }
 
   let {
@@ -37,6 +40,8 @@
     transform,
     startInPreview = false,
     onLinkClick,
+    ctx,
+    slotId,
   }: Props = $props();
 
   let doc = $derived(entry.document);
@@ -142,6 +147,22 @@
   let textareaEl: HTMLTextAreaElement | undefined = $state();
   let scrollTop = $state(0);
   let scrollLeft = $state(0);
+
+  $effect(() => {
+    if (!ctx || !slotId || !textareaEl) return;
+    const descriptor: ControllableFieldDescriptor = {
+      shape: 'element',
+      fieldId: 'body',
+      label: doc.filePath ?? doc.id ?? 'Document body',
+      kind: 'string',
+      element: textareaEl,
+    };
+    return ctx.contributions.register<ControllableFieldDescriptor>(
+      'sh3.controllable-field',
+      descriptor,
+      { scope: { slotId } },
+    );
+  });
 
   let highlighted = $derived(
     highlight && doc.language

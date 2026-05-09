@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { setContext } from 'svelte';
+  import type { ShardContext } from 'sh3-core';
   import type { InspectorMeta, InspectorApi, HistoryCommand } from '../types';
   import type { ApiInternals } from '../model/api';
   import { isModKey } from '../util/keybindings';
   import Inspect from '../inspector/primitives/Inspect.svelte';
   import Toolbar from './Toolbar.svelte';
+  import { FIELDS_CONTEXT_KEY, type FieldsContext } from '../inspector/fields-context';
 
   interface Props {
     instanceId: string;
@@ -12,6 +15,8 @@
     adHocMeta?: InspectorMeta;
     adHocReadonly?: boolean;
     internals: ApiInternals;
+    ctx?: ShardContext;
+    slotId?: string;
   }
 
   let {
@@ -20,7 +25,13 @@
     adHocMeta,
     adHocReadonly = false,
     internals,
+    ctx,
+    slotId,
   }: Props = $props();
+
+  if (ctx && slotId) {
+    setContext<FieldsContext>(FIELDS_CONTEXT_KEY, { ctx, slotId });
+  }
 
   let entry = $derived(internals.inspectors.get(instanceId));
   let value = $derived(entry ? entry.value : adHocValue);

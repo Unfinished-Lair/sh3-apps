@@ -1,5 +1,65 @@
 # sh3-ai changelog
 
+## 0.5.12 — 2026-05-09 — AI Assistant + chat-mode `ai.fields.*` tools
+
+Coalesced patch covering 0.5.10 → 0.5.12 — peer-dep bump to sh3-core
+0.17, the new AI Assistant feature, and chat-mode tools that expose
+controllable fields without entering assistant mode. Pair with
+sh3-editor 0.13.15 (the field-provider side).
+
+### Changed
+
+- **Peer-dep `sh3-core` bumped to `^0.17.0`.** Migrates three call-sites
+  in `shard.ts:buildCatalog`: `ctx.listVerbs` → `ctx.sh3.listVerbs`,
+  `ctx.runVerb` → `ctx.sh3.runVerb`, `ctx.runAction` → `ctx.sh3.runAction`.
+
+### Added: AI Assistant
+
+`AI: Start Assistant` palette action attaches small **AI** badges to
+every controllable field reachable in the current Sh3 instance; clicking
+a badge opens a per-field rewrite float anchored to it. `AI: Stop
+Assistant` tears the badges and any open float down. Stateless one-shots:
+each Accept writes the field and closes; nothing is appended to the
+active conversation.
+
+- New module `assistant/`: `mode.ts` (lifecycle: start/stop, attachment
+  map keyed by `{shardId, slotId, fieldId}`, rebuild on
+  `ctx.sh3.fields.onChange`), `Edit.svelte` (the float view), `badge.ts`
+  (DOM badge factory + injected stylesheet),
+  `runOneShotStream.ts` (token-streaming twin of `runOneShot` from
+  `shard.ts`).
+- Float opens via `sh3.float.open('ai:assistant.edit', { anchor: badgeEl,
+  dismissable: true, meta: { addr, fv } })`. Phase machine:
+  `idle → streaming → validate-2pane | validate-3pane | error`. The
+  3-pane fork triggers when the field value changed during the AI
+  request (Accept-time concurrency check) — Original / Your edit / AI
+  proposal radios with a single Accept button.
+- New view `ai:assistant.edit` (non-standalone, mounted only by the
+  badge-click path). New palette actions `sh3-ai:assistant.start` and
+  `sh3-ai:assistant.stop` (group `AI`, `home`/`app` scope).
+- Shard `deactivate()` now exists and calls `assistant.stop()` so a
+  reload during an active session tears the overlay layer down cleanly.
+
+### Added: `ai.fields.*` chat-mode tools
+
+Three new tools surface the same controllable-field set to the chat
+dispatcher; the LLM can answer "what's in my text editor right now?"
+without anyone starting the assistant.
+
+- `ai.fields.list` — `{shardId?, slotId?, kind?}` filters → JSON array
+  of `FieldView` entries (DOM `element` stripped). Discovery primitive.
+- `ai.fields.get` — `{shardId, slotId?, fieldId}` → `{value}`. Throws
+  on unknown address (e.g. slot just unmounted).
+- `ai.fields.set` — `{shardId, slotId?, fieldId, value}` → `{ok: true}`.
+  Tool description warns the model to confirm intent and points at the
+  AI Assistant float for prose rewrites that benefit from the
+  accept/discard step this tool skips.
+
+Wired into the catalog under `sh3-ai.tool` source. The read entries
+(`ai.fields.list` / `ai.fields.get`) are added to `SCOPE_READ_ONLY`'s
+whitelist alongside the existing `ai.docs.*` reads; `ai.fields.set` is
+gated under `sh3-ai:everything` or a custom scope.
+
 ## 0.5.9 — 2026-05-09 — AI Sketch tool + configurable streaming idle timeout
 
 ### AI Sketch

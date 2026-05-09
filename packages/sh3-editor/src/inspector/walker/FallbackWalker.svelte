@@ -3,6 +3,7 @@
   import Field from '../primitives/Field.svelte';
   import EditablePrimitive from '../primitives/EditablePrimitive.svelte';
   import Inspect from '../primitives/Inspect.svelte';
+  import WalkerCell from '../primitives/WalkerCell.svelte';
   import { attemptCommit } from './commit';
   import { makeCoalesceState, decideCoalesce } from './coalesce';
 
@@ -95,6 +96,25 @@
     coalesce.clear(pathString([...basePath, key]));
   }
 
+  // Setter passed to WalkerCell — same path as Inspect.svelte's
+  // customRendererCommit: respect walkerOnCommit when present, otherwise
+  // fall through to the default per-field commit. Used to surface custom
+  // inspector renderers (segmented, color, date…) as AI-controllable fields.
+  function aiSetterForField(key: string | number): (next: unknown) => void {
+    const fullPath = [...basePath, key];
+    return (next) => {
+      attemptCommit(
+        walkerOnCommit,
+        fullPath,
+        next,
+        () => {
+          clearGestureForField(key);
+          defaultCommitForField(key)(next);
+        },
+      );
+    };
+  }
+
   let entries = $derived.by<Array<{ key: string | number; child: unknown; fieldMeta: InspectorMeta | undefined }>>(() => {
     if (Array.isArray(value)) {
       return value.map((child, i) => ({
@@ -124,15 +144,23 @@
              can dispatch to a custom renderer (e.g. type: 'color' for a hex string)
              even when the value is a primitive. -->
         <Field {label} readonly={isReadOnly}>
-          <Inspect
+          <WalkerCell
+            path={[...basePath, entry.key]}
+            {label}
             value={entry.child}
-            meta={entry.fieldMeta}
-            {api}
-            onCommit={isReadOnly ? undefined : (next: unknown) => { clearGestureForField(entry.key); defaultCommitForField(entry.key)(next); }}
-            onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
-            walkerOnCommit={walkerOnCommit}
-            basePath={[...basePath, entry.key]}
-          />
+            readonly={isReadOnly}
+            onSet={isReadOnly ? undefined : aiSetterForField(entry.key)}
+          >
+            <Inspect
+              value={entry.child}
+              meta={entry.fieldMeta}
+              {api}
+              onCommit={isReadOnly ? undefined : (next: unknown) => { clearGestureForField(entry.key); defaultCommitForField(entry.key)(next); }}
+              onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
+              walkerOnCommit={walkerOnCommit}
+              basePath={[...basePath, entry.key]}
+            />
+          </WalkerCell>
         </Field>
       {:else if isPrimitive(entry.child)}
         <Field {label} readonly={isReadOnly}>
@@ -140,6 +168,8 @@
             value={entry.child as any}
             readonly={isReadOnly}
             onCommit={isReadOnly ? undefined : commitPrimitiveField(entry.key)}
+            path={[...basePath, entry.key]}
+            {label}
           />
         </Field>
       {:else}

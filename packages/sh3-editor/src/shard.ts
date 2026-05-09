@@ -171,6 +171,8 @@ export const shard: SourceShard = {
             transform: opts.transform,
             startInPreview: opts.startInPreview,
             onLinkClick: bindResult.onLinkClick,
+            ctx,
+            slotId,
           },
         });
         return {
@@ -233,6 +235,8 @@ export const shard: SourceShard = {
             adHocMeta: ephemeral?.meta,
             adHocReadonly: ephemeral?.readonly ?? false,
             internals: internalsRef!,
+            ctx,
+            slotId: instanceId,
           },
         });
         return {
@@ -353,10 +357,10 @@ export const shard: SourceShard = {
     });
 
     ctx.registerView('sh3-editor:settings', {
-      mount(container) {
+      mount(container, context) {
         const component = mount(Settings, {
           target: container,
-          props: { ctx },
+          props: { ctx, slotId: context.slotId },
         });
         return {
           closable: true,

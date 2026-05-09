@@ -25,6 +25,8 @@ export const SCOPE_READ_ONLY: Scope = {
     '*.describe',
     'ai.docs.read',
     'ai.docs.list',
+    'ai.fields.list',
+    'ai.fields.get',
   ],
   blacklist: [],
 };

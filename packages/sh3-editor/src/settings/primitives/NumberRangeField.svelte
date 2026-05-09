@@ -1,14 +1,18 @@
 <script lang="ts">
+  import { getContext } from 'svelte';
+  import type { ControllableFieldDescriptor } from 'sh3-core';
   import type { NumberRangeField } from '../contributions';
   import SettingsRow from './SettingsRow.svelte';
+  import { FIELDS_CONTEXT_KEY, type FieldsContext } from '../../inspector/fields-context';
 
   interface Props {
     field: NumberRangeField;
     value: unknown;
     error?: string;
     onEdit: (value: unknown) => void;
+    descriptorShardId?: string;
   }
-  let { field, value, error, onEdit }: Props = $props();
+  let { field, value, error, onEdit, descriptorShardId }: Props = $props();
 
   const current = $derived(clamp(typeof value === 'number' ? value : field.min, field.min, field.max));
 
@@ -21,10 +25,30 @@
     if (Number.isNaN(raw)) return;
     onEdit(clamp(raw, field.min, field.max));
   }
+
+  let inputEl: HTMLInputElement | undefined = $state();
+  const fields = getContext<FieldsContext | undefined>(FIELDS_CONTEXT_KEY);
+
+  $effect(() => {
+    if (!fields || field.disabled || !inputEl || !descriptorShardId) return;
+    const descriptor: ControllableFieldDescriptor = {
+      shape: 'element',
+      fieldId: `${descriptorShardId}.${field.key}`,
+      label: field.label,
+      kind: 'number',
+      element: inputEl,
+    };
+    return fields.ctx.contributions.register<ControllableFieldDescriptor>(
+      'sh3.controllable-field',
+      descriptor,
+      { scope: { slotId: fields.slotId } },
+    );
+  });
 </script>
 
 <SettingsRow label={field.label} description={field.description} disabled={field.disabled} {error}>
   <input
+    bind:this={inputEl}
     type="range"
     class="slider"
     class:error={!!error}

@@ -1,14 +1,21 @@
 <script lang="ts">
+  import { setContext } from 'svelte';
   import type { ShardContext } from 'sh3-core';
   import { SETTINGS_POINT, type SettingsDescriptor } from './contributions';
   import { setError, pruneErrors, type Errors } from './errors';
   import { registry } from './registry';
   import Section from './primitives/Section.svelte';
+  import { FIELDS_CONTEXT_KEY, type FieldsContext } from '../inspector/fields-context';
 
   interface Props {
     ctx: ShardContext;
+    slotId?: string;
   }
-  let { ctx }: Props = $props();
+  let { ctx, slotId }: Props = $props();
+
+  if (slotId) {
+    setContext<FieldsContext>(FIELDS_CONTEXT_KEY, { ctx, slotId });
+  }
 
   let descriptors = $state<SettingsDescriptor[]>(
     ctx.contributions.list<SettingsDescriptor>(SETTINGS_POINT),
@@ -66,6 +73,7 @@
             value={values[d.shardId]?.[f.key]}
             error={errors[d.shardId]?.[f.key]}
             onEdit={(v: unknown) => edit(d, f.key, v)}
+            descriptorShardId={d.shardId}
           />
         {/each}
       </Section>

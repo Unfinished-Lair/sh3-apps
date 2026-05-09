@@ -6,6 +6,7 @@ export interface FieldProps<F extends SettingsField = SettingsField> {
   value: unknown;
   error?: string;
   onEdit: (value: unknown) => void;
+  descriptorShardId?: string;
 }
 
 export type FieldComponent = Component<FieldProps>;

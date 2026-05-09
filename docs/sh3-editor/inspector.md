@@ -414,13 +414,201 @@ Custom renderers that don't need coalescing ignore the new prop — existing ren
 
 ---
 
-## 11. See also
+## 11. AI-controllable fields (≥ 0.13.13)
+
+Inspector cells surface as **AI-controllable fields** under sh3-core 0.17's
+`'sh3.controllable-field'` contribution point. When the **AI Assistant** is
+running (palette: `AI: Start Assistant`, shipped by `sh3-ai 0.5.11+`), each
+registered field gets a small **AI** badge anchored to its row; clicking the
+badge opens a per-field rewrite float.
+
+Two layers of registration cover the inspector surface:
+
+| Source | Auto-registers? | Covers |
+|---|---|---|
+| `EditablePrimitive` (untyped primitive walked by `FallbackWalker`) | yes | A walker leaf that resolved to `string | number | boolean` without an explicit `meta.type` (e.g. `Name` on a plain object). |
+| `WalkerCell` wrap around custom-typed primitive cells | yes | A walker row whose `meta.type` dispatched to a custom renderer **and** whose value is primitive (e.g. `meta.type: 'segmented'` on a string status, `'color'` on a hex string). |
+| `registerInspectorField` helper (this section) | **opt-in** | A custom renderer that owns its own subtree of native inputs — the walker doesn't recurse into your widget, so the framework can't see the rows. |
+
+Untyped non-primitive walker entries (objects, arrays) are intentionally
+skipped; a "rewrite the whole object" prompt isn't well-defined.
+
+### 11.1. The opt-in helper
+
+When your custom renderer synthesizes its own row layout (e.g. one
+`<input>` per user-defined field on an entity, like the `SectionFields`
+renderer in GameVerse), the row inputs aren't reached by the inspector
+walker. Use `registerInspectorField` from the renderer to register each row
+explicitly:
+
+```ts
+import {
+  useInspectorFields,
+  registerInspectorField,
+  type FieldKind,
+} from '@unfinished-lair/sh3-editor/inspector/fields';
+```
+
+Surface:
+
+```ts
+/** Pull the inspector's (ctx, slotId) pair off Svelte context. Call ONCE
+ *  at component initialization (Svelte's getContext rule). Returns null
+ *  when mounted outside an inspector slot — guard with an early return. */
+function useInspectorFields(): FieldsContext | null;
+
+interface RegisterFieldOpts {
+  /** Stable id, unique within the slot. Convention: dot-join the path
+   *  from the inspected root (e.g. `${sectionId}.${field.key}`). */
+  fieldId: string;
+  label: string;
+  /** sh3-core's FieldKind: 'string' | 'number' | 'integer' | 'boolean' | 'enum' | 'json'. */
+  kind: FieldKind;
+  get: () => unknown;
+  set: (value: unknown) => void;
+  /** DOM element used as the badge anchor — typically the row's wrapper or
+   *  the underlying input. Make sure it has a non-zero bounding rect at
+   *  the time `attachDecoration` runs. */
+  element: HTMLElement;
+  /** Required when kind: 'enum'; ignored otherwise. */
+  enumValues?: readonly unknown[];
+}
+
+/** Register one editable cell. Returns the unregister disposer — wire it
+ *  as a $effect cleanup. */
+function registerInspectorField(
+  fields: FieldsContext,
+  opts: RegisterFieldOpts,
+): () => void;
+```
+
+### 11.2. Worked example: per-row registration in a custom renderer
+
+A custom renderer that owns its own per-row layout — e.g. a "fields panel"
+that turns a `Record<string, unknown>` into one input per user-defined
+field — registers each row from a tiny child component:
+
+```svelte
+<!-- SectionFieldRow.svelte -->
+<script lang="ts">
+  import {
+    registerInspectorField,
+    type FieldKind,
+    type FieldsContext,
+  } from '@unfinished-lair/sh3-editor/inspector/fields';
+
+  interface Props {
+    fields: FieldsContext;        // resolved once by the parent
+    fieldId: string;
+    label: string;
+    kind: FieldKind;
+    value: unknown;
+    onCommit: (next: unknown) => void;
+    enumValues?: readonly unknown[];
+  }
+  let { fields, fieldId, label, kind, value, onCommit, enumValues }: Props = $props();
+
+  let rowEl: HTMLDivElement | undefined = $state();
+
+  $effect(() => {
+    if (!rowEl) return;
+    return registerInspectorField(fields, {
+      fieldId,
+      label,
+      kind,
+      get: () => value,
+      set: (v) => onCommit(v),
+      element: rowEl,
+      enumValues,
+    });
+  });
+</script>
+
+<div bind:this={rowEl} class="row">
+  <!-- existing widget for this row (input, select, etc.) -->
+  <slot />
+</div>
+```
+
+Parent renderer:
+
+```svelte
+<!-- SectionFieldsRenderer.svelte -->
+<script lang="ts">
+  import { useInspectorFields } from '@unfinished-lair/sh3-editor/inspector/fields';
+  import SectionFieldRow from './SectionFieldRow.svelte';
+  import type { InspectorRendererProps } from '@unfinished-lair/sh3-editor/inspector/contributions';
+
+  let { value, meta, api, onCommit }: InspectorRendererProps = $props();
+  const fields = useInspectorFields();   // null when mounted ad-hoc — guard below
+
+  // ...resolve `section` from meta.target, `fieldsValue` from value, etc.
+</script>
+
+{#each section.fields as field (field.key)}
+  {#if fields}
+    <SectionFieldRow
+      {fields}
+      fieldId={`${section.id}.${field.key}`}
+      label={field.label}
+      kind={aiKind(field)}
+      value={fieldsValue[field.key]}
+      onCommit={(v) => onCommit?.({ ...fieldsValue, [field.key]: v })}
+      enumValues={field.kind === 'select' ? field.options.map(o => o.value) : undefined}
+    >
+      <!-- existing widget for this field type -->
+    </SectionFieldRow>
+  {:else}
+    <!-- not inside an inspector slot — render the widget without registration -->
+  {/if}
+{/each}
+```
+
+The pattern works for any custom renderer: build a leaf component that
+owns the `bind:this` + `$effect` + `registerInspectorField` triple, and
+mount one per user-controllable cell in the parent.
+
+### 11.3. Mapping app-specific field kinds to `FieldKind`
+
+`sh3-core 0.17`'s `FieldKind` is `'string' | 'number' | 'integer' | 'boolean' | 'enum' | 'json'`. App-defined kinds map down:
+
+| App field kind | `FieldKind` | Notes |
+|---|---|---|
+| Free text, identifier, ISO date string | `'string'` | The AI sees the original value verbatim — for ISO dates the prompt context is enough to keep the format. |
+| Float / decimal | `'number'` | |
+| Integer / count | `'integer'` | |
+| Toggle | `'boolean'` | |
+| Select / segmented (one-of) | `'enum'` | Pass `enumValues` so the prompt can be constrained. |
+| Entity reference, anything multi-valued | — | Skip registration; AI rewrite of an opaque reference / array isn't well-defined. |
+
+### 11.4. Lifecycle and teardown
+
+- Registration is **slot-scoped** — sh3-core auto-disposes when the
+  inspector slot unmounts, so the `$effect` cleanup is the only cleanup
+  the renderer has to wire.
+- Re-running the `$effect` (e.g. when the row's `fieldId` changes because
+  a section was renamed) disposes the old registration before creating
+  the new one.
+- The AI badge attaches via `ctx.sh3.fields.attachDecoration`; the badge
+  reflows automatically on resize / scroll. The `element` you pass
+  should have a stable, non-zero bounding rect.
+
+### 11.5. Filtering custom rows out of the field list
+
+When several inputs in a custom widget share underlying state (a primary
+input + read-only mirrors, e.g.) only register the one the AI should
+write to. Read-only mirrors can stay un-registered — the AI list only
+ever surfaces what was contributed.
+
+---
+
+## 12. See also
 
 - [editor.md](./editor.md) — the text editor shipped by the same shard.
 
 ---
 
-## 12. Legacy: imperative `openInspector` API
+## 13. Legacy: imperative `openInspector` API
 
 > **Deprecated since 0.12.0.** New cross-shard consumers should register an
 > `InspectorInstanceContribution` (see §2). The imperative methods continue

@@ -8,6 +8,8 @@
     "src/types.ts",
     "src/contributions.ts",
     "src/inspector/contributions.ts",
+    "src/inspector/fields.ts",
+    "src/inspector/fields-context.ts",
     "src/settings/contributions.ts",
     "src/help/contributions.ts",
     "src/color-panel/contributions.ts",

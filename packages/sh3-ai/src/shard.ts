@@ -5,6 +5,8 @@ import type {
   ViewHandle,
   MountContext,
   LayoutNode,
+  FieldAddress,
+  FieldView,
 } from 'sh3-core';
 import { registerShellMode, sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
@@ -13,6 +15,9 @@ import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
 import Sketch from './ai/sketch/Sketch.svelte';
 import SaveSketchPrompt from './ai/sketch/SaveSketchPrompt.svelte';
+import Edit from './assistant/Edit.svelte';
+import * as assistant from './assistant/mode';
+import { runOneShotStream } from './assistant/runOneShotStream';
 
 const CONVERSATIONS_VIEW_ID = 'ai:conversations';
 const CONVERSATIONS_FLOAT_TITLE = 'AI Conversations';
@@ -21,6 +26,7 @@ const DEFAULTS_FLOAT_TITLE = 'AI Defaults';
 const SKETCH_VIEW_ID = 'ai:sketch';
 const SKETCH_FLOAT_TITLE = 'AI Sketch';
 const SAVE_PROMPT_VIEW_ID = 'ai:sketch.save-prompt';
+const ASSISTANT_EDIT_VIEW_ID = 'ai:assistant.edit';
 
 function nodeContainsView(node: LayoutNode, viewId: string): boolean {
   if (node.type === 'slot') return node.viewId === viewId;
@@ -101,6 +107,7 @@ import { DocsStore } from './ai/docs/store';
 import { makeDocTools } from './ai/docs/tools';
 import { SketchState } from './ai/sketch/state';
 import { makeSketchTools } from './ai/sketch/tools';
+import { makeFieldsTools } from './ai/fields/tools';
 
 async function runOneShot(
   provider: AiProvider,
@@ -153,6 +160,7 @@ export const shard: SourceShard = {
       { id: DEFAULTS_VIEW_ID, label: 'AI Defaults', standalone: true },
       { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
       { id: SAVE_PROMPT_VIEW_ID, label: 'Save AI Sketch', standalone: true },
+      { id: ASSISTANT_EDIT_VIEW_ID, label: 'AI Edit', standalone: false },
     ],
   },
 
@@ -277,6 +285,76 @@ export const shard: SourceShard = {
       run() { openSavePrompt(); },
     });
 
+    async function runEditStream(
+      prompt: string,
+      signal: AbortSignal,
+      onChunk: (text: string) => void,
+    ): Promise<string> {
+      const provider = getActive();
+      if (!provider) throw new Error('ai: no AI provider configured');
+      const ready = provider.isReady();
+      if (ready !== true) throw new Error(ready);
+      return runOneShotStream(
+        provider,
+        prompt,
+        signal,
+        onChunk,
+        state.user.systemInstruction || undefined,
+        state.user.idleTimeoutMs,
+      );
+    }
+
+    const assistantEditFactory: ViewFactory = {
+      mount(container: HTMLElement, mctx: MountContext): ViewHandle {
+        const meta = (mctx.meta ?? {}) as { addr?: FieldAddress; fv?: FieldView };
+        const loc = mctx.location();
+        const floatId = loc?.kind === 'float' ? loc.floatId : null;
+        if (!meta.addr || !meta.fv || !floatId) {
+          return { unmount() {}, closable: true };
+        }
+        assistant.noteFloatOpened(floatId);
+        const close = () => sh3.float.close(floatId);
+        const instance = mount(Edit, {
+          target: container,
+          props: {
+            ctx,
+            addr: meta.addr,
+            fv: meta.fv,
+            runEditStream,
+            onClose: close,
+          },
+        });
+        return {
+          unmount() {
+            assistant.noteFloatClosed(floatId);
+            unmount(instance);
+          },
+          closable: true,
+        };
+      },
+    };
+    ctx.registerView(ASSISTANT_EDIT_VIEW_ID, assistantEditFactory);
+
+    ctx.actions.register({
+      id: 'sh3-ai:assistant.start',
+      label: 'AI: Start Assistant',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'AI',
+      run() { assistant.start(ctx); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-ai:assistant.stop',
+      label: 'AI: Stop Assistant',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'AI',
+      run() { assistant.stop(); },
+    });
+
     // Restore the previously-active conversation (if any) so the user
     // re-enters where they left off after a reload.
     if (state.user.activeConversationId) {
@@ -320,9 +398,9 @@ export const shard: SourceShard = {
       // Programmatic-only: skip verbs that can only be driven from a real
       // terminal (e.g. ai:provider, ai:lock). They'd reject under runVerb
       // anyway and previously enticed the LLM into infinite retry loops.
-      const verbs = ctx.listVerbs({ programmaticOnly: true });
+      const verbs = ctx.sh3.listVerbs({ programmaticOnly: true });
       const verbTools = verbsToTools(verbs, (shardId, name, args, opts) =>
-        ctx.runVerb(shardId, name, args, opts),
+        ctx.sh3.runVerb(shardId, name, args, opts),
       );
       const contribs = ctx.contributions.list<ToolContribution>(SH3_AI_TOOL_CONTRIBUTION);
       const contributionTools = toolContributionsToTools(contribs);
@@ -337,15 +415,16 @@ export const shard: SourceShard = {
         isViewOpen: () =>
           sh3.float.list().some((f) => nodeContainsView(f.content, SKETCH_VIEW_ID)),
       });
+      const fieldsTools = makeFieldsTools(ctx);
       // Snapshot of currently-dispatchable palette actions, refreshed per
       // turn so the LLM sees the same context-filtered set the user does.
       const active = sh3.actions.listActive();
       const actionTools = actionsToTools(active, (id, opts) =>
-        ctx.runAction(id, opts),
+        ctx.sh3.runAction(id, opts),
       );
       const all = assembleCatalog({
         verbTools,
-        contributionTools: [...contributionTools, ...docTools, ...sketchTools],
+        contributionTools: [...contributionTools, ...docTools, ...sketchTools, ...fieldsTools],
         actionTools,
       });
       return filterByScope(all, currentResolvedScope());
@@ -981,4 +1060,8 @@ export const shard: SourceShard = {
   // Empty body — keeps the shard resident so the `ai` mode and verbs are
   // reachable when no provider app/view is open.
   autostart() {},
+
+  deactivate() {
+    assistant.stop();
+  },
 };

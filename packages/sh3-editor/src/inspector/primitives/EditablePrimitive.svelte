@@ -1,10 +1,18 @@
 <script lang="ts">
+  import { getContext } from 'svelte';
+  import type { ControllableFieldDescriptor } from 'sh3-core';
+  import { FIELDS_CONTEXT_KEY, type FieldsContext } from '../fields-context';
+
   interface Props {
     value: string | number | boolean | null | undefined;
     readonly?: boolean;
     onCommit?: (next: string | number | boolean) => void;
+    /** Path from the inspected root to this leaf — joined to form a stable fieldId. */
+    path?: (string | number)[];
+    /** Display label for the field; falls back to the last path segment. */
+    label?: string;
   }
-  let { value, readonly = false, onCommit }: Props = $props();
+  let { value, readonly = false, onCommit, path, label }: Props = $props();
 
   let local = $state(stringify(value));
 
@@ -54,10 +62,37 @@
       (e.currentTarget as HTMLInputElement).blur();
     }
   }
+
+  let inputEl: HTMLInputElement | undefined = $state();
+  const fields = getContext<FieldsContext | undefined>(FIELDS_CONTEXT_KEY);
+
+  $effect(() => {
+    if (!fields || readonly || !onCommit || !inputEl || !path || path.length === 0) return;
+    const fieldKind = kind as 'string' | 'number' | 'boolean';
+    const descriptor: ControllableFieldDescriptor = {
+      shape: 'imperative',
+      fieldId: path.map(String).join('.'),
+      label: label ?? String(path[path.length - 1]),
+      kind: fieldKind,
+      get: () => value,
+      set: (v) => {
+        const parsed = parse(String(v), fieldKind);
+        if (parsed === null) return;
+        onCommit(parsed);
+      },
+      element: inputEl,
+    };
+    return fields.ctx.contributions.register<ControllableFieldDescriptor>(
+      'sh3.controllable-field',
+      descriptor,
+      { scope: { slotId: fields.slotId } },
+    );
+  });
 </script>
 
 {#if kind === 'boolean'}
   <input
+    bind:this={inputEl}
     type="checkbox"
     checked={Boolean(value)}
     disabled={readonly}
@@ -65,6 +100,7 @@
   />
 {:else}
   <input
+    bind:this={inputEl}
     class="primitive"
     type={kind === 'number' ? 'number' : 'text'}
     bind:value={local}

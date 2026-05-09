@@ -1,5 +1,26 @@
 # sh3-llm-providers changelog
 
+## 0.1.4 — 2026-05-09 — Gemini: strip JSON-Schema keys the API rejects
+
+Gemini's `tools[].function_declarations[].parameters` is a strict subset
+of JSON Schema. Tools whose `inputSchema` carried `additionalProperties`,
+`$schema`, `oneOf`, `allOf`, `not`, `const`, or `$ref` (common output of
+zod-to-json-schema and the new `controllable-fields` chat tools shipped
+in sh3-editor 0.13.15) were rejected with
+`Invalid JSON payload received. Unknown name "additionalProperties" at
+'tools[0].function_declarations[N].parameters'`, breaking every chat
+turn that registered tools.
+
+- New `sanitizeGeminiSchema` in `providers/gemini/client.ts` recursively
+  allowlists Gemini-supported Schema keys (`type`, `format`, `enum`,
+  `properties`, `required`, `items`, `anyOf`, `propertyOrdering`, …) and
+  recurses through `properties`, `items`, and `anyOf` so nested
+  occurrences are stripped too.
+- Applied in `buildToolsField` before the schema goes on the wire.
+
+DeepSeek's OpenAI-compatible endpoint accepts those keys — its client is
+unchanged.
+
 ## 0.1.3 — 2026-05-09 — Streaming idle watchdog replaces hard 60s overall cap
 
 Both the Gemini and DeepSeek streaming clients used to compose a fixed

@@ -77,6 +77,46 @@ export async function listModels(apiKey: string): Promise<ModelInfo[]> {
     .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
 }
 
+// Gemini's Schema type is a strict subset of JSON Schema. Sending unknown
+// keys (notably `additionalProperties`, `$schema`, `oneOf`, `allOf`, `not`,
+// `const`, `$ref`) gets rejected with
+// `Invalid JSON payload received. Unknown name "<key>" at
+// 'tools[0].function_declarations[N].parameters'`. Tool authors (and JSON
+// Schema generators like zod-to-json-schema) routinely emit these, so we
+// allowlist the keys Gemini actually accepts and recurse through the
+// nesting points (`properties`, `items`, `anyOf`).
+const GEMINI_SCHEMA_KEYS: ReadonlySet<string> = new Set([
+  'type', 'format', 'title', 'description', 'nullable', 'enum',
+  'maxItems', 'minItems', 'minProperties', 'maxProperties',
+  'minLength', 'maxLength', 'pattern', 'minimum', 'maximum',
+  'default', 'example', 'properties', 'required', 'items',
+  'anyOf', 'propertyOrdering',
+]);
+
+export function sanitizeGeminiSchema(schema: unknown): unknown {
+  if (schema === null || typeof schema !== 'object' || Array.isArray(schema)) {
+    return schema;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+    if (!GEMINI_SCHEMA_KEYS.has(key)) continue;
+    if (key === 'properties' && value && typeof value === 'object') {
+      const props: Record<string, unknown> = {};
+      for (const [propName, propSchema] of Object.entries(value as Record<string, unknown>)) {
+        props[propName] = sanitizeGeminiSchema(propSchema);
+      }
+      out[key] = props;
+    } else if (key === 'items') {
+      out[key] = sanitizeGeminiSchema(value);
+    } else if (key === 'anyOf' && Array.isArray(value)) {
+      out[key] = value.map(sanitizeGeminiSchema);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 function buildToolsField(options: ChatOptions | undefined): Record<string, unknown> {
   if (!options?.tools || options.tools.length === 0) return {};
   return {
@@ -85,7 +125,7 @@ function buildToolsField(options: ChatOptions | undefined): Record<string, unkno
         functionDeclarations: options.tools.map((t) => ({
           name: encodeToolName(t.name),
           description: t.description,
-          parameters: t.inputSchema,
+          parameters: sanitizeGeminiSchema(t.inputSchema),
         })),
       },
     ],

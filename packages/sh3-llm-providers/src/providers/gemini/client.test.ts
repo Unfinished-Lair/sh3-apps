@@ -527,6 +527,66 @@ describe('chatStream tool-call translation', () => {
     ]);
   });
 
+  it('strips JSON-Schema keys Gemini rejects (additionalProperties, $schema, oneOf) — top level and nested', async () => {
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'hi' }],
+      'gemini-2.5-flash',
+      new AbortController().signal,
+      undefined,
+      {
+        tools: [
+          {
+            name: 'tool.x',
+            description: 'd',
+            inputSchema: {
+              $schema: 'http://json-schema.org/draft-07/schema#',
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                tags: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: { name: { type: 'string' } },
+                  },
+                },
+                bag: {
+                  type: 'object',
+                  additionalProperties: { type: 'string' },
+                  properties: { k: { type: 'string' } },
+                },
+              },
+              oneOf: [{ type: 'object' }],
+            },
+          },
+        ],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const params = body.tools[0].functionDeclarations[0].parameters;
+    expect(params).toEqual({
+      type: 'object',
+      properties: {
+        tags: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { name: { type: 'string' } },
+          },
+        },
+        bag: {
+          type: 'object',
+          properties: { k: { type: 'string' } },
+        },
+      },
+    });
+  });
+
   it('omits the tools field when no tools given', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),

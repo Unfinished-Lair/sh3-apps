@@ -1,18 +1,28 @@
 <script lang="ts">
   import { sh3 } from 'sh3-core';
   import type { DocsStore } from '../docs/store';
+  import type { RenderMode } from './state';
+  import { SH3_INLINE_MARKER } from './tools';
 
   let {
     providerId,
     html,
+    mode,
     store,
     onClose,
   }: {
     providerId: string;
     html: string;
+    mode: RenderMode;
     store: DocsStore;
     onClose: () => void;
   } = $props();
+
+  function bodyToWrite(): string {
+    if (mode !== 'inline') return html;
+    if (html.slice(0, 200).includes('sh3:inline')) return html;
+    return `${SH3_INLINE_MARKER}\n${html}`;
+  }
 
   const NAME_RE = /^[a-zA-Z0-9._-]+$/;
 
@@ -25,7 +35,7 @@
     return `sketch-${y}-${m}-${d}-${hh}${mm}`;
   }
 
-  let mode = $state<'naming' | 'confirming-overwrite'>('naming');
+  let promptMode = $state<'naming' | 'confirming-overwrite'>('naming');
   let name = $state(defaultName());
   let error = $state<string | null>(null);
   let saving = $state(false);
@@ -42,10 +52,10 @@
     try {
       const existing = await store.read(`${providerId}/${relPath}`);
       if (existing !== null) {
-        mode = 'confirming-overwrite';
+        promptMode = 'confirming-overwrite';
         return;
       }
-      await store.write(providerId, relPath, html);
+      await store.write(providerId, relPath, bodyToWrite());
       sh3.toast.notify(`Saved AI Sketch as ${relPath}.`, { level: 'info' });
       onClose();
     } catch (err) {
@@ -60,12 +70,12 @@
     saving = true;
     try {
       const relPath = `sketches/${name.trim()}.html`;
-      await store.write(providerId, relPath, html);
+      await store.write(providerId, relPath, bodyToWrite());
       sh3.toast.notify(`Saved AI Sketch as ${relPath}.`, { level: 'info' });
       onClose();
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
-      mode = 'naming';
+      promptMode = 'naming';
     } finally {
       saving = false;
     }
@@ -73,7 +83,7 @@
 </script>
 
 <div class="save-prompt">
-  {#if mode === 'naming'}
+  {#if promptMode === 'naming'}
     <label>
       Name
       <input bind:value={name} disabled={saving} />
@@ -87,7 +97,7 @@
     <p>A sketch named <code>{name}</code> already exists. Overwrite?</p>
     {#if error}<p class="error">{error}</p>{/if}
     <div class="actions">
-      <button type="button" disabled={saving} onclick={() => (mode = 'naming')}>Back</button>
+      <button type="button" disabled={saving} onclick={() => (promptMode = 'naming')}>Back</button>
       <button type="button" disabled={saving} onclick={handleOverwrite}>Overwrite</button>
     </div>
   {/if}

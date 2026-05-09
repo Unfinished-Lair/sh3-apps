@@ -222,7 +222,7 @@ export const shard: SourceShard = {
         title: 'Save AI Sketch',
         size: { w: 360, h: 160 },
         dismissable: true,
-        meta: { providerId, html: snap.html },
+        meta: { providerId, html: snap.html, mode: snap.mode },
       });
     }
 
@@ -242,10 +242,14 @@ export const shard: SourceShard = {
 
     const savePromptFactory: ViewFactory = {
       mount(container: HTMLElement, mctx: MountContext): ViewHandle {
-        const meta = (mctx.meta ?? {}) as { providerId?: string; html?: string };
+        const meta = (mctx.meta ?? {}) as {
+          providerId?: string;
+          html?: string;
+          mode?: 'inline' | 'isolated';
+        };
         const loc = mctx.location();
         const floatId = loc?.kind === 'float' ? loc.floatId : null;
-        if (!meta.providerId || meta.html == null || !floatId) {
+        if (!meta.providerId || meta.html == null || !meta.mode || !floatId) {
           return { unmount() {}, closable: true };
         }
         const instance = mount(SaveSketchPrompt, {
@@ -253,6 +257,7 @@ export const shard: SourceShard = {
           props: {
             providerId: meta.providerId,
             html: meta.html,
+            mode: meta.mode,
             store: docsStore,
             onClose: () => sh3.float.close(floatId),
           },
@@ -412,6 +417,8 @@ export const shard: SourceShard = {
       });
       const sketchTools = makeSketchTools({
         state: sketchState,
+        store: docsStore,
+        activeProviderId: state.user.activeProviderId,
         isViewOpen: () =>
           sh3.float.list().some((f) => nodeContainsView(f.content, SKETCH_VIEW_ID)),
       });

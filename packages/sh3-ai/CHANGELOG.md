@@ -1,5 +1,36 @@
 # sh3-ai changelog
 
+## 0.5.13 — 2026-05-10 — AI Sketch open-by-path + autonomous save
+
+`ai.sketch.show` now accepts a doc-zone `path` as an alternative to
+inline `html`, letting the LLM re-open a previously-saved sketch
+without round-tripping the bytes through chat. New `ai.sketch.save`
+tool persists the current canvas under
+`docs/<provider>/sketches/<name>.html`, so a multi-turn flow can
+sketch → save → reload by name.
+
+### Added
+
+- `ai.sketch.show` accepts `{ path, mode? }` (mutually exclusive with
+  `html`). Path is absolute under the docs root, e.g.
+  `'gemini/sketches/foo.html'`; cross-provider reads are allowed.
+  When `mode` is omitted, it's inferred from a `<!-- sh3:inline -->`
+  marker scanned in the first ~200 chars: present ⇒ `inline`, absent
+  ⇒ `isolated`. Returns `{ error: 'not-found' }` when the path is
+  missing.
+- `ai.sketch.save({ name, overwrite? })` writes the current snapshot
+  to `<provider>/sketches/<name>.html`. Inline-mode sketches are
+  prefixed with `<!-- sh3:inline -->` so reload via `ai.sketch.show`
+  recovers the same mode. Refuses with `error: 'empty'` when the
+  canvas is null, `error: 'exists'` when the file is present and
+  `overwrite` is false. Throws when no provider is active.
+
+### Changed
+
+- `SaveSketchPrompt` now receives the current `mode` and embeds the
+  `<!-- sh3:inline -->` marker on save when applicable, so manually
+  saved sketches round-trip the same way as tool-saved ones.
+
 ## 0.5.12 — 2026-05-09 — AI Assistant + chat-mode `ai.fields.*` tools
 
 Coalesced patch covering 0.5.10 → 0.5.12 — peer-dep bump to sh3-core

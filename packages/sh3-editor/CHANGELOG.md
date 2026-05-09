@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.13.16 — 2026-05-09 — Editor keybindings move to the actions system
+
+`Editor.svelte`'s textarea owned its own keydown handler for Save, Undo,
+Redo (incl. Windows-style `Mod+Y`), and Toggle-Preview. They now dispatch
+through `ctx.actions` so the palette can list them, users can rebind
+them, and other surfaces can invoke them.
+
+### Added
+
+- `views/active.ts` — module-scope `ActiveEditorRef` registry. The
+  focused editor instance publishes its `save`/`undo`/`redo`/
+  `togglePreview` callbacks via `setActiveEditor`; actions read it
+  through `getActiveEditor()`.
+- `Editor.svelte` registers its ref on `focus` and clears it on unmount.
+- Five `focus:sh3-editor:editor`-scoped actions registered in
+  `shard.ts`: `editor.save` (`Mod+S`), `editor.undo` (`Mod+Z`),
+  `editor.redo` (`Mod+Shift+Z`), `editor.redo-alt` (`Mod+Y`, hidden from
+  palette/context), and `editor.preview-toggle` (`Mod+Shift+V`).
+
+### Changed
+
+- The textarea now carries `data-sh3-passthrough-modifiers` so the
+  shell's action dispatcher receives the modifier shortcuts above; the
+  inline `handleKeydown` branches that previously called
+  `internals.emitSave` / `internals.history(...)` are removed.
+
 ## 0.13.15 — 2026-05-09 — Inspector fields surface as AI-controllable
 
 Coalesced patch covering 0.13.13 → 0.13.15 — peer-dep bump to sh3-core

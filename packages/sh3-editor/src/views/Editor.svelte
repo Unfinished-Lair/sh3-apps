@@ -6,6 +6,7 @@
   import type { ApiInternals } from '../model/api';
   import { isModKey, applyIndent, applyEnter, applyClosingBrace } from '../util/keybindings';
   import { createTextSwapCommand } from '../model/history-registry';
+  import { setActiveEditor, clearActiveEditorIf, type ActiveEditorRef } from './active';
   import Toolbar from './Toolbar.svelte';
   import TextEditorSettings from './TextEditorSettings.svelte';
   import Preview from './Preview.svelte';
@@ -164,6 +165,22 @@
     );
   });
 
+  const activeRef: ActiveEditorRef = {
+    save() { internals.emitSave(doc.id); },
+    undo() { internals.history(doc.id).undo(); },
+    redo() { internals.history(doc.id).redo(); },
+    togglePreview() {
+      if (!previewSupported) return false;
+      togglePreview();
+      return true;
+    },
+  };
+  $effect(() => () => clearActiveEditorIf(activeRef));
+
+  function handleFocus() {
+    setActiveEditor(activeRef);
+  }
+
   let highlighted = $derived(
     highlight && doc.language
       ? highlight(local, doc.language)
@@ -235,31 +252,6 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key.toLowerCase() === 'v' && isModKey(e) && e.shiftKey) {
-      if (!previewSupported) return;
-      e.preventDefault();
-      togglePreview();
-      return;
-    }
-
-    if (e.key === 's' && isModKey(e)) {
-      e.preventDefault();
-      internals.emitSave(doc.id);
-      return;
-    }
-
-    if (e.key.toLowerCase() === 'z' && isModKey(e) && !e.shiftKey) {
-      e.preventDefault();
-      internals.history(doc.id).undo();
-      return;
-    }
-
-    if ((e.key.toLowerCase() === 'y' && isModKey(e)) || (e.key.toLowerCase() === 'z' && isModKey(e) && e.shiftKey)) {
-      e.preventDefault();
-      internals.history(doc.id).redo();
-      return;
-    }
-
     if (e.key === 'Enter' && !e.shiftKey && !isModKey(e) && !e.altKey) {
       if (indentType === 'none') return;
       const el = e.currentTarget as HTMLTextAreaElement;
@@ -354,10 +346,12 @@
         value={local}
         spellcheck={false}
         autocapitalize="off"
+        data-sh3-passthrough-modifiers
         onkeydown={handleKeydown}
         oninput={handleInput}
         onscroll={handleScroll}
         onselect={handleSelect}
+        onfocus={handleFocus}
       ></textarea>
 
       {#if previewActive}

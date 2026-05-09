@@ -33,6 +33,7 @@ import {
 } from './graph/contributions';
 import type { GraphAsset } from './graph/asset/types';
 import { getActiveGraph } from './graph/active';
+import { getActiveEditor } from './views/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
 import { bindInspector } from './inspector-binding';
@@ -430,6 +431,67 @@ export const shard: SourceShard = {
         // Settings view is standalone-openable via the shell's view launcher.
         // Placeholder: full wiring belongs in a future task.
       },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.save',
+      label: 'Save Document',
+      scope: 'focus:sh3-editor:editor',
+      defaultShortcut: 'Mod+S',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.save(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.undo',
+      label: 'Undo',
+      scope: 'focus:sh3-editor:editor',
+      defaultShortcut: 'Mod+Z',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.undo(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.redo',
+      label: 'Redo',
+      scope: 'focus:sh3-editor:editor',
+      defaultShortcut: 'Mod+Shift+Z',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.redo(); },
+    });
+
+    // Windows-style alternate redo binding. Hidden from palette/context to
+    // avoid duplicate entries — primary redo action is above.
+    ctx.actions.register({
+      id: 'sh3-editor:editor.redo-alt',
+      label: 'Redo',
+      scope: 'focus:sh3-editor:editor',
+      defaultShortcut: 'Mod+Y',
+      allowInInputs: true,
+      paletteItem: false,
+      contextItem: false,
+      run() { getActiveEditor()?.redo(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.preview-toggle',
+      label: 'Toggle Preview',
+      scope: 'focus:sh3-editor:editor',
+      defaultShortcut: 'Mod+Shift+V',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.togglePreview(); },
     });
 
     ctx.actions.register({

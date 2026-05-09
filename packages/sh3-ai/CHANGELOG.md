@@ -1,5 +1,28 @@
 # sh3-ai changelog
 
+## 0.5.6 — 2026-05-09 — Palette actions in the AI catalog
+
+Currently-active palette actions now appear as tools in the AI catalog,
+refreshed per turn so the LLM sees the same context-filtered set the user
+does. Action ids are mapped to tool names by rewriting the leading `:` to
+`.` (`sh3-ai:open-config.defaults` → `sh3-ai.open-config.defaults`),
+which matches the `*.*.*` glob used by the `everything` scope.
+
+- New `actionsToTools` adapter (`src/ai/catalog/action-adapter.ts`) wired
+  into `buildCatalog()` against `sh3.actions.listActive()` +
+  `ctx.runAction(id, opts)` (sh3-core 0.16 surface).
+- `Tool['source']` gains `'action'`; `ai:catalog` formats matching entries
+  as `(action)` without further plumbing.
+- `assembleCatalog` accepts an optional `actionTools` bucket; precedence
+  is verb > contribution > action on name collision.
+- The adapter defensively skips `submenu: true` and `aiInvocable: false`
+  descriptors. sh3-core 0.16's `listActive()` already filters submenu
+  parents (no `run`); the `aiInvocable` opt-out is a forward-compatible
+  hook for an upstream addition that hasn't landed yet.
+- Tool names with more than 3 dot-segments emit a `console.warn` — they
+  fall outside the everything scope's glob until the matcher relaxes or
+  the action id is shortened.
+
 ## 0.5.2 — 2026-05-08 — AI Defaults: rename `state` prop on destructure
 
 The `Defaults.svelte` view destructured the bindable `state` prop with the

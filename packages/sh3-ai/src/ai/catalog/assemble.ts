@@ -5,16 +5,22 @@ import { evaluate } from '../scope/evaluate';
 export interface CatalogSources {
   verbTools: Tool[];
   contributionTools: Tool[];
+  actionTools?: Tool[];
 }
 
-/** Merge sources with verb-wins-on-collision dedup. */
+/** Merge sources with verb-wins-on-collision dedup. Precedence:
+ *  verb > contribution > action — action tools come from the live palette
+ *  and are the most volatile of the three sources, so they lose any
+ *  name-collision tie. */
 export function assembleCatalog(sources: CatalogSources): Tool[] {
   const seen = new Map<string, Tool>();
-  // Verbs first → they win on collision.
   for (const t of sources.verbTools) {
     if (!seen.has(t.name)) seen.set(t.name, t);
   }
   for (const t of sources.contributionTools) {
+    if (!seen.has(t.name)) seen.set(t.name, t);
+  }
+  for (const t of sources.actionTools ?? []) {
     if (!seen.has(t.name)) seen.set(t.name, t);
   }
   return [...seen.values()];

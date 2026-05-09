@@ -35,6 +35,47 @@ describe('assembleCatalog', () => {
     expect(cat).toHaveLength(1);
     expect(cat[0]).toBe(a1);
   });
+
+  it('appends actionTools after verbs and contributions', () => {
+    const cat = assembleCatalog({
+      verbTools: [t('v.x', 'verb')],
+      contributionTools: [t('c.x', 'sh3-ai.tool')],
+      actionTools: [t('a.x', 'action')],
+    });
+    expect(cat.map((x) => x.name).sort()).toEqual(['a.x', 'c.x', 'v.x']);
+  });
+
+  it('drops action tools that collide with a verb name', () => {
+    const verb = t('shared.x', 'verb');
+    const action = t('shared.x', 'action');
+    const cat = assembleCatalog({
+      verbTools: [verb],
+      contributionTools: [],
+      actionTools: [action],
+    });
+    expect(cat).toHaveLength(1);
+    expect(cat[0]).toBe(verb);
+  });
+
+  it('drops action tools that collide with a contribution name', () => {
+    const contrib = t('shared.x', 'sh3-ai.tool');
+    const action = t('shared.x', 'action');
+    const cat = assembleCatalog({
+      verbTools: [],
+      contributionTools: [contrib],
+      actionTools: [action],
+    });
+    expect(cat).toHaveLength(1);
+    expect(cat[0]).toBe(contrib);
+  });
+
+  it('omitted actionTools defaults to empty', () => {
+    const cat = assembleCatalog({
+      verbTools: [t('v.x', 'verb')],
+      contributionTools: [],
+    });
+    expect(cat.map((x) => x.name)).toEqual(['v.x']);
+  });
 });
 
 describe('filterByScope', () => {

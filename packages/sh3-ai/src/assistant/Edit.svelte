@@ -1,5 +1,8 @@
 <script lang="ts">
   import type { ShardContext, FieldAddress, FieldView } from 'sh3-core';
+  import ContextPicker from './ContextPicker.svelte';
+  import { buildPrompt as buildPromptFn, type ContextEntry } from './prompt';
+  import { addrKey } from './picker';
 
   type RunStream = (
     prompt: string,
@@ -25,19 +28,27 @@
 
   const original = String(ctx.sh3.fields.get(addr) ?? '');
   let prompt = $state('');
+  let selectedAddrs = $state<FieldAddress[]>([]);
   let phase = $state<Phase>({ kind: 'idle' });
   let abortCtrl: AbortController | null = null;
 
   function buildPrompt(): string {
-    return [
-      'Rewrite the following text per the user\'s instruction.',
-      'Return ONLY the rewritten text, no commentary.',
-      '',
-      '--- ORIGINAL ---',
-      original,
-      '--- INSTRUCTION ---',
-      prompt,
-    ].join('\n');
+    const all = ctx.sh3.fields.list();
+    const contexts: ContextEntry[] = [];
+    for (const a of selectedAddrs) {
+      const k = addrKey(a);
+      const fv = all.find((f) => addrKey(f) === k);
+      if (!fv) continue;
+      contexts.push({
+        shardId: fv.shardId,
+        slotId: fv.slotId,
+        fieldId: fv.fieldId,
+        label: fv.label,
+        kind: fv.kind,
+        value: ctx.sh3.fields.get(a),
+      });
+    }
+    return buildPromptFn({ original, instruction: prompt, contexts });
   }
 
   async function run(): Promise<void> {
@@ -101,6 +112,10 @@
     onClose();
   }
 
+  function refine(): void {
+    phase = { kind: 'idle' };
+  }
+
   function dismissError(): void {
     phase = { kind: 'idle' };
   }
@@ -122,6 +137,7 @@
         placeholder="rewrite this more cleanly, fix orthography…"
         rows={4}
       ></textarea>
+      <ContextPicker {ctx} excludeAddr={addr} bind:selected={selectedAddrs} />
       <details class="orig">
         <summary>Original ({original.length} chars)</summary>
         <pre>{original}</pre>
@@ -154,6 +170,7 @@
     </div>
     <div class="footer">
       <button type="button" class="ghost" onclick={discard}>Discard</button>
+      <button type="button" class="ghost" onclick={refine}>Refine</button>
       <button type="button" class="primary" onclick={accept2}>Accept</button>
     </div>
   {:else if phase.kind === 'validate-3pane'}

@@ -1,6 +1,10 @@
 <script lang="ts">
+  import { setTokenOverrides } from 'sh3-core';
   import type { ThemeState } from '../theme-manager';
   import {
+    applyTheme,
+    findTheme,
+    resolveTokens,
     createTheme,
     duplicateTheme,
     deleteTheme,
@@ -12,37 +16,48 @@
   import type { DefaultTheme } from '../types';
 
   let {
-    state,
-    selectedThemeId,
-    activeThemeId,
-    defaultTheme,
-    onselect,
+    state: themeState,
+    ephemeralState,
+    env,
   }: {
     state: ThemeState;
-    selectedThemeId: string;
-    activeThemeId: string;
-    defaultTheme: DefaultTheme | null;
-    onselect: (id: string) => void;
+    ephemeralState: { previewThemeId: string | null };
+    env: { defaultTheme: DefaultTheme | null };
   } = $props();
 
+  const selectedThemeId = $derived(
+    ephemeralState.previewThemeId ??
+      (themeState.useDefault ? DEFAULT_THEME_ID : themeState.activeThemeId),
+  );
+  const activeThemeId = $derived(
+    themeState.useDefault ? DEFAULT_THEME_ID : themeState.activeThemeId,
+  );
+
+  function selectTheme(id: string) {
+    ephemeralState.previewThemeId = id;
+    const theme = findTheme(id, themeState, env.defaultTheme);
+    if (theme) setTokenOverrides(resolveTokens(theme));
+  }
+
   function handleNew() {
-    const theme = createTheme('New Theme', state);
-    onselect(theme.id);
+    const theme = createTheme('New Theme', themeState);
+    selectTheme(theme.id);
   }
 
   function handleDuplicate() {
-    const theme = duplicateTheme(selectedThemeId, state);
-    if (theme) onselect(theme.id);
+    const theme = duplicateTheme(selectedThemeId, themeState);
+    if (theme) selectTheme(theme.id);
   }
 
   function handleDelete() {
-    if (deleteTheme(selectedThemeId, state)) {
-      onselect(activeThemeId);
+    if (deleteTheme(selectedThemeId, themeState)) {
+      selectTheme(activeThemeId);
+      applyTheme(themeState.activeThemeId, themeState, env.defaultTheme);
     }
   }
 
   function handleExport() {
-    const data = exportTheme(selectedThemeId, state);
+    const data = exportTheme(selectedThemeId, themeState);
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -63,8 +78,8 @@
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        const theme = importTheme(parsed, state);
-        if (theme) onselect(theme.id);
+        const theme = importTheme(parsed, themeState);
+        if (theme) selectTheme(theme.id);
       } catch {
         // Invalid file — silently ignore
       }
@@ -78,56 +93,58 @@
   );
 </script>
 
-<div class="sidebar">
-  {#if defaultTheme}
-    <div class="section-label">Default</div>
-    <button
-      class="theme-item"
-      class:selected={selectedThemeId === DEFAULT_THEME_ID}
-      class:active={activeThemeId === DEFAULT_THEME_ID}
-      onclick={() => onselect(DEFAULT_THEME_ID)}
-    >
-      <span class="name">{defaultTheme.name}</span>
-      {#if activeThemeId === DEFAULT_THEME_ID}
-        <span class="active-dot"></span>
-      {/if}
-    </button>
-  {/if}
+<div class="theme-list-view">
+  <div class="list">
+    {#if env.defaultTheme}
+      <div class="section-label">Default</div>
+      <button
+        class="theme-item"
+        class:selected={selectedThemeId === DEFAULT_THEME_ID}
+        class:active={activeThemeId === DEFAULT_THEME_ID}
+        onclick={() => selectTheme(DEFAULT_THEME_ID)}
+      >
+        <span class="name">{env.defaultTheme.name}</span>
+        {#if activeThemeId === DEFAULT_THEME_ID}
+          <span class="active-dot"></span>
+        {/if}
+      </button>
+    {/if}
 
-  <div class="section-label">Built-in</div>
-  {#each BUILTIN_PRESETS as theme}
-    <button
-      class="theme-item"
-      class:selected={selectedThemeId === theme.id}
-      class:active={activeThemeId === theme.id}
-      onclick={() => onselect(theme.id)}
-    >
-      <span class="lock">🔒</span>
-      <span class="name">{theme.name}</span>
-      {#if activeThemeId === theme.id}
-        <span class="active-dot"></span>
-      {/if}
-    </button>
-  {/each}
-
-  {#if state.userThemes.length > 0}
-    <div class="section-label">User</div>
-    {#each state.userThemes as theme}
+    <div class="section-label">Built-in</div>
+    {#each BUILTIN_PRESETS as theme}
       <button
         class="theme-item"
         class:selected={selectedThemeId === theme.id}
         class:active={activeThemeId === theme.id}
-        onclick={() => onselect(theme.id)}
+        onclick={() => selectTheme(theme.id)}
       >
+        <span class="lock">🔒</span>
         <span class="name">{theme.name}</span>
         {#if activeThemeId === theme.id}
           <span class="active-dot"></span>
         {/if}
       </button>
     {/each}
-  {/if}
 
-  <div class="sidebar-actions">
+    {#if themeState.userThemes.length > 0}
+      <div class="section-label">User</div>
+      {#each themeState.userThemes as theme}
+        <button
+          class="theme-item"
+          class:selected={selectedThemeId === theme.id}
+          class:active={activeThemeId === theme.id}
+          onclick={() => selectTheme(theme.id)}
+        >
+          <span class="name">{theme.name}</span>
+          {#if activeThemeId === theme.id}
+            <span class="active-dot"></span>
+          {/if}
+        </button>
+      {/each}
+    {/if}
+  </div>
+
+  <div class="list-actions">
     <button class="action-btn" onclick={handleNew}>+ New Theme</button>
     <button class="action-btn" onclick={handleDuplicate}>Duplicate</button>
     <div class="action-row">
@@ -141,15 +158,26 @@
 </div>
 
 <style>
-  .sidebar {
-    width: 180px;
-    min-width: 140px;
-    border-right: 1px solid var(--sh3-border);
+  .theme-list-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-width: 0;
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
+    font-size: var(--sh3-font-size);
     padding: var(--sh3-pad-md);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .list {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
     overflow-y: auto;
+    min-height: 0;
   }
   .section-label {
     font-size: 10px;
@@ -169,6 +197,8 @@
     cursor: pointer;
     font-size: var(--sh3-font-size);
     color: var(--sh3-fg);
+    /* Larger touch target on coarse pointers */
+    min-height: 32px;
   }
   .theme-item:hover {
     background: var(--sh3-bg-elevated);
@@ -185,12 +215,12 @@
     border-radius: 50%;
     background: var(--sh3-accent);
   }
-  .sidebar-actions {
-    margin-top: auto;
+  .list-actions {
     display: flex;
     flex-direction: column;
     gap: 4px;
     padding-top: 8px;
+    flex-shrink: 0;
   }
   .action-row {
     display: flex;
@@ -199,13 +229,15 @@
   .action-row .action-btn { flex: 1; }
   .action-btn {
     all: unset;
-    padding: 4px 8px;
+    padding: 6px 8px;
     background: var(--sh3-bg-elevated);
     border-radius: 4px;
     text-align: center;
     font-size: 11px;
     cursor: pointer;
     color: var(--sh3-fg);
+    min-height: 32px;
+    box-sizing: border-box;
   }
   .action-btn:hover {
     background: var(--sh3-border);

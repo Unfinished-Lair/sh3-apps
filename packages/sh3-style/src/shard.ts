@@ -11,7 +11,8 @@ import {
   DEFAULT_THEME_ID,
 } from './theme-manager';
 import type { DefaultTheme } from './types';
-import ThemeEditor from './editor/ThemeEditor.svelte';
+import ThemeListView from './editor/ThemeListView.svelte';
+import StyleEditView from './editor/StyleEditView.svelte';
 import StylesTable from './rich/StylesTable.svelte';
 
 /** Shape of the env state for sh3-style. */
@@ -56,7 +57,10 @@ export const shard: SourceShard = {
   manifest: {
     id: 'sh3-style',
     label: 'Style',
-    views: [{ id: 'sh3-style-editor', label: 'Style Editor' }],
+    views: [
+      { id: 'sh3-style-list', label: 'Themes' },
+      { id: 'sh3-style-edit', label: 'Style Editor' },
+    ],
   },
 
   activate(ctx: ShardContext) {
@@ -74,14 +78,39 @@ export const shard: SourceShard = {
     stateRef = state.user;
     envRef = env;
 
+    // Seed the shared preview id so both views agree on initial selection.
+    if (state.ephemeral.previewThemeId == null) {
+      state.ephemeral.previewThemeId = state.user.useDefault
+        ? DEFAULT_THEME_ID
+        : state.user.activeThemeId;
+    }
+
     // Apply the confirmed theme eagerly. Note: env is not yet hydrated
     // from the server at this point, so env.defaultTheme may still be
     // null. autostart() re-applies once env is ready.
     applyConfirmed(state.user, env);
 
-    ctx.registerView('sh3-style-editor', {
+    ctx.registerView('sh3-style-list', {
       mount(container, _context) {
-        const component = mount(ThemeEditor, {
+        const component = mount(ThemeListView, {
+          target: container,
+          props: {
+            state: state.user,
+            ephemeralState: state.ephemeral,
+            env,
+          },
+        });
+        return {
+          unmount() {
+            unmount(component);
+          },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-style-edit', {
+      mount(container, _context) {
+        const component = mount(StyleEditView, {
           target: container,
           props: {
             state: state.user,
@@ -91,7 +120,6 @@ export const shard: SourceShard = {
             onEnvUpdate: (patch: Partial<StyleEnv>) => ctx.envUpdate(patch),
           },
         });
-
         return {
           unmount() {
             unmount(component);

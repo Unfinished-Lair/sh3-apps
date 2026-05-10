@@ -6,14 +6,28 @@ export const app: SourceApp = {
     id: 'sh3-style',
     label: 'Style',
     requiredShards: ['sh3-style'],
-    layoutVersion: 1,
+    layoutVersion: 2,
     icon: 'palette',
   },
 
   initialLayout: {
-    type: 'tabs',
-    tabs: [{ slotId: 'main', viewId: 'sh3-style-editor', label: 'Style Editor' }],
-    activeTab: 0,
+    type: 'split',
+    direction: 'horizontal',
+    sizes: [200, 1],
+    pinned: ['px', 'fr'],
+    children: [
+      {
+        type: 'slot',
+        slotId: 'main.list',
+        viewId: 'sh3-style-list',
+        role: 'sidebar',
+      },
+      {
+        type: 'slot',
+        slotId: 'main.edit',
+        viewId: 'sh3-style-edit',
+      },
+    ],
   },
 
   // Undo any in-progress theme preview when the app is unloaded

@@ -25,6 +25,7 @@
   ];
 </script>
 
+<div class="matrix-wrap">
 <table class="matrix">
   <thead>
     <tr>
@@ -51,8 +52,13 @@
     {/each}
   </tbody>
 </table>
+</div>
 
 <style>
+  .matrix-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+  }
   .matrix {
     border-collapse: collapse;
     font-size: 10px;

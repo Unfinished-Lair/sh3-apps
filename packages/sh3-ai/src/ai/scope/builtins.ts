@@ -27,6 +27,8 @@ export const SCOPE_READ_ONLY: Scope = {
     'ai.docs.list',
     'ai.fields.list',
     'ai.fields.get',
+    'ai.temperature.get',
+    'ai.temperature.set',
   ],
   blacklist: [],
 };

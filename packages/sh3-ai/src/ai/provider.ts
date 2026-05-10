@@ -60,6 +60,13 @@ export interface ChatOptions {
    *  trip it. `0` or `undefined` disables the internal watchdog — the
    *  external `signal` remains the only way to cancel. */
   idleTimeoutMs?: number;
+  /** Sampling temperature, shared across providers. `null` / `undefined`
+   *  → omit from the wire request and let the API apply its default. The
+   *  provider is responsible for translating into its native field
+   *  (Gemini: `generationConfig.temperature`; OpenAI-compat: `temperature`).
+   *  Owned by sh3-ai's user state so a single setting applies regardless
+   *  of which provider is active. */
+  temperature?: number | null;
 }
 
 export interface AiProvider {

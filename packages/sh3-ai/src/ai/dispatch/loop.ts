@@ -23,13 +23,16 @@ export interface DispatchLoopOptions {
   /** Forwarded to the provider via `ChatOptions.idleTimeoutMs` on every
    *  round. `0` or `undefined` disables the watchdog. */
   idleTimeoutMs?: number;
+  /** Forwarded to the provider via `ChatOptions.temperature` on every
+   *  round. `null` / `undefined` → API default. */
+  temperature?: number | null;
 }
 
 export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   const {
     prompt, catalog, scope, conversation, provider, model, signal,
     transcript, maxRounds = 16, maxResultBytes, systemInstruction,
-    idleTimeoutMs,
+    idleTimeoutMs, temperature,
   } = opts;
   const tools: ToolSpec[] | undefined = catalog.length > 0
     ? catalog.map((t) => ({
@@ -57,7 +60,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     for await (const chunk of provider.chat(
       conversation.messages, model, signal,
-      { tools, toolCalls, toolResults, reasoningContent, systemInstruction, idleTimeoutMs },
+      { tools, toolCalls, toolResults, reasoningContent, systemInstruction, idleTimeoutMs, temperature },
     )) {
       if (chunk.type === 'token') {
         assistantText += chunk.text;

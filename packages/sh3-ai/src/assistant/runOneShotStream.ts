@@ -15,6 +15,7 @@ export async function runOneShotStream(
   onChunk: (accumulated: string) => void,
   systemInstruction?: string,
   idleTimeoutMs?: number,
+  temperature?: number | null,
 ): Promise<string> {
   const chain = provider.chain();
   if (chain.length === 0) {
@@ -26,7 +27,7 @@ export async function runOneShotStream(
       const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
       let text = '';
       let done = false;
-      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction, idleTimeoutMs })) {
+      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction, idleTimeoutMs, temperature })) {
         if (chunk.type === 'token') {
           text += chunk.text;
           onChunk(text);

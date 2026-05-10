@@ -74,22 +74,9 @@
     user.modelChain = [...user.modelChain, next];
   }
 
-  const temperatureDisplay = $derived(
-    user.temperature == null ? '' : String(user.temperature),
-  );
   const maxOutputTokensDisplay = $derived(
     user.maxOutputTokens == null ? '' : String(user.maxOutputTokens),
   );
-
-  function onTemperatureChange(e: Event) {
-    const raw = (e.target as HTMLInputElement).value;
-    if (raw.trim() === '') {
-      user.temperature = null;
-      return;
-    }
-    const n = Number(raw);
-    if (Number.isFinite(n)) user.temperature = n;
-  }
 
   function onMaxOutputTokensChange(e: Event) {
     const raw = (e.target as HTMLInputElement).value;
@@ -202,24 +189,11 @@
 
   <h2>Generation</h2>
   <p class="note">
-    Steer how the model responds. All fields optional. The system instruction is shared
-    across providers — edit it in
-    <button type="button" class="link" onclick={openAiDefaults}>AI Defaults</button>.
+    Steer how the model responds. All fields optional. The system instruction and
+    sampling temperature are shared across providers — edit them in
+    <button type="button" class="link" onclick={openAiDefaults}>AI Defaults</button>
+    (or via <code>ai:temperature</code> in the shell).
   </p>
-
-  <label class="field">
-    <span class="field-label">Temperature</span>
-    <input
-      type="number"
-      min="0"
-      max="2"
-      step="0.1"
-      value={temperatureDisplay}
-      oninput={onTemperatureChange}
-      placeholder="(API default)"
-    />
-    <span class="help">Blank = use API default. Lower is more deterministic.</span>
-  </label>
 
   <label class="field">
     <span class="field-label">Max output tokens</span>

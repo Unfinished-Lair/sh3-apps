@@ -379,7 +379,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.id).toBe('gemini');
@@ -391,7 +390,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => 'x',
       getChain: () => chain,
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.chain()).toEqual(['a']);
@@ -407,7 +405,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     await collect(p.chat([{ role: 'user', content: 'hi' }], 'gemini-2.5-flash', new AbortController().signal));
@@ -425,7 +422,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => 'k',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     await collect(p.chat(
@@ -442,7 +438,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.isAuthFailure(new GeminiError('x', 400))).toBe(true);
@@ -454,7 +449,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.isAuthFailure(new GeminiError('x', 500))).toBe(false);
@@ -468,7 +462,6 @@ describe('geminiProvider', () => {
     const p = geminiProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     const empty = p.isReady();
@@ -737,7 +730,9 @@ describe('chatStream generation config', () => {
     expect(body).not.toHaveProperty('systemInstruction');
   });
 
-  it('includes generationConfig.temperature when number, omits when null', async () => {
+  it('includes generationConfig.temperature from ChatOptions, omits when null', async () => {
+    // Temperature now arrives via ChatOptions (sh3-ai-owned, shared across
+    // providers), not the per-provider GeminiGenerationConfig.
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
     ]));
@@ -747,6 +742,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'gemini-2.5-flash',
         new AbortController().signal,
+        undefined,
         { temperature: 0.2 },
       ),
     );
@@ -763,6 +759,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'gemini-2.5-flash',
         new AbortController().signal,
+        undefined,
         { temperature: null },
       ),
     );
@@ -803,7 +800,7 @@ describe('chatStream generation config', () => {
     expect(body).not.toHaveProperty('generationConfig');
   });
 
-  it('combines temperature and maxOutputTokens in generationConfig', async () => {
+  it('combines temperature (from options) and maxOutputTokens (from config) in generationConfig', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
     ]));
@@ -813,7 +810,8 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'gemini-2.5-flash',
         new AbortController().signal,
-        { temperature: 0, maxOutputTokens: 100 },
+        { maxOutputTokens: 100 },
+        { temperature: 0 },
       ),
     );
     const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);

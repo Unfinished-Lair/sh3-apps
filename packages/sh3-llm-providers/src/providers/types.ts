@@ -8,7 +8,6 @@ export interface ModelInfo {
 export interface ProviderUserState extends Record<string, unknown> {
   apiKey: string;
   modelChain: string[];
-  temperature: number | null;
   maxOutputTokens: number | null;
 }
 
@@ -23,7 +22,6 @@ export interface ProviderSessionState extends Record<string, unknown> {
 export interface ProviderDeps {
   getApiKey(): string;
   getChain(): string[];
-  getTemperature(): number | null;
   getMaxOutputTokens(): number | null;
 }
 

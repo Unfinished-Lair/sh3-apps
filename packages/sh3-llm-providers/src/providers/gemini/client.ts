@@ -19,8 +19,6 @@ export class GeminiError extends Error {
 }
 
 export interface GeminiGenerationConfig {
-  /** null/omitted → do not send `generationConfig.temperature`. */
-  temperature?: number | null;
   /** null/omitted → do not send `generationConfig.maxOutputTokens`. */
   maxOutputTokens?: number | null;
 }
@@ -28,14 +26,17 @@ export interface GeminiGenerationConfig {
 function buildGenerationFields(
   systemInstruction: string | undefined,
   config: GeminiGenerationConfig | undefined,
+  options: ChatOptions | undefined,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (systemInstruction) {
     out.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
   const generationConfig: Record<string, number> = {};
-  if (typeof config?.temperature === 'number') {
-    generationConfig.temperature = config.temperature;
+  // Temperature is sh3-ai-owned (shared across providers) and arrives via
+  // ChatOptions, not the per-provider config.
+  if (typeof options?.temperature === 'number') {
+    generationConfig.temperature = options.temperature;
   }
   if (typeof config?.maxOutputTokens === 'number') {
     generationConfig.maxOutputTokens = config.maxOutputTokens;
@@ -172,7 +173,7 @@ export async function* chatStream(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [...baseContents, ...toolResultsToContents(options, callIdToName)],
-        ...buildGenerationFields(options?.systemInstruction, config),
+        ...buildGenerationFields(options?.systemInstruction, config, options),
         ...buildToolsField(options),
       }),
       signal: idle.signal,
@@ -302,10 +303,7 @@ export function geminiProvider(deps: ProviderDeps): AiProvider {
     chat(messages, model, signal, options) {
       return chatStream(
         deps.getApiKey(), messages, model, signal,
-        {
-          temperature: deps.getTemperature(),
-          maxOutputTokens: deps.getMaxOutputTokens(),
-        },
+        { maxOutputTokens: deps.getMaxOutputTokens() },
         options,
         callIdToName,
       );

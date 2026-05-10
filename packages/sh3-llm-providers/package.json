@@ -1,6 +1,6 @@
 {
   "name": "sh3-llm-providers",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini as sh3-ai.providers, plus per-provider settings views; replaces sh3-deepseek-shell and sh3-gemini-shell",
   "author": "@unfinished-lair",
   "type": "module",
@@ -14,12 +14,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "sh3-ai": "^0.5.0",
+    "sh3-ai": "^0.6.0",
     "sh3-core": "^0.16.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-ai": "^0.5.0",
+    "sh3-ai": "^0.6.0",
     "sh3-core": "^0.16.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",

@@ -548,7 +548,9 @@ describe('chatStream generation config', () => {
     expect(body.messages).toEqual([{ role: 'user', content: 'hi' }]);
   });
 
-  it('includes temperature when number, omits when null', async () => {
+  it('includes temperature from ChatOptions, omits when null', async () => {
+    // Temperature now arrives via ChatOptions (sh3-ai-owned, shared across
+    // providers), not the per-provider DeepseekGenerationConfig.
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
     ]));
@@ -558,6 +560,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'deepseek-chat',
         new AbortController().signal,
+        undefined,
         { temperature: 0.2 },
       ),
     );
@@ -574,6 +577,7 @@ describe('chatStream generation config', () => {
         [{ role: 'user', content: 'hi' }],
         'deepseek-chat',
         new AbortController().signal,
+        undefined,
         { temperature: null },
       ),
     );
@@ -616,7 +620,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.id).toBe('deepseek');
@@ -628,7 +631,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => chain,
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.chain()).toEqual(['a']);
@@ -644,7 +646,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     async function drain(it: AsyncIterable<unknown>) {
@@ -665,7 +666,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'k',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     async function drain(it: AsyncIterable<unknown>) {
@@ -685,7 +685,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.isAuthFailure(new DeepseekError('x', 400))).toBe(true);
@@ -698,7 +697,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => 'x',
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     expect(p.isAuthFailure(new DeepseekError('x', 429))).toBe(false);
@@ -712,7 +710,6 @@ describe('deepseekProvider', () => {
     const p = deepseekProvider({
       getApiKey: () => key,
       getChain: () => ['m'],
-      getTemperature: () => null,
       getMaxOutputTokens: () => null,
     });
     const empty = p.isReady();

@@ -108,6 +108,7 @@ import { makeDocTools } from './ai/docs/tools';
 import { SketchState } from './ai/sketch/state';
 import { makeSketchTools } from './ai/sketch/tools';
 import { makeFieldsTools } from './ai/fields/tools';
+import { makeTemperatureTools } from './ai/temperature/tools';
 
 async function runOneShot(
   provider: AiProvider,
@@ -115,6 +116,7 @@ async function runOneShot(
   signal: AbortSignal,
   systemInstruction?: string,
   idleTimeoutMs?: number,
+  temperature?: number | null,
 ): Promise<string> {
   const chain = provider.chain();
   if (chain.length === 0) {
@@ -126,7 +128,7 @@ async function runOneShot(
       const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
       let text = '';
       let done = false;
-      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction, idleTimeoutMs })) {
+      for await (const chunk of provider.chat(messages, model, signal, { systemInstruction, idleTimeoutMs, temperature })) {
         if (chunk.type === 'token') {
           text += chunk.text;
         } else if (chunk.type === 'tool-call') {
@@ -178,6 +180,10 @@ export const shard: SourceShard = {
          *  cancels). Default 60_000 preserves the previous hard-coded
          *  behavior the providers used. */
         idleTimeoutMs: number;
+        /** Sampling temperature 0.0..2.0, or null for the API default.
+         *  Shared across providers so a single setting follows the user
+         *  regardless of which provider the conversation runs against. */
+        temperature: number | null;
       };
     }>({
       user: {
@@ -188,6 +194,7 @@ export const shard: SourceShard = {
         titleStrategy: 'first-message',
         systemInstruction: '',
         idleTimeoutMs: 60_000,
+        temperature: null,
       },
     });
 
@@ -306,6 +313,7 @@ export const shard: SourceShard = {
         onChunk,
         state.user.systemInstruction || undefined,
         state.user.idleTimeoutMs,
+        state.user.temperature,
       );
     }
 
@@ -423,6 +431,10 @@ export const shard: SourceShard = {
           sh3.float.list().some((f) => nodeContainsView(f.content, SKETCH_VIEW_ID)),
       });
       const fieldsTools = makeFieldsTools(ctx);
+      const temperatureTools = makeTemperatureTools({
+        get: () => state.user.temperature,
+        set: (v) => { state.user.temperature = v; },
+      });
       // Snapshot of currently-dispatchable palette actions, refreshed per
       // turn so the LLM sees the same context-filtered set the user does.
       const active = sh3.actions.listActive();
@@ -431,7 +443,7 @@ export const shard: SourceShard = {
       );
       const all = assembleCatalog({
         verbTools,
-        contributionTools: [...contributionTools, ...docTools, ...sketchTools, ...fieldsTools],
+        contributionTools: [...contributionTools, ...docTools, ...sketchTools, ...fieldsTools, ...temperatureTools],
         actionTools,
       });
       return filterByScope(all, currentResolvedScope());
@@ -469,6 +481,7 @@ export const shard: SourceShard = {
               provider, p, sig,
               state.user.systemInstruction || undefined,
               state.user.idleTimeoutMs,
+              state.user.temperature,
             ),
             firstUser.content,
             firstAssistant.content,
@@ -602,6 +615,7 @@ export const shard: SourceShard = {
         onTurnComplete,
         getSystemInstruction: () => state.user.systemInstruction || undefined,
         getIdleTimeoutMs: () => state.user.idleTimeoutMs,
+        getTemperature: () => state.user.temperature,
       }),
     );
 
@@ -648,6 +662,7 @@ export const shard: SourceShard = {
             provider, prompt, controller.signal,
             state.user.systemInstruction || undefined,
             state.user.idleTimeoutMs,
+            state.user.temperature,
           );
           vctx.scrollback.push({
             kind: 'text',
@@ -831,6 +846,64 @@ export const shard: SourceShard = {
         vctx.scrollback.push({
           kind: 'status',
           text: 'ai: model lock released',
+          level: 'info',
+          ts: Date.now(),
+        });
+      },
+    });
+
+    ctx.registerVerb({
+      name: 'temperature',
+      globalVerb: true,
+      summary:
+        'Read or set the AI sampling temperature (0..2). Usage: ai:temperature [value|off]',
+      async run(vctx, args) {
+        if (args.length === 0) {
+          const cur = state.user.temperature;
+          vctx.scrollback.push({
+            kind: 'status',
+            text: cur == null
+              ? 'ai: temperature = (API default)'
+              : `ai: temperature = ${cur}`,
+            level: 'info',
+            ts: Date.now(),
+          });
+          return;
+        }
+        const raw = args[0].toLowerCase();
+        if (raw === 'off' || raw === 'reset' || raw === 'default' || raw === '') {
+          state.user.temperature = null;
+          vctx.scrollback.push({
+            kind: 'status',
+            text: 'ai: temperature reset to API default',
+            level: 'info',
+            ts: Date.now(),
+          });
+          return;
+        }
+        const n = Number(args[0]);
+        if (!Number.isFinite(n)) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `ai: '${args[0]}' is not a number — pass 0..2 or 'off'`,
+            level: 'error',
+            ts: Date.now(),
+          });
+          return;
+        }
+        if (n < 0 || n > 2) {
+          vctx.scrollback.push({
+            kind: 'status',
+            text: `ai: temperature must be between 0 and 2 (got ${n})`,
+            level: 'error',
+            ts: Date.now(),
+          });
+          return;
+        }
+        state.user.temperature = n;
+        vctx.scrollback.push({
+          kind: 'status',
+          text: `ai: temperature = ${n}`,
           level: 'info',
           ts: Date.now(),
         });

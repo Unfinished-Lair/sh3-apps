@@ -16,8 +16,6 @@ export class DeepseekError extends Error {
 }
 
 export interface DeepseekGenerationConfig {
-  /** null/omitted → do not send `temperature`. */
-  temperature?: number | null;
   /** null/omitted → do not send `max_tokens`. */
   maxOutputTokens?: number | null;
 }
@@ -117,7 +115,9 @@ function buildBody(
     stream,
     ...buildToolsField(options),
   };
-  if (typeof config?.temperature === 'number') body.temperature = config.temperature;
+  // Temperature is sh3-ai-owned (shared across providers) and arrives via
+  // ChatOptions, not the per-provider config.
+  if (typeof options?.temperature === 'number') body.temperature = options.temperature;
   if (typeof config?.maxOutputTokens === 'number') body.max_tokens = config.maxOutputTokens;
   return body;
 }
@@ -308,10 +308,7 @@ export function deepseekProvider(deps: ProviderDeps): AiProvider {
     chat(messages, model, signal, options) {
       return chatStream(
         deps.getApiKey(), messages, model, signal,
-        {
-          temperature: deps.getTemperature(),
-          maxOutputTokens: deps.getMaxOutputTokens(),
-        },
+        { maxOutputTokens: deps.getMaxOutputTokens() },
         options,
       );
     },

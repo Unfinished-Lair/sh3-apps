@@ -35,6 +35,10 @@ export interface AiModeDeps {
    *  Forwarded to the provider via `ChatOptions.idleTimeoutMs` on every
    *  chat call. `0` / `undefined` disables the watchdog. */
   getIdleTimeoutMs?: () => number | undefined;
+  /** Live read of the user's sampling temperature. Forwarded via
+   *  `ChatOptions.temperature` on every chat call. `null` / `undefined`
+   *  → API default. */
+  getTemperature?: () => number | null | undefined;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -80,11 +84,12 @@ function makeAiDispatch(deps: AiModeDeps) {
 
     const systemInstruction = deps.getSystemInstruction?.();
     const idleTimeoutMs = deps.getIdleTimeoutMs?.();
+    const temperature = deps.getTemperature?.() ?? null;
     const catalog = deps.getCatalog?.() ?? [];
     if (catalog.length > 0) {
       await runToolDispatch(
         provider, conversation, catalog, deps.getScope!(),
-        input, output, systemInstruction, idleTimeoutMs,
+        input, output, systemInstruction, idleTimeoutMs, temperature,
       );
       if (deps.onTurnComplete) {
         try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
@@ -109,7 +114,7 @@ function makeAiDispatch(deps: AiModeDeps) {
     });
 
     await runChatTurn(
-      provider, conversation, chain, input.signal, handle, systemInstruction, idleTimeoutMs,
+      provider, conversation, chain, input.signal, handle, systemInstruction, idleTimeoutMs, temperature,
     );
 
     if (deps.onTurnComplete) {
@@ -133,6 +138,7 @@ async function runToolDispatch(
   output: ShellModeOutput,
   systemInstruction: string | undefined,
   idleTimeoutMs: number | undefined,
+  temperature: number | null,
 ): Promise<void> {
   const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
   if (chain.length === 0) {
@@ -156,6 +162,7 @@ async function runToolDispatch(
       transcript,
       systemInstruction,
       idleTimeoutMs,
+      temperature,
     });
   } catch (err) {
     transcript.error(err);
@@ -172,6 +179,7 @@ async function runChatTurn(
   handle: StreamHandle,
   systemInstruction: string | undefined,
   idleTimeoutMs: number | undefined,
+  temperature: number | null,
 ): Promise<void> {
   const attempts: { model: string; error: string }[] = [];
 
@@ -182,7 +190,7 @@ async function runChatTurn(
 
     try {
       for await (const chunk of provider.chat(
-        conversation.messages, model, signal, { systemInstruction, idleTimeoutMs },
+        conversation.messages, model, signal, { systemInstruction, idleTimeoutMs, temperature },
       )) {
         if (signal.aborted) {
           handle.error(new DOMException('aborted', 'AbortError'));

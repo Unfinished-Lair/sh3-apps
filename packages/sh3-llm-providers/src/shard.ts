@@ -69,7 +69,6 @@ export const shard: SourceShard = {
       initial.user[p.id] = {
         apiKey: '',
         modelChain: [p.defaultModel],
-        temperature: null,
         maxOutputTokens: null,
       };
       initial.session[p.id] = { knownModels: [], modelsLastFetchedAt: null };
@@ -118,7 +117,6 @@ function registerProvider(
       const c = state.user[p.id].modelChain;
       return c.length > 0 ? c : [p.defaultModel];
     },
-    getTemperature: () => state.user[p.id].temperature,
     getMaxOutputTokens: () => state.user[p.id].maxOutputTokens,
   });
   ctx.contributions.register(SH3_AI_PROVIDER_CONTRIBUTION, provider);

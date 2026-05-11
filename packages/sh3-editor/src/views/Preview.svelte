@@ -64,7 +64,15 @@
 <style>
   .preview-root {
     flex: 1;
-    overflow: auto;
+    /*
+     * overflow-y only — `overflow: auto` shorthand sets overflow-x to auto,
+     * which the carousel's hasNativeHorizontalScroll heuristic treats as a
+     * native horizontal scroller and skips swipe over. Preview never scrolls
+     * horizontally, so restricting to the y-axis lets the shell carousel
+     * keep arbitration on the pointer.
+     */
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 12px 16px;
     background: var(--sh3-bg);
     color: var(--sh3-fg);

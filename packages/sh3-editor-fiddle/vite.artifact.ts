@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { sh3CssInline, sh3Artifact } from 'sh3-core/build';
 
 export default defineConfig({
-  plugins: [svelte(), sh3CssInline(), sh3Artifact()],
+  plugins: [svelte(), sh3CssInline(), sh3Artifact({ buildSuffix: 'auto' })],
   build: {
     lib: {
       entry: './src/index.ts',

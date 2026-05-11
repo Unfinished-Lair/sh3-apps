@@ -19,6 +19,7 @@
     registeredShards,
     activeShards,
   } from 'sh3-core';
+  import { diagnosticContext } from '../diagnosticShard.svelte';
 
   const apps = $derived(listRegisteredApps());
   const active = $derived(getActiveApp());
@@ -30,7 +31,7 @@
 
   onMount(async () => {
     try {
-      const res = await fetch('/api/version');
+      const res = await diagnosticContext.fetch('/api/version');
       if (res.ok) {
         const data = await res.json();
         serverVersion = data.version;

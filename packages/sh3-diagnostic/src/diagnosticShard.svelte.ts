@@ -28,7 +28,7 @@ import { mount, unmount } from 'svelte';
 import DiagnosticPanel from './manager/DiagnosticPanel.svelte';
 import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
 import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
-import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode } from 'sh3-core';
+import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode, ShardContext } from 'sh3-core';
 import {
   sh3,
   getActiveApp,
@@ -37,6 +37,12 @@ import {
 } from 'sh3-core';
 
 type Behavior = 'dock' | 'silent';
+
+/**
+ * Module-level context captured during activate(). Leaf views import this
+ * to route HTTP through ctx.fetch (Tauri-safe transport).
+ */
+export let diagnosticContext: { fetch: ShardContext['fetch'] } = undefined!;
 
 export const diagnosticShard: SourceShard = {
   manifest: {
@@ -48,6 +54,8 @@ export const diagnosticShard: SourceShard = {
     ],
   },
   activate(ctx) {
+    diagnosticContext = { fetch: ctx.fetch.bind(ctx) };
+
     const factory: ViewFactory = {
       mount(container: HTMLElement, _context: MountContext): ViewHandle {
         const instance = mount(DiagnosticPanel, { target: container });

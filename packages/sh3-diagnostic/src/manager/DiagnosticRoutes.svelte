@@ -6,13 +6,15 @@
    * as clickable links for quick testing of parameterless endpoints.
    */
 
+  import { diagnosticContext } from '../diagnosticShard.svelte';
+
   interface ApiRoute { method: string; path: string; }
   let routes: ApiRoute[] = $state([]);
   let error: string | null = $state(null);
 
   async function fetchRoutes() {
     try {
-      const res = await fetch('/api/routes');
+      const res = await diagnosticContext.fetch('/api/routes');
       if (!res.ok) { error = `${res.status}`; return; }
       routes = await res.json();
       error = null;

@@ -12,7 +12,6 @@
 
 import { mount, unmount } from 'svelte';
 import RegistryView from './RegistryView.svelte';
-import { getAuthHeader } from 'sh3-core';
 import type { SourceShard, ViewFactory, ViewHandle, MountContext, ShardContext } from 'sh3-core';
 import type { StateZones, PackageEntry } from 'sh3-core';
 
@@ -42,15 +41,6 @@ export interface RegistryContext {
  */
 export let registryContext: RegistryContext = undefined!;
 
-/** Build fetch headers with auth. */
-function authHeaders(contentType?: string): Record<string, string> {
-  const auth = getAuthHeader();
-  const headers: Record<string, string> = {};
-  if (auth) headers['Authorization'] = auth;
-  if (contentType) headers['Content-Type'] = contentType;
-  return headers;
-}
-
 /** Server shard API prefix. */
 const apiBase = '/api/sh3-registry';
 
@@ -77,7 +67,7 @@ export const registryShard: SourceShard = {
       state.ephemeral.loading = true;
       state.ephemeral.error = null;
       try {
-        const res = await fetch(`${apiBase}/registry.json`);
+        const res = await ctx.fetch(`${apiBase}/registry.json`);
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         const data = await res.json();
         state.ephemeral.packages = data.packages ?? [];
@@ -89,9 +79,8 @@ export const registryShard: SourceShard = {
     }
 
     async function publishPackage(form: FormData): Promise<void> {
-      const res = await fetch(`${apiBase}/publish`, {
+      const res = await ctx.fetch(`${apiBase}/publish`, {
         method: 'POST',
-        headers: authHeaders(),
         body: form,
       });
       if (!res.ok) {
@@ -105,9 +94,9 @@ export const registryShard: SourceShard = {
       id: string,
       fields: { label?: string; description?: string; author?: string },
     ): Promise<void> {
-      const res = await fetch(`${apiBase}/packages/${id}`, {
+      const res = await ctx.fetch(`${apiBase}/packages/${id}`, {
         method: 'PATCH',
-        headers: authHeaders('application/json'),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fields),
       });
       if (!res.ok) {
@@ -118,9 +107,8 @@ export const registryShard: SourceShard = {
     }
 
     async function deletePackage(id: string): Promise<void> {
-      const res = await fetch(`${apiBase}/packages/${id}`, {
+      const res = await ctx.fetch(`${apiBase}/packages/${id}`, {
         method: 'DELETE',
-        headers: authHeaders(),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: res.statusText }));

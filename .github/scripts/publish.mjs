@@ -26,8 +26,16 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, copyFil
 import { join, dirname } from 'node:path';
 
 // Helpers exported for unit tests.
+//
+// `parseVer` accepts `MAJOR.MINOR.PATCH` optionally followed by a semver
+// build-metadata suffix (`+<dot-separated [0-9A-Za-z-]+>`). The suffix is
+// stripped before parsing: per semver §10 build metadata MUST be ignored
+// for precedence. Pre-release tags (`-alpha`, `-rc.1`) remain unsupported
+// — this repo only emits release versions with optional `+build` suffixes
+// produced by sh3-core's `sh3Artifact({ buildSuffix: 'auto' })`.
 export function parseVer(v) {
-  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v);
+  const stripped = v.split('+')[0];
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(stripped);
   if (!m) throw new Error(`Non-strict semver rejected: ${JSON.stringify(v)}`);
   return { major: +m[1], minor: +m[2], patch: +m[3] };
 }
@@ -102,7 +110,15 @@ export function discoverPackages(repoRoot) {
     result.push({
       id: manifest.id,
       npmName: pkgJson.name,
+      // `version` is the release version from package.json — the semver
+      // precedence axis (drives bump/regression/npm-eligibility decisions).
       version: pkgJson.version,
+      // `artifactVersion` is what sh3-core's sh3Artifact plugin wrote into
+      // manifest.json — `package.json.version` plus an optional `+build`
+      // suffix from `git rev-list --count <lastTag>..HEAD`. Drives bundle
+      // filenames and registry-entry versions so distinct builds of the
+      // same release keep distinct identities + SRI hashes.
+      artifactVersion: manifest.version ?? pkgJson.version,
       dir: pkgDir,
       artifactDir,
     });
@@ -118,10 +134,15 @@ export function diffPackage(pkg, liveRegistry) {
   const oldVersion = entry.versions[0]?.version;
   if (!oldVersion) return { outcome: 'new', oldVersion: null };
 
-  const cmp = compareVer(parseVer(pkg.version), parseVer(oldVersion));
-  if (cmp === 0) return { outcome: 'unchanged', oldVersion };
+  // Precedence comparison ignores build metadata (semver §10).
+  const cmp = compareVer(parseVer(pkg.artifactVersion), parseVer(oldVersion));
   if (cmp > 0) return { outcome: 'bump', oldVersion };
-  return { outcome: 'regression', oldVersion };
+  if (cmp < 0) return { outcome: 'regression', oldVersion };
+  // Precedence-equal: same release. Full-string equality decides whether
+  // the build-metadata suffix changed; if it did, treat as a refresh
+  // ('bump') so the registry entry + bundle SRI get rewritten.
+  if (pkg.artifactVersion === oldVersion) return { outcome: 'unchanged', oldVersion };
+  return { outcome: 'bump', oldVersion };
 }
 
 export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
@@ -147,23 +168,23 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
 
   // ---- Copy new bundles in ----
   const clientSrc = join(pkg.artifactDir, 'client.js');
-  const clientDst = join(bundlesDir, `${pkg.id}-${pkg.version}.js`);
+  const clientDst = join(bundlesDir, `${pkg.id}-${pkg.artifactVersion}.js`);
   copyFileSync(clientSrc, clientDst);
   const integrity = computeIntegrity(clientDst);
 
   let serverBundleUrl;
   const serverSrc = join(pkg.artifactDir, 'server.js');
   if (existsSync(serverSrc)) {
-    const serverDst = join(bundlesDir, `${pkg.id}-${pkg.version}-server.js`);
+    const serverDst = join(bundlesDir, `${pkg.id}-${pkg.artifactVersion}-server.js`);
     copyFileSync(serverSrc, serverDst);
-    serverBundleUrl = `bundles/${pkg.id}-${pkg.version}-server.js`;
+    serverBundleUrl = `bundles/${pkg.id}-${pkg.artifactVersion}-server.js`;
   }
 
   // ---- Build new entry ----
   const versionEntry = {
-    version: pkg.version,
+    version: pkg.artifactVersion,
     contractVersion: String(manifest.contractVersion ?? 1),
-    bundleUrl: `bundles/${pkg.id}-${pkg.version}.js`,
+    bundleUrl: `bundles/${pkg.id}-${pkg.artifactVersion}.js`,
     integrity,
   };
   if (serverBundleUrl) versionEntry.serverBundleUrl = serverBundleUrl;
@@ -250,12 +271,16 @@ export async function main({ repoRoot, pagesDir }) {
   const regressions = classified.filter((c) => c.outcome === 'regression');
   if (regressions.length > 0) {
     const msg = regressions
-      .map((c) => `  - ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.version}`)
+      .map((c) => `  - ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.artifactVersion}`)
       .join('\n');
     throw new Error(`Version regression detected (new < old):\n${msg}`);
   }
 
-  // 5. Apply updates for new and bump outcomes
+  // 5. Apply updates for new and bump outcomes.
+  // npm eligibility uses the bare release version (`pkg.version`) so that a
+  // build-only refresh (same release, new build-metadata suffix) does NOT
+  // re-publish to npm — `isNpmEligible` compares semver precedence, which
+  // ignores build metadata, so suffix-only bumps short-circuit to false.
   const registryPublished = [];
   const npmEligible = [];
   for (const c of classified) {
@@ -288,11 +313,11 @@ function renderSummary(classified, result) {
   lines.push('### Registry (gh-pages)');
   for (const c of classified) {
     if (c.outcome === 'new') {
-      lines.push(`- ✓ ${c.pkg.id}: new → ${c.pkg.version}`);
+      lines.push(`- ✓ ${c.pkg.id}: new → ${c.pkg.artifactVersion}`);
     } else if (c.outcome === 'bump') {
-      lines.push(`- ✓ ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.version}`);
+      lines.push(`- ✓ ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.artifactVersion}`);
     } else if (c.outcome === 'unchanged') {
-      lines.push(`- · ${c.pkg.id}: ${c.pkg.version} (unchanged)`);
+      lines.push(`- · ${c.pkg.id}: ${c.pkg.artifactVersion} (unchanged)`);
     }
   }
   if (result.swept && result.swept.length > 0) {

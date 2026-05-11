@@ -34,8 +34,12 @@ describe('parseVer', () => {
     assert.throws(() => publish.parseVer('1.0.0-rc.0'), /Non-strict semver/);
   });
 
-  it('rejects build metadata', () => {
-    assert.throws(() => publish.parseVer('1.0.0+build.1'), /Non-strict semver/);
+  it('strips build metadata before parsing', () => {
+    // Per semver §10, build metadata MUST be ignored for precedence.
+    // sh3Artifact's buildSuffix:'auto' emits `<release>+<commits-past-tag>`.
+    assert.deepEqual(publish.parseVer('1.0.0+build.1'), { major: 1, minor: 0, patch: 0 });
+    assert.deepEqual(publish.parseVer('0.13.17+5'), { major: 0, minor: 13, patch: 17 });
+    assert.deepEqual(publish.parseVer('2.5.0+408'), { major: 2, minor: 5, patch: 0 });
   });
 
   it('rejects non-numeric components', () => {
@@ -277,8 +281,33 @@ describe('discoverPackages', () => {
       const p = pkgs[0];
       assert.equal(p.id, 'sh3-editor');
       assert.equal(p.version, '0.1.0');
+      // No buildSuffix in the fixture → manifest.version equals package.version.
+      assert.equal(p.artifactVersion, '0.1.0');
       assert.ok(p.dir.endsWith('sh3-editor'));
       assert.ok(p.artifactDir.endsWith(join('sh3-editor', 'dist', 'artifact')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('reads artifactVersion from manifest.json (with build suffix)', () => {
+    setup();
+    try {
+      const pkgDir = join(tmp, 'packages', 'sh3-editor');
+      mkdirSync(pkgDir, { recursive: true });
+      writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: 'sh3-editor', version: '0.13.17' }));
+      const artDir = join(pkgDir, 'dist', 'artifact');
+      mkdirSync(artDir, { recursive: true });
+      writeFileSync(
+        join(artDir, 'manifest.json'),
+        JSON.stringify({ id: 'sh3-editor', type: 'shard', label: 'Editor', version: '0.13.17+5' }),
+      );
+      writeFileSync(join(artDir, 'client.js'), 'export const x = 1;');
+
+      const pkgs = publish.discoverPackages(tmp);
+      assert.equal(pkgs.length, 1);
+      assert.equal(pkgs[0].version, '0.13.17');           // release axis
+      assert.equal(pkgs[0].artifactVersion, '0.13.17+5'); // artifact identity
     } finally {
       teardown();
     }
@@ -326,35 +355,68 @@ describe('diffPackage', () => {
     author: { name: 'x' },
     versions: [{ version, contractVersion: '1', bundleUrl: `bundles/${id}-${version}.js`, integrity: 'sha384-xxx' }],
   });
+  // Helper: construct the shape discoverPackages returns. `artifactVersion`
+  // defaults to `version` so existing semantics (no buildSuffix) keep working.
+  const pkg = (id, version, artifactVersion = version) => ({ id, version, artifactVersion });
 
   it('reports new when package is not in registry', () => {
-    const pkg = { id: 'sh3-new', version: '0.1.0' };
     const reg = { version: 1, packages: [] };
-    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'new', oldVersion: null });
+    assert.deepEqual(publish.diffPackage(pkg('sh3-new', '0.1.0'), reg), { outcome: 'new', oldVersion: null });
   });
 
   it('reports unchanged when version matches live registry', () => {
-    const pkg = { id: 'sh3-editor', version: '0.1.0' };
     const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
-    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'unchanged', oldVersion: '0.1.0' });
+    assert.deepEqual(publish.diffPackage(pkg('sh3-editor', '0.1.0'), reg), { outcome: 'unchanged', oldVersion: '0.1.0' });
   });
 
   it('reports bump when new version > old version', () => {
-    const pkg = { id: 'sh3-editor', version: '0.2.0' };
     const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
-    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'bump', oldVersion: '0.1.0' });
+    assert.deepEqual(publish.diffPackage(pkg('sh3-editor', '0.2.0'), reg), { outcome: 'bump', oldVersion: '0.1.0' });
   });
 
   it('reports regression when new version < old version', () => {
-    const pkg = { id: 'sh3-editor', version: '0.1.0' };
     const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.2.0')] };
-    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'regression', oldVersion: '0.2.0' });
+    assert.deepEqual(publish.diffPackage(pkg('sh3-editor', '0.1.0'), reg), { outcome: 'regression', oldVersion: '0.2.0' });
   });
 
   it('patch bumps classified as bump', () => {
-    const pkg = { id: 'sh3-editor', version: '0.1.1' };
     const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.1.0')] };
-    assert.deepEqual(publish.diffPackage(pkg, reg), { outcome: 'bump', oldVersion: '0.1.0' });
+    assert.deepEqual(publish.diffPackage(pkg('sh3-editor', '0.1.1'), reg), { outcome: 'bump', oldVersion: '0.1.0' });
+  });
+
+  it('reports bump when artifactVersion adds a build suffix to same release', () => {
+    // Registry has bare 0.13.17; new build has 0.13.17+5 → same release, new
+    // build identity. Should refresh the entry so the bundle SRI tracks the
+    // current artifact content.
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.13.17')] };
+    assert.deepEqual(
+      publish.diffPackage(pkg('sh3-editor', '0.13.17', '0.13.17+5'), reg),
+      { outcome: 'bump', oldVersion: '0.13.17' },
+    );
+  });
+
+  it('reports bump when only the build suffix changed', () => {
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.13.17+4')] };
+    assert.deepEqual(
+      publish.diffPackage(pkg('sh3-editor', '0.13.17', '0.13.17+5'), reg),
+      { outcome: 'bump', oldVersion: '0.13.17+4' },
+    );
+  });
+
+  it('reports unchanged when artifactVersion (incl. suffix) matches registry', () => {
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.13.17+5')] };
+    assert.deepEqual(
+      publish.diffPackage(pkg('sh3-editor', '0.13.17', '0.13.17+5'), reg),
+      { outcome: 'unchanged', oldVersion: '0.13.17+5' },
+    );
+  });
+
+  it('release bump beats stored suffixed version', () => {
+    const reg = { version: 1, packages: [makeEntry('sh3-editor', '0.13.17+8')] };
+    assert.deepEqual(
+      publish.diffPackage(pkg('sh3-editor', '0.13.18', '0.13.18+1'), reg),
+      { outcome: 'bump', oldVersion: '0.13.17+8' },
+    );
   });
 });
 
@@ -375,13 +437,14 @@ describe('applyPackageUpdate', () => {
     const pkgDir = join(tmp, 'packages', id);
     const artifactDir = join(pkgDir, 'dist', 'artifact');
     const finalNpmName = npmName ?? id;
+    const finalManifestVersion = manifestVersion ?? version;
     mkdirSync(artifactDir, { recursive: true });
     writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: finalNpmName, version }));
     const manifest = {
       id,
       type,
       label: id,
-      version: manifestVersion ?? version,
+      version: finalManifestVersion,
       description: 'test pkg',
       author: 'test-author',
       contractVersion: 1,
@@ -391,7 +454,7 @@ describe('applyPackageUpdate', () => {
     if (withServer) {
       writeFileSync(join(artifactDir, 'server.js'), `export const server = '${id}-${version}';`);
     }
-    return { id, version, npmName: finalNpmName, dir: pkgDir, artifactDir };
+    return { id, version, artifactVersion: finalManifestVersion, npmName: finalNpmName, dir: pkgDir, artifactDir };
   }
 
   it('adds a new package entry for a "new" outcome', () => {
@@ -512,6 +575,26 @@ describe('applyPackageUpdate', () => {
     }
   });
 
+  it('uses artifactVersion (with build suffix) for bundle filename and registry entry', () => {
+    setup();
+    try {
+      const pkg = makePkg('sh3-editor', '0.13.17', { manifestVersion: '0.13.17+5' });
+      const reg = { version: 1, packages: [] };
+      publish.applyPackageUpdate(pkg, join(tmp, '_pages'), reg);
+
+      const entry = reg.packages[0];
+      assert.equal(entry.versions[0].version, '0.13.17+5');
+      assert.equal(entry.versions[0].bundleUrl, 'bundles/sh3-editor-0.13.17+5.js');
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+5.js')));
+      // The bare pkg.version filename must NOT exist — the suffix is the
+      // artifact identity. Two builds of 0.13.17 (e.g. +5 and +6) need
+      // distinct filenames so their SRI hashes stay verifiable.
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17.js')));
+    } finally {
+      teardown();
+    }
+  });
+
   it('refreshes label/description/author from manifest on bump', () => {
     setup();
     try {
@@ -565,7 +648,7 @@ describe('main()', () => {
       id,
       type: opts.type ?? 'shard',
       label: id,
-      version,
+      version: opts.manifestVersion ?? version,
       description: 'test',
       author: 'tester',
       contractVersion: 1,
@@ -693,6 +776,48 @@ describe('main()', () => {
         publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') }),
         /regression/i,
       );
+    } finally {
+      teardown();
+    }
+  });
+
+  it('build-suffix-only change refreshes registry but does NOT publish to npm', async () => {
+    setup();
+    try {
+      // Same release (0.13.17) but a new buildSuffix (+5 → +6). The bundle
+      // content is different, the registry entry should refresh, but npm
+      // sees the same release and must not get republished.
+      makePkg('sh3-editor', '0.13.17', {
+        npmName: '@unfinished-lair/sh3-editor',
+        manifestVersion: '0.13.17+6',
+      });
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
+            author: { name: 'x' },
+            source: { npm: '@unfinished-lair/sh3-editor' },
+            versions: [{
+              version: '0.13.17+5',
+              contractVersion: '1',
+              bundleUrl: 'bundles/sh3-editor-0.13.17+5.js',
+              integrity: 'sha384-old',
+            }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+5.js'), 'old');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, ['sh3-editor']);
+      assert.deepEqual(result.npmEligible, []); // suffix-only ≠ release bump
+
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      assert.equal(reg.packages[0].versions[0].version, '0.13.17+6');
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+6.js')));
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+5.js')));
     } finally {
       teardown();
     }

@@ -419,7 +419,9 @@ export const shard: SourceShard = {
     for (const a of fileActions) {
       ctx.actions.register({
         ...a,
-        scope: 'app',
+        // view-scope on our toolbar = "active iff the sh3-pipeline app is open".
+        // 'app' would activate on any app because the shard autostarts.
+        scope: 'view:sh3-pipeline:toolbar',
         menuItem: 'file',
         paletteItem: true,
       });
@@ -460,7 +462,7 @@ export const shard: SourceShard = {
     for (const a of pipelineActions) {
       ctx.actions.register({
         ...a,
-        scope: 'app',
+        scope: 'view:sh3-pipeline:toolbar',
         menuItem: 'pipeline',
         paletteItem: true,
       });

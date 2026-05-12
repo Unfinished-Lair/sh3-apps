@@ -11,6 +11,6 @@ export const app: SourceApp = {
   initialLayout: {
     type: 'tabs',
     activeTab: 0,
-    tabs: [{ slotId: 'main', viewId: 'sh3-pipeline:main', label: 'View' }],
+    tabs: [{ slotId: 'main', viewId: 'sh3-pipeline:main', label: 'View', role: 'body' }],
   },
 };

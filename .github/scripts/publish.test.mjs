@@ -16,6 +16,7 @@ describe('publish.mjs', () => {
     assert.ok(typeof publish.saveRegistry === 'function');
     assert.ok(typeof publish.discoverPackages === 'function');
     assert.ok(typeof publish.diffPackage === 'function');
+    assert.ok(typeof publish.isArtifactContentUnchanged === 'function');
     assert.ok(typeof publish.applyPackageUpdate === 'function');
     assert.ok(typeof publish.sweepOrphans === 'function');
     assert.ok(typeof publish.main === 'function');
@@ -420,6 +421,166 @@ describe('diffPackage', () => {
   });
 });
 
+describe('isArtifactContentUnchanged', () => {
+  let tmp;
+
+  function setup() {
+    tmp = mkdtempSync(join(tmpdir(), 'sh3-publish-test-'));
+    mkdirSync(join(tmp, '_pages', 'bundles'), { recursive: true });
+    mkdirSync(join(tmp, 'packages'), { recursive: true });
+  }
+
+  function teardown() {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  function sri(content) {
+    return 'sha384-' + createHash('sha384').update(content).digest('base64');
+  }
+
+  function makeArtifact(id, { clientContent, serverContent } = {}) {
+    const artifactDir = join(tmp, 'packages', id, 'dist', 'artifact');
+    mkdirSync(artifactDir, { recursive: true });
+    if (clientContent !== undefined) {
+      writeFileSync(join(artifactDir, 'client.js'), clientContent);
+    }
+    if (serverContent !== undefined) {
+      writeFileSync(join(artifactDir, 'server.js'), serverContent);
+    }
+    return { id, artifactDir };
+  }
+
+  function registryWith(id, version, integrity, { serverBundleUrl } = {}) {
+    const versionEntry = { version, contractVersion: '1', bundleUrl: `bundles/${id}-${version}.js`, integrity };
+    if (serverBundleUrl) versionEntry.serverBundleUrl = serverBundleUrl;
+    return {
+      version: 1,
+      packages: [{
+        id, type: 'shard', label: id, description: '',
+        author: { name: 'x' },
+        versions: [versionEntry],
+      }],
+    };
+  }
+
+  it('returns true when client bytes match stored integrity (no server bundle)', () => {
+    setup();
+    try {
+      const content = `export const x = 'identical';`;
+      const pkg = makeArtifact('sh3-foo', { clientContent: content });
+      const reg = registryWith('sh3-foo', '0.1.0+4', sri(content));
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), true);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when client bytes differ from stored integrity', () => {
+    setup();
+    try {
+      const pkg = makeArtifact('sh3-foo', { clientContent: `export const x = 'new';` });
+      const reg = registryWith('sh3-foo', '0.1.0+4', sri(`export const x = 'old';`));
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when package is not in the registry', () => {
+    setup();
+    try {
+      const pkg = makeArtifact('sh3-foo', { clientContent: `export const x = 1;` });
+      const reg = { version: 1, packages: [] };
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when new artifact has no client.js', () => {
+    setup();
+    try {
+      const pkg = makeArtifact('sh3-foo'); // no bundles
+      const reg = registryWith('sh3-foo', '0.1.0+4', 'sha384-anything');
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns true when client + server bytes both match', () => {
+    setup();
+    try {
+      const clientContent = `export const c = 1;`;
+      const serverContent = `export const s = 2;`;
+      const pkg = makeArtifact('sh3-combo', { clientContent, serverContent });
+      // Seed the previously-published server bundle on disk so its integrity can be recomputed.
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-combo-0.1.0+4-server.js'), serverContent);
+      const reg = registryWith('sh3-combo', '0.1.0+4', sri(clientContent), {
+        serverBundleUrl: 'bundles/sh3-combo-0.1.0+4-server.js',
+      });
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), true);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when server presence differs (new has server, old does not)', () => {
+    setup();
+    try {
+      const clientContent = `export const c = 1;`;
+      const pkg = makeArtifact('sh3-combo', { clientContent, serverContent: `export const s = 2;` });
+      const reg = registryWith('sh3-combo', '0.1.0+4', sri(clientContent)); // no serverBundleUrl
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when server presence differs (old has server, new does not)', () => {
+    setup();
+    try {
+      const clientContent = `export const c = 1;`;
+      const pkg = makeArtifact('sh3-combo', { clientContent }); // no server
+      const reg = registryWith('sh3-combo', '0.1.0+4', sri(clientContent), {
+        serverBundleUrl: 'bundles/sh3-combo-0.1.0+4-server.js',
+      });
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when server bytes differ', () => {
+    setup();
+    try {
+      const clientContent = `export const c = 1;`;
+      const pkg = makeArtifact('sh3-combo', { clientContent, serverContent: `export const s = 'new';` });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-combo-0.1.0+4-server.js'), `export const s = 'old';`);
+      const reg = registryWith('sh3-combo', '0.1.0+4', sri(clientContent), {
+        serverBundleUrl: 'bundles/sh3-combo-0.1.0+4-server.js',
+      });
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('returns false when stored server bundle is missing on disk (fail closed)', () => {
+    setup();
+    try {
+      const clientContent = `export const c = 1;`;
+      const pkg = makeArtifact('sh3-combo', { clientContent, serverContent: `export const s = 2;` });
+      const reg = registryWith('sh3-combo', '0.1.0+4', sri(clientContent), {
+        serverBundleUrl: 'bundles/sh3-combo-0.1.0+4-server.js', // never written to disk
+      });
+      assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
+    } finally {
+      teardown();
+    }
+  });
+});
+
 describe('applyPackageUpdate', () => {
   let tmp;
 
@@ -781,12 +942,12 @@ describe('main()', () => {
     }
   });
 
-  it('build-suffix-only change refreshes registry but does NOT publish to npm', async () => {
+  it('build-suffix-only change WITH changed bytes refreshes registry but does NOT publish to npm', async () => {
     setup();
     try {
-      // Same release (0.13.17) but a new buildSuffix (+5 → +6). The bundle
-      // content is different, the registry entry should refresh, but npm
-      // sees the same release and must not get republished.
+      // Same release (0.13.17) but a new buildSuffix (+5 → +6) AND new bundle
+      // bytes. Registry entry should refresh; npm sees the same release and
+      // must not get republished.
       makePkg('sh3-editor', '0.13.17', {
         npmName: '@unfinished-lair/sh3-editor',
         manifestVersion: '0.13.17+6',
@@ -818,6 +979,54 @@ describe('main()', () => {
       assert.equal(reg.packages[0].versions[0].version, '0.13.17+6');
       assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+6.js')));
       assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.13.17+5.js')));
+    } finally {
+      teardown();
+    }
+  });
+
+  it('skips republish when build suffix advances but bundle bytes are identical', async () => {
+    setup();
+    try {
+      // The CI-churn case: a no-op push to main increments `git rev-list
+      // --count` repo-wide, so sh3Artifact bumps the +build suffix on every
+      // package. publish.mjs must detect that the bundle bytes didn't change
+      // and skip the republish — otherwise gh-pages churns on every push.
+      makePkg('sh3-style', '0.2.1', { manifestVersion: '0.2.1+12' });
+      // The new client.js content is `export const x = 'sh3-style-0.2.1';`
+      // (see makePkg). Seed the registry with the matching integrity and a
+      // bundle file whose name reflects the prior suffix.
+      const clientContent = `export const x = 'sh3-style-0.2.1';`;
+      const integrity = 'sha384-' + createHash('sha384').update(clientContent).digest('base64');
+      seedRegistry({
+        version: 1,
+        packages: [
+          {
+            id: 'sh3-style', type: 'shard', label: 'sh3-style', description: '',
+            author: { name: 'x' },
+            source: { npm: 'sh3-style' },
+            versions: [{
+              version: '0.2.1+11',
+              contractVersion: '1',
+              bundleUrl: 'bundles/sh3-style-0.2.1+11.js',
+              integrity,
+            }],
+          },
+        ],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-style-0.2.1+11.js'), clientContent);
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      // No registry republish, no npm eligibility.
+      assert.deepEqual(result.registryPublished, []);
+      assert.deepEqual(result.npmEligible, []);
+
+      // Registry entry still pins the OLD suffix.
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      assert.equal(reg.packages[0].versions[0].version, '0.2.1+11');
+      // No new-suffix bundle file was created, the old one is still there.
+      assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-style-0.2.1+11.js')));
+      assert.ok(!existsSync(join(tmp, '_pages', 'bundles', 'sh3-style-0.2.1+12.js')));
     } finally {
       teardown();
     }

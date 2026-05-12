@@ -140,9 +140,57 @@ export function diffPackage(pkg, liveRegistry) {
   if (cmp < 0) return { outcome: 'regression', oldVersion };
   // Precedence-equal: same release. Full-string equality decides whether
   // the build-metadata suffix changed; if it did, treat as a refresh
-  // ('bump') so the registry entry + bundle SRI get rewritten.
+  // ('bump') so the registry entry + bundle SRI get rewritten. Callers
+  // then run isArtifactContentUnchanged() to filter out the common case
+  // where only the suffix advanced (every push to main increments
+  // `git rev-list --count <lastTag>..HEAD` for the whole repo, so the
+  // suffix moves for every package even when source didn't change).
   if (pkg.artifactVersion === oldVersion) return { outcome: 'unchanged', oldVersion };
   return { outcome: 'bump', oldVersion };
+}
+
+/**
+ * Returns true iff every bundle the new artifact would publish is byte-identical
+ * to what the registry already has.
+ *
+ * Motivation: `sh3Artifact({ buildSuffix: 'auto' })` derives the `+build<N>`
+ * suffix from `git rev-list --count <lastTag>..HEAD`, which is a repo-wide
+ * counter. So every push to main advances the suffix for every package, even
+ * those whose source code didn't change. Without this gate, `diffPackage` flags
+ * each as a precedence-equal "bump" and `applyPackageUpdate` rewrites the
+ * bundle + registry entry for byte-identical content.
+ *
+ * Comparisons:
+ *   - new client.js   ↔ registry.versions[0].integrity (stored)
+ *   - new server.js   ↔ bundles/<old-server>.js on disk (recomputed),
+ *                       only if either side has one
+ *
+ * Server-bundle presence must match (both have it or neither does); the
+ * server integrity is recomputed from disk because the registry only stores
+ * client integrity today. Missing on-disk server bundle → return false (fail
+ * closed: republish so the bundles directory stays consistent).
+ */
+export function isArtifactContentUnchanged(pkg, pagesDir, liveRegistry) {
+  const entry = liveRegistry.packages.find((p) => p.id === pkg.id);
+  const stored = entry?.versions?.[0];
+  if (!stored) return false;
+
+  const newClient = join(pkg.artifactDir, 'client.js');
+  if (!existsSync(newClient)) return false;
+  if (computeIntegrity(newClient) !== stored.integrity) return false;
+
+  const newServer = join(pkg.artifactDir, 'server.js');
+  const hasNewServer = existsSync(newServer);
+  const hasStoredServer = !!stored.serverBundleUrl;
+  if (hasNewServer !== hasStoredServer) return false;
+
+  if (hasNewServer) {
+    const storedServerPath = join(pagesDir, stored.serverBundleUrl);
+    if (!existsSync(storedServerPath)) return false;
+    if (computeIntegrity(newServer) !== computeIntegrity(storedServerPath)) return false;
+  }
+
+  return true;
 }
 
 export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
@@ -267,6 +315,20 @@ export async function main({ repoRoot, pagesDir }) {
     ...diffPackage(pkg, registry),
   }));
 
+  // 3b. Demote precedence-equal "bump" outcomes (i.e. build-suffix-only
+  //     advances) to "unchanged-content" when the new artifact's bundles are
+  //     byte-identical to the registry's. Defends against the every-push
+  //     republish cycle that buildSuffix:'auto' would otherwise cause — see
+  //     isArtifactContentUnchanged for the underlying mechanism.
+  for (const c of classified) {
+    if (c.outcome !== 'bump') continue;
+    const cmp = compareVer(parseVer(c.pkg.artifactVersion), parseVer(c.oldVersion));
+    if (cmp !== 0) continue;
+    if (isArtifactContentUnchanged(c.pkg, pagesDir, registry)) {
+      c.outcome = 'unchanged-content';
+    }
+  }
+
   // 4. Fail fast on any regression
   const regressions = classified.filter((c) => c.outcome === 'regression');
   if (regressions.length > 0) {
@@ -318,6 +380,8 @@ function renderSummary(classified, result) {
       lines.push(`- ✓ ${c.pkg.id}: ${c.oldVersion} → ${c.pkg.artifactVersion}`);
     } else if (c.outcome === 'unchanged') {
       lines.push(`- · ${c.pkg.id}: ${c.pkg.artifactVersion} (unchanged)`);
+    } else if (c.outcome === 'unchanged-content') {
+      lines.push(`- · ${c.pkg.id}: suffix ${c.oldVersion} → ${c.pkg.artifactVersion}, content identical (skipped)`);
     }
   }
   if (result.swept && result.swept.length > 0) {

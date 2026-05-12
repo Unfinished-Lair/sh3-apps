@@ -7,7 +7,28 @@ export function fieldsToInspectorMeta(fields: FieldDescriptor[]): InspectorMeta 
   const out: InspectorMeta = { fields: {} };
   for (const f of fields) {
     const m: InspectorMeta = { label: f.label };
-    if (f.rendererHint) m.type = f.rendererHint;
+    // An explicit rendererHint always wins.
+    if (f.rendererHint) {
+      m.type = f.rendererHint;
+    } else {
+      // Map FieldDescriptor.type to sh3-core's built-in widget renderer
+      // (registered at priority 10 since sh3-editor 0.13.0). Without this,
+      // string/number fields fall through to the fallback walker and miss
+      // the themed widgets / sh3-core widget primitives.
+      switch (f.type) {
+        case 'string':
+        case 'number':
+          m.type = f.type;
+          break;
+        case 'select':
+          m.type = 'select';
+          if (f.options) {
+            m.widget = { type: 'select', options: f.options };
+          }
+          break;
+        // 'boolean' — no widget type today; walker renders a checkbox.
+      }
+    }
     if (f.disabled) m.readonly = true;
     out.fields![f.key] = m;
   }

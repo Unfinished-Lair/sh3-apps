@@ -5,6 +5,7 @@ import { sh3CssInline, sh3Artifact } from 'sh3-core/build';
 export default defineConfig({
   plugins: [svelte(), sh3CssInline(), sh3Artifact({ buildSuffix: 'auto' })],
   build: {
+    minify: false,
     lib: {
       entry: './src/index.ts',
       formats: ['es'],

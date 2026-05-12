@@ -1,4 +1,3 @@
-import type { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { GraphAssetPort } from '../asset/types';
 
 export type GraphId = string;
@@ -13,12 +12,22 @@ export interface GraphState {
   domainId: string;
   name: string;
   version: number;
-  nodes: SvelteMap<NodeId, NodeState>;
-  edges: SvelteMap<EdgeId, EdgeState>;
+  nodes: Map<NodeId, NodeState>;
+  edges: Map<EdgeId, EdgeState>;
   metadata: Record<string, unknown>;
   // editor-only
   readonly: boolean;
-  selection: SvelteSet<NodeId | EdgeId>;
+  selection: Set<NodeId | EdgeId>;
+  /**
+   * Monotonic counter bumped by every mutation (commands.ts + in-place
+   * mutations like node drag). The graph data layer uses plain Map/Set
+   * (no svelte/reactivity) to stay framework-agnostic; this single
+   * tracked field is the only subscription point. Consumers read
+   * `state.revision` inside their reactive scope ($derived for Svelte;
+   * useSyncExternalStore for React; etc.) to re-evaluate on any change.
+   * Tracked via the host component's $state proxy at the GraphHost level.
+   */
+  revision: number;
 }
 
 export interface PortDefinition extends GraphAssetPort {

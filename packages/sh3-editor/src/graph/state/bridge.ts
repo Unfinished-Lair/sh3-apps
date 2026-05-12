@@ -1,4 +1,3 @@
-import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { GraphAsset, GraphAssetNode } from '../asset/types';
 import type { GraphDomain, NodeTemplate } from '../domain/types';
 import type {
@@ -55,13 +54,13 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
     set.add(shortPortId(e.targetNodeId, e.targetPortId));
   }
 
-  const nodes = new SvelteMap<string, NodeState>();
+  const nodes = new Map<string, NodeState>();
   for (const n of asset.nodes) {
     const conn = connectedByNode.get(n.id) ?? new Set<string>();
     nodes.set(n.id, nodeFromAsset(n, domain, conn));
   }
 
-  const edges = new SvelteMap<string, EdgeState>();
+  const edges = new Map<string, EdgeState>();
   for (const e of asset.edges) {
     const tgtPorts = portIds.get(e.targetNodeId);
     const srcPorts = portIds.get(e.sourceNodeId);
@@ -87,7 +86,8 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
     edges,
     metadata: { ...(asset.metadata ?? {}) },
     readonly: false,
-    selection: new SvelteSet<NodeId | EdgeId>(),
+    selection: new Set<NodeId | EdgeId>(),
+    revision: 0,
   };
 }
 

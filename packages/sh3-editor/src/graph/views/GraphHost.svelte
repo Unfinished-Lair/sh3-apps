@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Graph from './Graph.svelte';
   import GraphEmpty from './GraphEmpty.svelte';
   import { pickBinding, type Binding, type MetaBinding } from './binding';
@@ -25,6 +26,19 @@
   let graphController: InternalGraphController | null = $state(null);
   let errorMsg: string | null = $state(null);
 
+  // Notify the active binding's onChange. Lifted to component scope so it
+  // can be passed to <Graph onAssetChanged>; reads `binding` and
+  // `graphController` reactively at call time.
+  function notifyAssetChanged(): void {
+    if (!graphController) return;
+    if (binding.kind === 'descriptor') {
+      try { binding.descriptor.onChange(graphController.getAsset()); }
+      catch (e) { console.warn('graph: onChange threw', e); }
+    } else if (binding.kind === 'meta') {
+      binding.onChange?.(graphController.getAsset());
+    }
+  }
+
   $effect(() => {
     if (binding.kind === 'descriptor' || binding.kind === 'meta') {
       const domainId = binding.kind === 'descriptor' ? binding.descriptor.domainId : binding.domainId;
@@ -39,16 +53,14 @@
       const initial = binding.kind === 'descriptor' ? binding.descriptor.initial : binding.asset;
       const newState = graphAssetToState(initial, dom);
       graphState = newState;
-      const onAssetChanged = () => {
-        if (binding.kind === 'descriptor') {
-          try { binding.descriptor.onChange(graphController!.getAsset()); }
-          catch (e) { console.warn('graph: onChange threw', e); }
-        } else if (binding.kind === 'meta') {
-          binding.onChange?.(graphController!.getAsset());
-        }
-      };
+      // Pass the $state-proxied graphState (not the raw newState) so that
+      // controller mutations (setAsset, select, etc.) go through the proxy
+      // and fire signals to Graph.svelte's deriveds. Read via untrack so
+      // the effect doesn't subscribe to graphState (which it just wrote) —
+      // otherwise the write triggers a self-recursion loop.
       const desc = binding.kind === 'descriptor' ? binding.descriptor : undefined;
-      const ctrl = createGraphController(newState, dom, desc, onAssetChanged);
+      const proxiedState = untrack(() => graphState)!;
+      const ctrl = createGraphController(proxiedState, dom, desc, notifyAssetChanged);
       graphController = ctrl;
       if (binding.kind === 'descriptor') {
         try { binding.descriptor.bind?.(ctrl); }
@@ -83,7 +95,14 @@
     state={graphState}
     domain={graphDomain}
     history={history}
-    onSelectionChange={() => { /* controller already emits */ }}
+    onSelectionChange={(ids) => {
+      // Re-route through the controller so its onSelectionChange
+      // subscribers (e.g. the inspector binding) get notified. The
+      // mutation already happened inside Graph.svelte; ctrl.select()
+      // re-applies it idempotently and fires emitSelection().
+      graphController?.select(ids);
+    }}
+    onAssetChanged={notifyAssetChanged}
   />
 {/if}
 

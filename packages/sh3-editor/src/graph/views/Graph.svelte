@@ -26,30 +26,75 @@
     return props.domain.getNodeVisuals(n.type);
   }
 
-  function endpointFor(node: NodeState, portShortId: string, side: 'output' | 'input') {
+  // Endpoint resolution: measure the actual rendered .port-marker rect
+  // post-render and cache it in graph coords. Authoritative over any math
+  // model (header height, port row height, font-size). Falls back to a
+  // math approximation only for the first frame before measurement runs.
+  let portCenters = $state(new Map<string, { x: number; y: number }>());
+
+  function fallbackEndpoint(node: NodeState, portShortId: string, side: 'output' | 'input') {
     const port = node.ports.find((p) => p.shortId === portShortId);
     if (!port) return { x: node.position.x, y: node.position.y };
-    const inputs  = node.ports.filter((p) => p.direction === 'input');
-    const outputs = node.ports.filter((p) => p.direction === 'output');
-    const list = side === 'input' ? inputs : outputs;
+    const list = node.ports.filter((p) => p.direction === side);
     const idx = list.indexOf(port);
-    const headerH = 26;
-    const portRowH = 22;
-    const y = node.position.y + headerH + 8 + idx * portRowH + portRowH / 2;
-    const x = side === 'output' ? node.position.x + node.width : node.position.x;
+    const y = node.position.y + 26 + 8 + idx * 22 + 11;
+    const x = side === 'output' ? node.position.x + node.width + 5 : node.position.x - 5;
     return { x, y };
   }
 
   function srcPoint(e: EdgeState) {
+    void props.state.revision;
+    const measured = portCenters.get(`${e.sourceNodeId}:${e.sourcePortId}`);
+    if (measured) return measured;
     const n = props.state.nodes.get(e.sourceNodeId);
-    return n ? endpointFor(n, e.sourcePortId, 'output') : { x: 0, y: 0 };
+    return n ? fallbackEndpoint(n, e.sourcePortId, 'output') : { x: 0, y: 0 };
   }
   function tgtPoint(e: EdgeState) {
+    void props.state.revision;
+    const measured = portCenters.get(`${e.targetNodeId}:${e.targetPortId}`);
+    if (measured) return measured;
     const n = props.state.nodes.get(e.targetNodeId);
-    return n ? endpointFor(n, e.targetPortId, 'input') : { x: 0, y: 0 };
+    return n ? fallbackEndpoint(n, e.targetPortId, 'input') : { x: 0, y: 0 };
+  }
+
+  // Measure rendered marker positions after each DOM update.
+  $effect(() => {
+    void props.state.revision;
+    void viewport.x; void viewport.y; void viewport.zoom;
+    // Defer to next microtask so node DOM has flushed before we measure.
+    queueMicrotask(() => {
+      if (!canvasEl) return;
+      const canvasRect = canvasEl.getBoundingClientRect();
+      const next = new Map<string, { x: number; y: number }>();
+      const nodeEls = canvasEl.querySelectorAll<HTMLElement>('.graph-node[data-node-id]');
+      for (const nodeEl of nodeEls) {
+        const nodeId = nodeEl.getAttribute('data-node-id');
+        if (!nodeId) continue;
+        const portEls = nodeEl.querySelectorAll<HTMLElement>('.port[data-port-id]');
+        for (const portEl of portEls) {
+          const portId = portEl.getAttribute('data-port-id');
+          const marker = portEl.querySelector<HTMLElement>('.port-marker');
+          if (!portId || !marker) continue;
+          const r = marker.getBoundingClientRect();
+          const cx = r.left + r.width / 2 - canvasRect.left;
+          const cy = r.top + r.height / 2 - canvasRect.top;
+          // Convert screen → graph coords (inverse of .viewport transform).
+          const gx = (cx - viewport.x) / viewport.zoom;
+          const gy = (cy - viewport.y) / viewport.zoom;
+          next.set(`${nodeId}:${portId}`, { x: gx, y: gy });
+        }
+      }
+      portCenters = next;
+    });
+  });
+
+  function isSelected(id: string): boolean {
+    void props.state.revision;
+    return props.state.selection.has(id);
   }
 
   function edgeColor(e: EdgeState): string {
+    void props.state.revision;
     const n = props.state.nodes.get(e.sourceNodeId);
     if (!n) return '#888';
     const p = n.ports.find((pp) => pp.shortId === e.sourcePortId);
@@ -65,12 +110,14 @@
       props.state.selection.clear();
       props.state.selection.add(id);
     }
+    props.state.revision++;
     props.onSelectionChange?.(Array.from(props.state.selection));
   }
 
   function clearSelection() {
     if (props.state.selection.size === 0) return;
     props.state.selection.clear();
+    props.state.revision++;
     props.onSelectionChange?.([]);
   }
 
@@ -98,6 +145,7 @@
       ...n,
       position: { x: dragState.origin.x + dx, y: dragState.origin.y + dy },
     });
+    props.state.revision++;
   }
 
   function onHeaderPointerUp(_ev: PointerEvent) {
@@ -146,18 +194,35 @@
     }
   }
 
-  function onPortPointerUp(node: NodeState, port: PortDefinition, ev: PointerEvent) {
+  function onPortPointerUp(_node: NodeState, _port: PortDefinition, ev: PointerEvent) {
     if (!edgeDrag) return;
     ev.stopPropagation();
     const src = edgeDrag.source;
     edgeDrag = null;
 
-    if (port.direction !== 'input') return;
+    // The source port captured the pointer in onPortPointerDown, so this
+    // handler fires on the source — not on whatever port the user dropped
+    // onto. Resolve the actual drop target by hit-testing the DOM.
+    const dropEl = document.elementFromPoint(ev.clientX, ev.clientY);
+    const portEl = dropEl?.closest('.port[data-port-id]') as HTMLElement | null;
+    if (!portEl) return;
+    const isInputPort = portEl.classList.contains('input');
+    if (!isInputPort) return;
+    const targetPortId = portEl.dataset.portId ?? '';
+    const nodeEl = portEl.closest('.graph-node[data-node-id]') as HTMLElement | null;
+    const targetNodeId = nodeEl?.dataset.nodeId ?? '';
+    if (!targetNodeId || !targetPortId) return;
+
+    const targetNode = props.state.nodes.get(targetNodeId);
+    if (!targetNode) return;
+    const targetPort = targetNode.ports.find((p) => p.shortId === targetPortId);
+    if (!targetPort) return;
+
     if (props.domain.edgeSemantics === 'oriented' && src.direction !== 'output') return;
-    if (src.nodeId === node.id) return;
+    if (src.nodeId === targetNodeId) return;
     if (props.domain.canConnect && !props.domain.canConnect(
       { nodeId: src.nodeId, portId: src.portId, direction: src.direction, dataType: src.dataType },
-      { nodeId: node.id, portId: port.shortId, direction: port.direction, dataType: port.dataType },
+      { nodeId: targetNodeId, portId: targetPortId, direction: targetPort.direction, dataType: targetPort.dataType },
     )) return;
 
     const id = `e_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -165,8 +230,8 @@
       id,
       sourceNodeId: src.nodeId,
       sourcePortId: src.portId,
-      targetNodeId: node.id,
-      targetPortId: port.shortId,
+      targetNodeId,
+      targetPortId,
     });
     cmd.apply();
     props.history.push(cmd);
@@ -263,8 +328,17 @@
     paletteDropAt = null;
   }
 
-  const nodesArr = $derived(Array.from(props.state.nodes.values()));
-  const edgesArr = $derived(Array.from(props.state.edges.values()));
+  // Reading state.revision (a tracked $state field bumped by every
+  // mutation) is the single subscription point for graph-state changes.
+  // The data layer uses plain Map/Set — no svelte/reactivity dependency.
+  const nodesArr = $derived.by(() => {
+    void props.state.revision;
+    return Array.from(props.state.nodes.values());
+  });
+  const edgesArr = $derived.by(() => {
+    void props.state.revision;
+    return Array.from(props.state.edges.values());
+  });
   const oriented = $derived(props.domain.edgeSemantics === 'oriented');
 
   const ZOOM_STEP = 1.2;
@@ -324,6 +398,8 @@
 
   function onCanvasWheel(ev: WheelEvent) {
     if (!canvasEl) return;
+    // Let wheel events inside the palette popup scroll its list natively.
+    if (ev.target instanceof Element && ev.target.closest('.palette')) return;
     ev.preventDefault();
     const rect = canvasEl.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
@@ -378,14 +454,15 @@
           target={tgtPoint(e)}
           color={edgeColor(e)}
           oriented={oriented}
-          selected={props.state.selection.has(e.id)}
+          selected={isSelected(e.id)}
           onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.ctrlKey || ev.metaKey); }}
         />
       {/each}
       {#if edgeDrag}
         {@const sourceNode = props.state.nodes.get(edgeDrag.source.nodeId)}
         {#if sourceNode}
-          {@const start = endpointFor(sourceNode, edgeDrag.source.portId,
+          {@const measured = portCenters.get(`${edgeDrag.source.nodeId}:${edgeDrag.source.portId}`)}
+          {@const start = measured ?? fallbackEndpoint(sourceNode, edgeDrag.source.portId,
                                       edgeDrag.source.direction === 'output' ? 'output' : 'input')}
           <path class="edge-ghost" stroke="var(--sh3-accent, #4a9eff)" fill="none" stroke-dasharray="4 3"
                 d={`M ${start.x} ${start.y} L ${edgeDrag.cursor.x} ${edgeDrag.cursor.y}`} />
@@ -396,7 +473,7 @@
       <GraphNode
         node={n}
         visuals={visualsFor(n)}
-        selected={props.state.selection.has(n.id)}
+        selected={isSelected(n.id)}
         onSelectClick={(ev) => { ev.stopPropagation(); selectOne(n.id, ev.ctrlKey || ev.metaKey); }}
         onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
         onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}

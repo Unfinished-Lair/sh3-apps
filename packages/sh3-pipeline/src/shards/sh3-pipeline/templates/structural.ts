@@ -1,0 +1,123 @@
+import type { NodeTemplate, GraphAssetPort } from '@unfinished-lair/sh3-editor/graph/types';
+import type { DataType } from '../domain/data-types';
+
+function port(
+  id: string,
+  direction: 'input' | 'output',
+  dataType: DataType,
+  label?: string,
+): GraphAssetPort {
+  return { id, direction, dataType, label: label ?? id };
+}
+
+export const structuralTemplates: NodeTemplate[] = [
+  {
+    type: 'start',
+    category: 'Flow',
+    label: 'Start',
+    ports: [port('control', 'output', 'control')],
+    defaultConfig: { params: [] },
+    configSchema: [],
+  },
+  {
+    type: 'end',
+    category: 'Flow',
+    label: 'End',
+    ports: [port('control', 'input', 'control')],
+    defaultConfig: { returns: [] },
+    configSchema: [],
+  },
+  {
+    type: 'branch',
+    category: 'Flow',
+    label: 'Branch',
+    ports: [
+      port('control', 'input', 'control'),
+      port('cond', 'input', 'boolean', 'cond'),
+      port('then', 'output', 'control', 'then'),
+      port('else', 'output', 'control', 'else'),
+    ],
+    defaultConfig: {},
+  },
+  {
+    type: 'sequence',
+    category: 'Flow',
+    label: 'Sequence',
+    ports: [
+      port('control', 'input', 'control'),
+      port('out-1', 'output', 'control', '1'),
+      port('out-2', 'output', 'control', '2'),
+    ],
+    defaultConfig: { count: 2 },
+  },
+  {
+    type: 'comment',
+    category: 'Flow',
+    label: 'Comment',
+    ports: [],
+    defaultConfig: { text: '' },
+    configSchema: [{ key: 'text', label: 'Text', type: 'string' }],
+  },
+  {
+    type: 'literal.string',
+    category: 'Data',
+    label: 'String',
+    ports: [port('value', 'output', 'string')],
+    defaultConfig: { value: '' },
+    configSchema: [{ key: 'value', label: 'Value', type: 'string' }],
+  },
+  {
+    type: 'literal.number',
+    category: 'Data',
+    label: 'Number',
+    ports: [port('value', 'output', 'number')],
+    defaultConfig: { value: 0 },
+    configSchema: [{ key: 'value', label: 'Value', type: 'number' }],
+  },
+  {
+    type: 'literal.boolean',
+    category: 'Data',
+    label: 'Boolean',
+    ports: [port('value', 'output', 'boolean')],
+    defaultConfig: { value: false },
+    configSchema: [{ key: 'value', label: 'Value', type: 'boolean' }],
+  },
+  {
+    type: 'setVar',
+    category: 'Data',
+    label: 'Set Var',
+    ports: [
+      port('control-in', 'input', 'control', 'control'),
+      port('value', 'input', 'unknown'),
+      port('control-out', 'output', 'control', 'control'),
+    ],
+    defaultConfig: { key: '' },
+    configSchema: [{ key: 'key', label: 'Key', type: 'string' }],
+  },
+  {
+    type: 'getVar',
+    category: 'Data',
+    label: 'Get Var',
+    ports: [port('value', 'output', 'unknown')],
+    defaultConfig: { key: '' },
+    configSchema: [{ key: 'key', label: 'Key', type: 'string' }],
+  },
+  {
+    type: 'record.build',
+    category: 'Data',
+    label: 'Record',
+    ports: [port('record', 'output', 'record')],
+    defaultConfig: { keys: [] as string[] },
+  },
+  {
+    type: 'record.get',
+    category: 'Data',
+    label: 'Record Get',
+    ports: [
+      port('record', 'input', 'record'),
+      port('value', 'output', 'unknown'),
+    ],
+    defaultConfig: { key: '' },
+    configSchema: [{ key: 'key', label: 'Key', type: 'string' }],
+  },
+];

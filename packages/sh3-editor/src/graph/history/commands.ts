@@ -58,10 +58,14 @@ function recomputeNodeFields(state: GraphState, dom: GraphDomain, nodeId: NodeId
 export function makeAddNodeCommand(state: GraphState, dom: GraphDomain, asset: GraphAssetNode): GraphCommand {
   return {
     meta: { kind: 'add-node' },
-    apply() { state.nodes.set(asset.id, buildNodeState(asset, dom, new Set())); },
+    apply() {
+      state.nodes.set(asset.id, buildNodeState(asset, dom, new Set()));
+      state.revision++;
+    },
     revert() {
       state.nodes.delete(asset.id);
       state.selection.delete(asset.id);
+      state.revision++;
     },
   };
 }
@@ -84,6 +88,7 @@ export function makeAddManyCommand(
         });
       }
       for (const e of edges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
     revert() {
       for (const e of edges) state.edges.delete(e.id);
@@ -92,6 +97,7 @@ export function makeAddManyCommand(
         state.selection.delete(n.id);
       }
       for (const e of edges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
   };
 }
@@ -115,12 +121,14 @@ export function makeRemoveNodeCommand(state: GraphState, dom: GraphDomain, nodeI
       state.nodes.delete(nodeId);
       state.selection.delete(nodeId);
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
     revert() {
       if (!removedNode) return;
       state.nodes.set(removedNode.id, removedNode);
       for (const e of removedEdges) state.edges.set(e.id, e);
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
   };
 }
@@ -134,10 +142,12 @@ export function makeMoveNodeCommand(
     apply() {
       const n = state.nodes.get(nodeId);
       if (n) state.nodes.set(nodeId, { ...n, position: { ...after } });
+      state.revision++;
     },
     revert() {
       const n = state.nodes.get(nodeId);
       if (n) state.nodes.set(nodeId, { ...n, position: { ...before } });
+      state.revision++;
     },
   };
 }
@@ -161,12 +171,14 @@ export function makeSetNodeConfigCommand(
       if (!n) return;
       state.nodes.set(nodeId, withWrite(n, after));
       recomputeNodeFields(state, dom, nodeId);
+      state.revision++;
     },
     revert() {
       const n = state.nodes.get(nodeId);
       if (!n) return;
       state.nodes.set(nodeId, withWrite(n, before));
       recomputeNodeFields(state, dom, nodeId);
+      state.revision++;
     },
   };
 }
@@ -176,10 +188,12 @@ export function makeAddEdgeCommand(state: GraphState, edge: EdgeState): GraphCom
     meta: { kind: 'add-edge' },
     apply() {
       state.edges.set(edge.id, { ...edge });
+      state.revision++;
     },
     revert() {
       state.edges.delete(edge.id);
       state.selection.delete(edge.id);
+      state.revision++;
     },
   };
 }
@@ -194,10 +208,12 @@ export function makeRemoveEdgeCommand(state: GraphState, edgeId: string): GraphC
       removed = e;
       state.edges.delete(edgeId);
       state.selection.delete(edgeId);
+      state.revision++;
     },
     revert() {
       if (!removed) return;
       state.edges.set(removed.id, removed);
+      state.revision++;
     },
   };
 }
@@ -233,11 +249,13 @@ export function makeRemoveSelectionCommand(
       }
       state.selection.clear();
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
     revert() {
       for (const n of removedNodes) state.nodes.set(n.id, n);
       for (const e of removedEdges) state.edges.set(e.id, e);
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
     },
   };
 }
@@ -259,6 +277,7 @@ export function makeReplaceAssetCommand(
       state.nodes.clear(); for (const [k, v] of fresh.nodes) state.nodes.set(k, v);
       state.edges.clear(); for (const [k, v] of fresh.edges) state.edges.set(k, v);
       state.selection.clear();
+      state.revision++;
     },
     revert() {
       if (!snapshot) return;
@@ -271,6 +290,7 @@ export function makeReplaceAssetCommand(
       state.nodes.clear(); for (const [k, v] of fresh.nodes) state.nodes.set(k, v);
       state.edges.clear(); for (const [k, v] of fresh.edges) state.edges.set(k, v);
       state.selection.clear();
+      state.revision++;
     },
   };
 }

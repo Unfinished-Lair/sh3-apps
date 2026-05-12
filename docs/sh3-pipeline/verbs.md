@@ -36,6 +36,6 @@ Re-run the verb→template adapter against `listVerbs()` and **upsert** template
 
 ## Sub-graph composition recipe
 
-Save your inner graph as `pipelines/inner.pipeline.json`. In an outer graph, drop the `pipeline.run` verb node (it's just a verb in the catalog). Set its `docId` input to `sh3-pipeline:pipelines/inner.pipeline.json`. Wire the `inputs` input from a `record.build` upstream (or pass an empty object as the literal). The verb's `result` output carries `{ outputs }`; pull the inner outputs with `record.get`.
+Save your inner graph as `pipelines/inner.pipeline.json` (the Save As prompt accepts the bare path; the `sh3-pipeline:` shardId prefix is added internally). In an outer graph, drop the `pipeline.run` verb node from the palette. Set its `docId` input to the full docId (`sh3-pipeline:pipelines/inner.pipeline.json`). Wire the `inputs` input from a `record.build` upstream (or pass an empty object as the literal). The verb's `result` output carries `{ outputs }`; pull the inner outputs with `record.get`.
 
 v0.1.0 ships generic `(docId, inputs) → result` ports on `pipeline.run`. Per-target port synthesis (typed inputs/outputs derived from the called graph's `meta.interface`) is a stretch goal for v0.1.1.

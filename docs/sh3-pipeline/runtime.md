@@ -19,12 +19,12 @@ interface RunContext {
 
 Control-flow driven, lazy data pulls:
 
-1. Locate `pipeline:start`. Seed `RunContext.inputs[name]` into the start node's per-name output ports.
+1. Locate the `start` node. Seed `RunContext.inputs[name]` into the start node's per-name output ports.
 2. Follow the outgoing `control` edge to the next node.
 3. Resolve data inputs: pull recursively from upstream pure-data nodes; cache per-(node, output-port) for the run.
 4. Invoke the node handler.
 5. Branch on the returned `next` control port; for `sequence`, iterate ordered `sequenceOuts`.
-6. Reaching `pipeline:end`: collect bound inputs into `{ outputs }` and resolve.
+6. Reaching the `end` node: collect bound inputs into `{ outputs }` and resolve.
 
 ## Sub-graph fork
 
@@ -44,4 +44,10 @@ Toolbar **Stop** calls `controller.abort()`. Node handlers receive the signal vi
 
 ## Run log
 
-A `RunLogEntry` carries `{ ts, nodeId, level, message, data? }`. The runner pushes `enter` / `exit` debug entries around each node invocation and any `error` thrown during dispatch. Scrollback output from verb nodes streams into the log panel as info/error entries (debug entries are dropped from the verb's scrollback to avoid noise).
+A `RunLogEntry` carries `{ ts, nodeId, level, message, data? }`. The runner pushes `enter` / `exit` debug entries around each node invocation and any `error` thrown during dispatch. Scrollback output from verb nodes is forwarded into the runner log:
+
+- `kind: 'status'` entries map to their declared `level`.
+- `kind: 'text', stream: 'stderr'` maps to `warn`.
+- everything else maps to `info`.
+
+Every log entry is also mirrored to the browser console with a `[pipeline:<level>] (<nodeId>) <message>` prefix routed to the appropriate console method (`debug` / `info` / `warn` / `error`). Filter the DevTools console with `[pipeline:` to isolate run output.

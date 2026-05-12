@@ -24,6 +24,7 @@ export const app: SourceApp = {
     tabs: [
       { slotId: 'diagnostic.main', viewId: 'diagnostic:panel', label: 'Diagnostic' },
       { slotId: 'diagnostic.routes', viewId: 'diagnostic:routes', label: 'API Routes' },
+      { slotId: 'diagnostic.logs', viewId: 'diagnostic:logs', label: 'Logs' },
       { slotId: 'diagnostic.zones', viewId: 'sh3-zones-manager', label: 'Zone Manager' }
     ],
   },

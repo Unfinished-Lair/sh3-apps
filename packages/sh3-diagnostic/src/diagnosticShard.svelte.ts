@@ -28,6 +28,7 @@ import { mount, unmount } from 'svelte';
 import DiagnosticPanel from './manager/DiagnosticPanel.svelte';
 import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
 import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
+import LogPanel from './manager/LogPanel.svelte';
 import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode, ShardContext } from 'sh3-core';
 import {
   sh3,
@@ -35,14 +36,19 @@ import {
   spliceIntoActiveLayout,
   inspectActiveLayout,
 } from 'sh3-core';
+import { installLogCapture } from './log/capture.svelte';
 
 type Behavior = 'dock' | 'silent';
 
 /**
  * Module-level context captured during activate(). Leaf views import this
- * to route HTTP through ctx.fetch (Tauri-safe transport).
+ * to route HTTP through ctx.fetch (Tauri-safe transport) and to write into
+ * the shard's own document zone via docs.
  */
-export let diagnosticContext: { fetch: ShardContext['fetch'] } = undefined!;
+export let diagnosticContext: {
+  fetch: ShardContext['fetch'];
+  docs: ReturnType<ShardContext['documents']>;
+} = undefined!;
 
 export const diagnosticShard: SourceShard = {
   manifest: {
@@ -51,10 +57,18 @@ export const diagnosticShard: SourceShard = {
     views: [
       { id: 'diagnostic:panel', label: 'Diagnostic', standalone: true },
       { id: 'diagnostic:routes', label: 'API Routes', standalone: true },
+      { id: 'diagnostic:logs', label: 'Logs', standalone: true },
     ],
   },
   activate(ctx) {
-    diagnosticContext = { fetch: ctx.fetch.bind(ctx) };
+    // Patch console + window error/rejection listeners ASAP so anything that
+    // logs during the rest of activation lands in the buffer.
+    installLogCapture();
+
+    diagnosticContext = {
+      fetch: ctx.fetch.bind(ctx),
+      docs: ctx.documents({ format: 'text' }),
+    };
 
     const factory: ViewFactory = {
       mount(container: HTMLElement, _context: MountContext): ViewHandle {
@@ -79,6 +93,18 @@ export const diagnosticShard: SourceShard = {
       },
     };
     ctx.registerView('diagnostic:routes', routesFactory);
+
+    const logsFactory: ViewFactory = {
+      mount(container: HTMLElement, _context: MountContext): ViewHandle {
+        const instance = mount(LogPanel, { target: container });
+        return {
+          unmount() {
+            unmount(instance);
+          },
+        };
+      },
+    };
+    ctx.registerView('diagnostic:logs', logsFactory);
   },
   autostart(ctx) {
     const state = ctx.state({

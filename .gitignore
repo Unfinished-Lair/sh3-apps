@@ -5,3 +5,5 @@ test-server/
 .claude/settings.local.json
 .worktrees/
 docs/records.zip
+# Internal planning + author-only notes — not part of the published doc set.
+docs/claude-plans/

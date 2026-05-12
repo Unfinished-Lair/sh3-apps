@@ -48,7 +48,7 @@ sh3-pipeline registers exactly three contribution points on sh3-editor's surface
 | `'sh3-editor.graph-view'` | `GraphViewDescriptor` for slot `graph` | Binds the editor's graph view to our asset + handles its change events |
 | `'sh3-editor.inspectorInstance'` | `InspectorInstanceContribution` for slot `inspector` | Pushes the selected node's config into the inspector and routes edits back through the graph history |
 
-All type imports are type-only; runtime point IDs are inlined as string literals per the [cross-shard contribution guide](../cross-shard-contribution-guide.md). No value imports from sh3-editor.
+All type imports are type-only; runtime point IDs are inlined as string literals (sh3-core's loader only rewrites `sh3-core` and `svelte` bare specifiers, so any other runtime import fails at install). No value imports from sh3-editor.
 
 ## Verbs
 

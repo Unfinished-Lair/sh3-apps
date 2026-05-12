@@ -81,7 +81,7 @@ export interface ColorPanelController {
 }
 ```
 
-External shards consume via **type-only import + inline string-literal id** (per `docs/cross-shard-contribution-guide.md` §3) — never a bare runtime import:
+External shards consume via **type-only import + inline string-literal id** (sh3-core's loader only rewrites `sh3-core` and `svelte` bare specifiers; any other runtime import fails at install) — never a bare runtime import:
 
 ```ts
 import type { ColorPanelDescriptor, ColorPanelController } from '@unfinished-lair/sh3-editor';

@@ -350,6 +350,8 @@ createGraphDomain({
 
 `rendererHint: 'color'` is mapped by the bridge to `InspectorMeta.type = 'color'` and dispatches to the color renderer registered at `INSPECTOR_RENDERER_POINT` ([color-picker.md §4](./color-picker.md#4-using-as-an-inspector-renderer)).
 
+When `rendererHint` is **unset**, the bridge also auto-maps `FieldDescriptor.type` to `InspectorMeta.type` so the built-in widget renderers (≥ sh3-editor 0.13.0) take over: `'string'` → `Field`, `'number'` → `NumberInput`, `'select'` → `Select` (with `meta.widget.options` populated from `def.options`). `'boolean'` fields fall through to the walker's default checkbox primitive — sh3-core has no `'boolean'` widget type today. An explicit `rendererHint` always wins over the auto-mapping; use that to dispatch to a custom renderer or to override the default widget.
+
 ### 6.7 `addTemplate` / `addVisuals` — late-binding registration
 
 Both `addTemplate` and `addVisuals` upsert by `type`. A future contribution-surface RFC may let other shards extend an existing domain post-registration; the API is stable today for intra-domain use.
@@ -443,6 +445,17 @@ export interface GraphState {
   // editor-only
   readonly: boolean;
   selection: Set<NodeId | EdgeId>;
+  /**
+   * Monotonic counter bumped on every mutation (history commands + in-place
+   * drag + selection changes). Plain Map/Set inside Svelte 5's $state proxy
+   * do not reliably propagate mutation signals to consumer-scope $derived /
+   * $effect under the SH3 host's externalized svelte/internal/client (the
+   * bundled svelte/reactivity SvelteMap's signal infrastructure misaligns
+   * with the host runtime). `revision` is a primitive on a tracked field,
+   * which always tracks. Consumers read `state.revision` inside their
+   * derived scope as the single subscription point for "anything changed".
+   */
+  revision: number;
 }
 
 export interface NodeState {

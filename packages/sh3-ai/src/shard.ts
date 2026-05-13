@@ -14,7 +14,7 @@ import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
 import Sketch from './ai/sketch/Sketch.svelte';
-import SaveSketchPrompt from './ai/sketch/SaveSketchPrompt.svelte';
+import { SH3_INLINE_MARKER } from './ai/sketch/tools';
 import Edit from './assistant/Edit.svelte';
 import * as assistant from './assistant/mode';
 import { runOneShotStream } from './assistant/runOneShotStream';
@@ -25,7 +25,6 @@ const DEFAULTS_VIEW_ID = 'ai:defaults';
 const DEFAULTS_FLOAT_TITLE = 'AI Defaults';
 const SKETCH_VIEW_ID = 'ai:sketch';
 const SKETCH_FLOAT_TITLE = 'AI Sketch';
-const SAVE_PROMPT_VIEW_ID = 'ai:sketch.save-prompt';
 const ASSISTANT_EDIT_VIEW_ID = 'ai:assistant.edit';
 
 function nodeContainsView(node: LayoutNode, viewId: string): boolean {
@@ -161,7 +160,6 @@ export const shard: SourceShard = {
       { id: CONVERSATIONS_VIEW_ID, label: 'AI Conversations', standalone: true },
       { id: DEFAULTS_VIEW_ID, label: 'AI Defaults', standalone: true },
       { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
-      { id: SAVE_PROMPT_VIEW_ID, label: 'Save AI Sketch', standalone: true },
       { id: ASSISTANT_EDIT_VIEW_ID, label: 'AI Edit', standalone: false },
     ],
   },
@@ -214,7 +212,9 @@ export const shard: SourceShard = {
 
     const sketchState = new SketchState();
 
-    function openSavePrompt(): void {
+    const SKETCH_MARKER_SCAN = 200;
+
+    async function saveSketchViaPicker(): Promise<void> {
       const snap = sketchState.current;
       const providerId = state.user.activeProviderId;
       if (!snap) {
@@ -225,19 +225,49 @@ export const shard: SourceShard = {
         sh3.toast.notify('AI Sketch: no active AI provider.', { level: 'warn' });
         return;
       }
-      sh3.float.open(SAVE_PROMPT_VIEW_ID, {
-        title: 'Save AI Sketch',
-        size: { w: 360, h: 160 },
-        dismissable: true,
-        meta: { providerId, html: snap.html, mode: snap.mode },
-      });
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const suggestedName = `sketch-${y}-${m}-${d}-${hh}${mm}`;
+
+      const path = await ctx.documentPicker.save({ suggestedName });
+      if (!path) return;
+
+      const docPath = path.startsWith('docs/') ? path.slice(5) : path;
+      const slashIdx = docPath.indexOf('/');
+      if (slashIdx <= 0) {
+        sh3.toast.notify(`AI Sketch: invalid save path '${path}'.`, { level: 'error' });
+        return;
+      }
+      const pickedProvider = docPath.slice(0, slashIdx);
+      const relPath = docPath.slice(slashIdx + 1);
+
+      const body =
+        snap.mode !== 'inline'
+          ? snap.html
+          : snap.html.slice(0, SKETCH_MARKER_SCAN).includes('sh3:inline')
+            ? snap.html
+            : `${SH3_INLINE_MARKER}\n${snap.html}`;
+
+      try {
+        await docsStore.write(pickedProvider, relPath, body);
+        sh3.toast.notify(`Saved AI Sketch as ${relPath}.`, { level: 'info' });
+      } catch (err) {
+        sh3.toast.notify(
+          `AI Sketch save failed: ${err instanceof Error ? err.message : String(err)}`,
+          { level: 'error' },
+        );
+      }
     }
 
     const sketchFactory: ViewFactory = {
       mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
         const instance = mount(Sketch, {
           target: container,
-          props: { state: sketchState, onSave: openSavePrompt },
+          props: { state: sketchState, onSave: saveSketchViaPicker },
         });
         return {
           unmount() { unmount(instance); },
@@ -246,36 +276,6 @@ export const shard: SourceShard = {
       },
     };
     ctx.registerView(SKETCH_VIEW_ID, sketchFactory);
-
-    const savePromptFactory: ViewFactory = {
-      mount(container: HTMLElement, mctx: MountContext): ViewHandle {
-        const meta = (mctx.meta ?? {}) as {
-          providerId?: string;
-          html?: string;
-          mode?: 'inline' | 'isolated';
-        };
-        const loc = mctx.location();
-        const floatId = loc?.kind === 'float' ? loc.floatId : null;
-        if (!meta.providerId || meta.html == null || !meta.mode || !floatId) {
-          return { unmount() {}, closable: true };
-        }
-        const instance = mount(SaveSketchPrompt, {
-          target: container,
-          props: {
-            providerId: meta.providerId,
-            html: meta.html,
-            mode: meta.mode,
-            store: docsStore,
-            onClose: () => sh3.float.close(floatId),
-          },
-        });
-        return {
-          unmount() { unmount(instance); },
-          closable: true,
-        };
-      },
-    };
-    ctx.registerView(SAVE_PROMPT_VIEW_ID, savePromptFactory);
 
     ctx.actions.register({
       id: 'sh3-ai:sketch.open',
@@ -294,7 +294,7 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'AI',
-      run() { openSavePrompt(); },
+      run() { saveSketchViaPicker(); },
     });
 
     async function runEditStream(

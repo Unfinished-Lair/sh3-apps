@@ -111,13 +111,10 @@ function pathToDocId(path: string): string {
   return path.includes(':') ? path : `sh3-pipeline:${path}`;
 }
 
-async function saveAsActive(ctx: ShardContext, state: PipelineState): Promise<void> {
-  const current = docIdToPath(state.docId || SCRATCH_DOC_ID);
-  const next = typeof window !== 'undefined'
-    ? window.prompt('Save As (path within sh3-pipeline):', current)
-    : null;
-  if (!next) return;
-  const docId = pathToDocId(next.trim());
+async function saveAsViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
+  const path = await ctx.documentPicker.save();
+  if (!path) return;
+  const docId = pathToDocId(path.trim());
   await saveDoc(ctx, docId, { ...emptyDocument(), asset: state.asset });
   state.docId = docId;
   state.log.push({ ts: Date.now(), nodeId: null, level: 'info', message: `Saved as ${docId}` });
@@ -406,7 +403,7 @@ export const shard: SourceShard = {
         label: 'Save As…',
         defaultShortcut: 'Mod+Shift+S',
         group: 'Document',
-        run: () => saveAsActive(ctx, state),
+        run: () => { saveAsViaPicker(ctx, state); },
       },
     ];
     for (const a of fileActions) {

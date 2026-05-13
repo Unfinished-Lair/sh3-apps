@@ -21,7 +21,6 @@ import type {
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import PipelineToolbar from './PipelineToolbar.svelte';
 import RunLogPanel from './RunLogPanel.svelte';
-import OpenPipelineModal from './OpenPipelineModal.svelte';
 import { buildControlGraphDomain } from './domain/build';
 import { GRAPH_DOMAIN_POINT } from './contributions';
 import { runPipelineDocument } from './verbs/run';
@@ -112,13 +111,10 @@ function pathToDocId(path: string): string {
   return path.includes(':') ? path : `sh3-pipeline:${path}`;
 }
 
-async function saveAsActive(ctx: ShardContext, state: PipelineState): Promise<void> {
-  const current = docIdToPath(state.docId || SCRATCH_DOC_ID);
-  const next = typeof window !== 'undefined'
-    ? window.prompt('Save As (path within sh3-pipeline):', current)
-    : null;
-  if (!next) return;
-  const docId = pathToDocId(next.trim());
+async function saveAsViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
+  const path = await ctx.documentPicker.save();
+  if (!path) return;
+  const docId = pathToDocId(path.trim());
   await saveDoc(ctx, docId, { ...emptyDocument(), asset: state.asset });
   state.docId = docId;
   state.log.push({ ts: Date.now(), nodeId: null, level: 'info', message: `Saved as ${docId}` });
@@ -140,16 +136,10 @@ async function openActiveFromPath(ctx: ShardContext, state: PipelineState, path:
   }
 }
 
-function openActive(ctx: ShardContext, state: PipelineState): void {
-  sh3.modal.open(
-    OpenPipelineModal,
-    {
-      ctx,
-      initialPath: docIdToPath(state.docId || SCRATCH_DOC_ID),
-      onPick: (path: string) => { void openActiveFromPath(ctx, state, path); },
-    },
-    { dismissOnBackdrop: true },
-  );
+async function openActiveViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
+  const picked = await ctx.documentPicker.open();
+  if (!picked) return;
+  await openActiveFromPath(ctx, state, picked.path);
 }
 
 function newDoc(state: PipelineState): void {
@@ -399,7 +389,7 @@ export const shard: SourceShard = {
         label: 'Open…',
         defaultShortcut: 'Mod+O',
         group: 'Document',
-        run: () => openActive(ctx, state),
+        run: () => { openActiveViaPicker(ctx, state); },
       },
       {
         id: 'sh3-pipeline:doc.save',
@@ -413,7 +403,7 @@ export const shard: SourceShard = {
         label: 'Save As…',
         defaultShortcut: 'Mod+Shift+S',
         group: 'Document',
-        run: () => saveAsActive(ctx, state),
+        run: () => { saveAsViaPicker(ctx, state); },
       },
     ];
     for (const a of fileActions) {

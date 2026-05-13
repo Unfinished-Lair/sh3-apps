@@ -21,7 +21,6 @@ import type {
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import PipelineToolbar from './PipelineToolbar.svelte';
 import RunLogPanel from './RunLogPanel.svelte';
-import OpenPipelineModal from './OpenPipelineModal.svelte';
 import { buildControlGraphDomain } from './domain/build';
 import { GRAPH_DOMAIN_POINT } from './contributions';
 import { runPipelineDocument } from './verbs/run';
@@ -140,16 +139,10 @@ async function openActiveFromPath(ctx: ShardContext, state: PipelineState, path:
   }
 }
 
-function openActive(ctx: ShardContext, state: PipelineState): void {
-  sh3.modal.open(
-    OpenPipelineModal,
-    {
-      ctx,
-      initialPath: docIdToPath(state.docId || SCRATCH_DOC_ID),
-      onPick: (path: string) => { void openActiveFromPath(ctx, state, path); },
-    },
-    { dismissOnBackdrop: true },
-  );
+async function openActiveViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
+  const picked = await ctx.documentPicker.open();
+  if (!picked) return;
+  await openActiveFromPath(ctx, state, picked.path);
 }
 
 function newDoc(state: PipelineState): void {
@@ -399,7 +392,7 @@ export const shard: SourceShard = {
         label: 'Open…',
         defaultShortcut: 'Mod+O',
         group: 'Document',
-        run: () => openActive(ctx, state),
+        run: () => { openActiveViaPicker(ctx, state); },
       },
       {
         id: 'sh3-pipeline:doc.save',

@@ -18,6 +18,7 @@
   let bodyInput: string                    = $state('');
   let lastStatus: string | null            = $state(null);
   let lastStatusOk: boolean                = $state(false);
+  let responseBody: string | null          = $state(null);
   let isTesting: boolean                   = $state(false);
   let knownTenant: string                  = $state('');
   let copiedFlash: boolean                 = $state(false);
@@ -80,7 +81,8 @@
   }
 
   function copyResolved() {
-    navigator.clipboard.writeText(resolvedUrl).then(() => {
+    const full = window.location.origin + resolvedUrl;
+    navigator.clipboard.writeText(full).then(() => {
       copiedFlash = true;
       setTimeout(() => { copiedFlash = false; }, 1200);
     }).catch(() => {});
@@ -91,6 +93,7 @@
     if (!urlTemplate) return;
     isTesting = true;
     lastStatus = null;
+    responseBody = null;
     try {
       const init: RequestInit = { method };
       if (['POST', 'PUT', 'PATCH'].includes(method) && bodyInput.trim()) {
@@ -100,6 +103,11 @@
       const res = await diagnosticContext.fetch(resolvedUrl, init);
       lastStatus = `${res.status} ${res.statusText || (res.ok ? 'OK' : 'Error')}`;
       lastStatusOk = res.ok;
+      const text = await res.text();
+      if (text) {
+        try { responseBody = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { responseBody = text; }
+      }
     } catch {
       lastStatus = 'network error';
       lastStatusOk = false;
@@ -282,6 +290,14 @@
           <span class="status" class:ok={lastStatusOk} class:err={!lastStatusOk}>{lastStatus}</span>
         {/if}
       </div>
+
+      <!-- Response body -->
+      {#if responseBody !== null}
+        <div class="section response-section">
+          <span class="field-label">Response</span>
+          <pre class="response-body">{responseBody}</pre>
+        </div>
+      {/if}
     {:else}
       <p class="muted pad">Click a route to test it.</p>
     {/if}
@@ -624,6 +640,24 @@
 
   .status.ok  { color: var(--sh3-success); background: color-mix(in srgb, var(--sh3-success) 12%, transparent); }
   .status.err { color: var(--sh3-error);   background: color-mix(in srgb, var(--sh3-error)   12%, transparent); }
+
+  /* ── Response body ───────────────────────────────────────────── */
+  .response-section { flex: 1; }
+
+  .response-body {
+    margin: 0;
+    padding: 7px 9px;
+    background: var(--sh3-bg-sunken, var(--sh3-bg));
+    border: 1px solid var(--sh3-border);
+    border-radius: 3px;
+    color: var(--sh3-fg);
+    font: inherit;
+    font-size: 11px;
+    overflow: auto;
+    max-height: 280px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 
   /* ── Misc ─────────────────────────────────────────────────────── */
   .muted { color: var(--sh3-fg-muted); }

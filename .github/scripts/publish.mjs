@@ -194,60 +194,30 @@ export function isArtifactContentUnchanged(pkg, pagesDir, liveRegistry) {
   const stored = entry?.versions?.[0];
   if (!stored) return false;
 
-  // Support both new format (archiveUrl) and old format (bundleUrl) during transition.
-  const archiveUrl = stored.archiveUrl ?? stored.bundleUrl;
-  if (!archiveUrl) return false;
+  // Old-format entries (bundleUrl) must always be republished to migrate to archiveUrl.
+  if (!stored.archiveUrl) return false;
   if (!pkg.shPkgPath || !existsSync(pkg.shPkgPath)) return false;
 
-  const storedArchivePath = join(pagesDir, archiveUrl);
+  const storedArchivePath = join(pagesDir, stored.archiveUrl);
   if (!existsSync(storedArchivePath)) return false;
 
   try {
-    if (stored.archiveUrl) {
-      // New format: extract and compare client.js + server.js bytes from archives.
-      const newFiles = unzipSync(readFileSync(pkg.shPkgPath));
-      const storedFiles = unzipSync(readFileSync(storedArchivePath));
+    const newFiles = unzipSync(readFileSync(pkg.shPkgPath));
+    const storedFiles = unzipSync(readFileSync(storedArchivePath));
 
-      const newClient = newFiles['client.js'];
-      const storedClient = storedFiles['client.js'];
-      if (!newClient || !storedClient) return false;
-      if (Buffer.compare(Buffer.from(newClient), Buffer.from(storedClient)) !== 0) return false;
+    const newClient = newFiles['client.js'];
+    const storedClient = storedFiles['client.js'];
+    if (!newClient || !storedClient) return false;
+    if (Buffer.compare(Buffer.from(newClient), Buffer.from(storedClient)) !== 0) return false;
 
-      const newServer = newFiles['server.js'];
-      const storedServer = storedFiles['server.js'];
-      if (!!newServer !== !!storedServer) return false;
-      if (newServer && storedServer) {
-        if (Buffer.compare(Buffer.from(newServer), Buffer.from(storedServer)) !== 0) return false;
-      }
-
-      return true;
-    } else {
-      // Old format (bundleUrl): integrity was of the client.js bytes only.
-      // Extract client.js from new archive and compare against stored integrity.
-      const newFiles = unzipSync(readFileSync(pkg.shPkgPath));
-      const newClient = newFiles['client.js'];
-      if (!newClient) return false;
-      const newClientIntegrity =
-        'sha384-' + createHash('sha384').update(Buffer.from(newClient)).digest('base64');
-      if (newClientIntegrity !== stored.integrity) return false;
-
-      // Check server presence consistency.
-      const newServer = newFiles['server.js'];
-      const hasStoredServer = !!stored.serverBundleUrl;
-      if (!!newServer !== hasStoredServer) return false;
-      if (newServer && hasStoredServer) {
-        const storedServerPath = join(pagesDir, stored.serverBundleUrl);
-        if (!existsSync(storedServerPath)) return false;
-        if (
-          Buffer.compare(
-            Buffer.from(newServer),
-            readFileSync(storedServerPath),
-          ) !== 0
-        ) return false;
-      }
-
-      return true;
+    const newServer = newFiles['server.js'];
+    const storedServer = storedFiles['server.js'];
+    if (!!newServer !== !!storedServer) return false;
+    if (newServer && storedServer) {
+      if (Buffer.compare(Buffer.from(newServer), Buffer.from(storedServer)) !== 0) return false;
     }
+
+    return true;
   } catch {
     return false;
   }

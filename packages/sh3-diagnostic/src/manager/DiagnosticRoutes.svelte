@@ -48,7 +48,7 @@
     if (methodFilter.size > 0 && !methodFilter.has(r.method)) return false;
     if (prefixFilter && routePrefix(r.path) !== prefixFilter) return false;
     if (searchQuery && !r.path.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (hideWildcards && r.path.includes('/:')) return false;
+    if (hideWildcards && r.path.includes('*')) return false;
     return true;
   }));
 

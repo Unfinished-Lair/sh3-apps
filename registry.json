@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "id": "ai",
+      "type": "shard",
+      "label": "AI",
+      "description": "Abstract AI-chat shard for SH3: owns the `ai` shell mode, the `ai:*` verbs, and the sh3-ai.provider contribution point",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-ai"
+      },
+      "versions": [
+        {
+          "version": "0.6.1+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/ai-0.6.1+442.sh3pkg",
+          "integrity": "sha384-TPpQfcJ2PPTrlQAkSzxvbHFHlph/oWixQfv5GmuIFCCBlyqqpAPbSByTgOKiTI45"
+        }
+      ]
+    },
+    {
+      "id": "sh3-connector-r2-app",
+      "type": "combo",
+      "label": "R2 Backup",
+      "description": "Cloudflare R2 backup connector for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-connector-r2"
+      },
+      "versions": [
+        {
+          "version": "0.4.6+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-connector-r2-app-0.4.6+442.sh3pkg",
+          "integrity": "sha384-Dx7C57frJoQWYuQiinNI1PkniMNFmNFXcjao5KOujMc3Ghq037YQQFP1e/0y/mt1",
+          "requires": [
+            {
+              "id": "sh3-connector-r2",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diagnostic-app",
+      "type": "combo",
+      "label": "Diagnostic",
+      "description": "Diagnostic tool used to debug/develop sh3 apps",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-diagnostic"
+      },
+      "versions": [
+        {
+          "version": "0.2.6+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/diagnostic-app-0.2.6+442.sh3pkg",
+          "integrity": "sha384-tQOPTZ+bZTqufLLeBkpwTf74FWSFmGuUpIbWB2uC49H62OvIEGRgCpmUfGSE7+P9",
+          "requires": [
+            {
+              "id": "diagnostic",
+              "versionRange": "*"
+            },
+            {
+              "id": "sh3-zones",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sh3-editor",
+      "type": "shard",
+      "label": "Editor",
+      "description": "Reusable text editor and object inspector shard for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "@unfinished-lair/sh3-editor"
+      },
+      "versions": [
+        {
+          "version": "0.13.18+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-editor-0.13.18+442.sh3pkg",
+          "integrity": "sha384-1mU3PQhQMt50wVy0HVGjjp0MOCkyMBCwvo1+yGgEf3IUQjOJRFjjCZjsx7oQ26hk"
+        }
+      ]
+    },
+    {
+      "id": "inspector-fiddle-app",
+      "type": "combo",
+      "label": "Inspector Fiddle",
+      "description": "SH3 fiddle apps for testing sh3-editor surfaces in isolation",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-editor-fiddle"
+      },
+      "versions": [
+        {
+          "version": "0.3.13+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/inspector-fiddle-app-0.3.13+442.sh3pkg",
+          "integrity": "sha384-bvo0GnnAOX88uIMfi+W0MRr11lrs+kACUQg3j51lFl2mzJPsukRRpulprvD7Wwjr",
+          "requires": [
+            {
+              "id": "inspector-fiddle",
+              "versionRange": "*"
+            },
+            {
+              "id": "sh3-editor",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sh3-file-explorer-app",
+      "type": "combo",
+      "label": "File Explorer",
+      "description": "Official SH3 file explorer — browse tenant documents",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-file-explorer"
+      },
+      "versions": [
+        {
+          "version": "0.7.6+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-file-explorer-app-0.7.6+442.sh3pkg",
+          "integrity": "sha384-vi39/ON1cx57qsyFZQLiquBbfjPWuw/sJ3+9ewbc6FRdiFR96P5ro5NMyQ45sKDs",
+          "requires": [
+            {
+              "id": "sh3-file-explorer",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "llm-providers",
+      "type": "shard",
+      "label": "LLM Providers",
+      "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini as sh3-ai.providers, plus per-provider settings views; replaces sh3-deepseek-shell and sh3-gemini-shell",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-llm-providers"
+      },
+      "versions": [
+        {
+          "version": "0.2.0+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/llm-providers-0.2.0+442.sh3pkg",
+          "integrity": "sha384-OIzmxwAk4C5wOs/ST8VMI4ErvmRLkKWwqqBT9uSo/1FcEu4/7rhI7EVenhiWd7vF"
+        }
+      ]
+    },
+    {
+      "id": "mock-app",
+      "type": "combo",
+      "label": "Mock App",
+      "description": "SH3 Mock Application",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-mock"
+      },
+      "versions": [
+        {
+          "version": "0.1.3+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/mock-app-0.1.3+442.sh3pkg",
+          "integrity": "sha384-/bMvTGmzSDrBTMk3FqUm5eep6bzyV763oCiiueJJrFsikhc6dbAYsw5WNz3B3PfN",
+          "requires": [
+            {
+              "id": "mock",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sh3-pipeline",
+      "type": "combo",
+      "label": "Pipeline",
+      "description": "Programmatic pipeline",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-pipeline"
+      },
+      "versions": [
+        {
+          "version": "0.1.0+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-pipeline-0.1.0+442.sh3pkg",
+          "integrity": "sha384-gU/iwJW3Xf9l3smTXAPkIp1MpJ6DYfIJiu3exlcy3fVYjjTVZqXRInj7PCamW4yQ",
+          "requires": [
+            {
+              "id": "sh3-pipeline",
+              "versionRange": "*"
+            },
+            {
+              "id": "sh3-editor",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sh3-registry",
+      "type": "combo",
+      "label": "Registry Manager",
+      "description": "Host and manage an SH3 package registry",
+      "author": {
+        "name": "SH3"
+      },
+      "source": {
+        "npm": "sh3-registry"
+      },
+      "versions": [
+        {
+          "version": "0.1.7",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-registry-0.1.7.sh3pkg",
+          "integrity": "sha384-jYrEoM+lK0g6DYyLhG7qDvwPaNEdmhhQHOEIZ0yveqnn1hJ4y8YLf4VUzkOASxqS",
+          "requires": [
+            {
+              "id": "sh3-registry",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sh3-style",
+      "type": "combo",
+      "label": "Style",
+      "description": "Theme editor shard for SH3",
+      "author": {
+        "name": "@unfinished-lair"
+      },
+      "source": {
+        "npm": "sh3-style"
+      },
+      "versions": [
+        {
+          "version": "0.5.0+442",
+          "contractVersion": "1",
+          "archiveUrl": "bundles/sh3-style-0.5.0+442.sh3pkg",
+          "integrity": "sha384-TASyT1aJZmPlaaWn0wFuCGYtzj1OZNdNuRtqdmBP15arXnZHgNQpLiPPQmrqtMy5",
+          "requires": [
+            {
+              "id": "sh3-style",
+              "versionRange": "*"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

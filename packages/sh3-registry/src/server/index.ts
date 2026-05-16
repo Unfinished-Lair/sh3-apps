@@ -148,7 +148,7 @@ const registryServer = {
       const registry = loadRegistryJson(registryJsonPath);
       const existingIdx = registry.packages.findIndex((p) => p.id === id);
 
-      const versionEntry: PackageVersion = { version, contractVersion: '0.21.0', archiveUrl, integrity };
+      const versionEntry: PackageVersion = { version, contractVersion: '1', archiveUrl, integrity };
       if (requires) versionEntry.requires = requires;
 
       const authorName = typeof author === 'string' ? author : (author?.name ?? 'Unknown');

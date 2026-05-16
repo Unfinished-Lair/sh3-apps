@@ -215,7 +215,7 @@ describe('loadLiveRegistry', () => {
         packages: [{
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       };
       writeFileSync(join(tmp, 'registry.json'), JSON.stringify(reg));
@@ -261,7 +261,7 @@ describe('saveRegistry', () => {
         version: 1,
         packages: [{
           id: 'p', type: 'app', label: 'P', description: 'desc', author: { name: 'a' },
-          versions: [{ version: '1.0.0', contractVersion: '0.21.0', archiveUrl: 'bundles/p-1.0.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '1.0.0', contractVersion: '1', archiveUrl: 'bundles/p-1.0.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       };
       publish.saveRegistry(tmp, reg);
@@ -420,12 +420,12 @@ describe('discoverPackages', () => {
     }
   });
 
-  it('derives contractVersion from sh3-core devDependency', () => {
+  it('sets contractVersion to "1" (registry spec version)', () => {
     setup();
     try {
       makePkg('sh3-editor', '0.1.0');
       const pkgs = publish.discoverPackages(tmp);
-      assert.equal(pkgs[0].contractVersion, '0.21.0');
+      assert.equal(pkgs[0].contractVersion, '1');
     } finally {
       teardown();
     }
@@ -467,7 +467,7 @@ describe('discoverPackages', () => {
 describe('diffPackage', () => {
   const makeEntry = (id, version) => ({
     id, type: 'shard', label: id, description: '', author: { name: 'x' },
-    versions: [{ version, contractVersion: '0.21.0', archiveUrl: `bundles/${id}-${version}.sh3pkg`, integrity: 'sha384-xxx' }],
+    versions: [{ version, contractVersion: '1', archiveUrl: `bundles/${id}-${version}.sh3pkg`, integrity: 'sha384-xxx' }],
   });
   const pkg = (id, version, artifactVersion = version) => ({ id, version, artifactVersion });
 
@@ -567,7 +567,7 @@ describe('isArtifactContentUnchanged', () => {
       version: 1,
       packages: [{
         id, type: 'shard', label: id, description: '', author: { name: 'x' },
-        versions: [{ version, contractVersion: '0.21.0', archiveUrl: `bundles/${filename}`, integrity }],
+        versions: [{ version, contractVersion: '1', archiveUrl: `bundles/${filename}`, integrity }],
       }],
     };
   }
@@ -676,7 +676,7 @@ describe('isArtifactContentUnchanged', () => {
         version: 1,
         packages: [{
           id: 'sh3-combo', type: 'shard', label: 'sh3-combo', description: '', author: { name: 'x' },
-          versions: [{ version: '0.1.0+4', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-combo-0.1.0+4.sh3pkg', integrity: 'sha384-x' }],
+          versions: [{ version: '0.1.0+4', contractVersion: '1', archiveUrl: 'bundles/sh3-combo-0.1.0+4.sh3pkg', integrity: 'sha384-x' }],
         }],
       };
       assert.equal(publish.isArtifactContentUnchanged(pkg, join(tmp, '_pages'), reg), false);
@@ -722,7 +722,7 @@ describe('applyPackageUpdate', () => {
     writeFileSync(shPkgPath, buf);
     return {
       id, version, artifactVersion: finalManifestVersion, npmName: finalNpmName,
-      contractVersion: '0.21.0', requires: [],
+      contractVersion: '1', requires: [],
       dir: pkgDir, artifactDir, shPkgPath,
     };
   }
@@ -743,7 +743,7 @@ describe('applyPackageUpdate', () => {
       assert.equal(entry.versions[0].version, '0.1.0');
       assert.equal(entry.versions[0].archiveUrl, 'bundles/sh3-editor-0.1.0.sh3pkg');
       assert.match(entry.versions[0].integrity, /^sha384-/);
-      assert.equal(entry.versions[0].contractVersion, '0.21.0');
+      assert.equal(entry.versions[0].contractVersion, '1');
 
       assert.ok(existsSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.sh3pkg')));
     } finally {
@@ -790,7 +790,7 @@ describe('applyPackageUpdate', () => {
         packages: [{
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: 'old',
           author: { name: 'x' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-old' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-old' }],
         }],
       };
 
@@ -862,7 +862,7 @@ describe('applyPackageUpdate', () => {
         packages: [{
           id: 'sh3-editor', type: 'shard', label: 'Old Label', description: 'old desc',
           author: { name: 'old' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-old' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-old' }],
         }],
       };
       writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.sh3pkg'), 'old');
@@ -928,7 +928,7 @@ describe('main()', () => {
       packages: [{
         id, type: 'shard', label: id, description: '', author: { name: 'x' },
         source: { npm: id },
-        versions: [{ version, contractVersion: '0.21.0', archiveUrl: `bundles/${filename}`, integrity: sri(buf) }],
+        versions: [{ version, contractVersion: '1', archiveUrl: `bundles/${filename}`, integrity: sri(buf) }],
       }],
     };
   }
@@ -963,7 +963,7 @@ describe('main()', () => {
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
           source: { npm: '@unfinished-lair/sh3-editor' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       });
       writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.sh3pkg'), 'old');
@@ -987,7 +987,7 @@ describe('main()', () => {
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
           source: { npm: '@unfinished-lair/sh3-editor' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       });
       writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-editor-0.1.0.sh3pkg'), 'old');
@@ -1011,7 +1011,7 @@ describe('main()', () => {
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
           source: { npm: '@unfinished-lair/sh3-editor' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       });
 
@@ -1033,7 +1033,7 @@ describe('main()', () => {
         packages: [{
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
-          versions: [{ version: '0.2.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.2.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.2.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.2.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       });
 
@@ -1137,7 +1137,7 @@ describe('main()', () => {
           id: 'gemini-shell', type: 'combo', label: 'Gemini', description: '',
           author: { name: 'x' },
           source: { npm: 'sh3-gemini-shell' },
-          versions: [{ version: '0.4.2', contractVersion: '0.21.0', archiveUrl: 'bundles/gemini-shell-0.4.2.sh3pkg', integrity: 'sha384-old' }],
+          versions: [{ version: '0.4.2', contractVersion: '1', archiveUrl: 'bundles/gemini-shell-0.4.2.sh3pkg', integrity: 'sha384-old' }],
         }],
       });
 
@@ -1169,7 +1169,7 @@ describe('main()', () => {
         packages: [{
           id: 'legacy-thing', type: 'shard', label: 'Legacy', description: '',
           author: { name: 'x' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/legacy-thing-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/legacy-thing-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       });
 
@@ -1208,13 +1208,13 @@ describe('sweepOrphans', () => {
             id: 'gemini-shell', type: 'combo', label: 'Gemini', description: '',
             author: { name: 'x' },
             source: { npm: 'sh3-gemini-shell' },
-            versions: [{ version: '0.4.2', contractVersion: '0.21.0', archiveUrl: 'bundles/gemini-shell-0.4.2.sh3pkg', integrity: 'sha384-old' }],
+            versions: [{ version: '0.4.2', contractVersion: '1', archiveUrl: 'bundles/gemini-shell-0.4.2.sh3pkg', integrity: 'sha384-old' }],
           },
           {
             id: 'gemini', type: 'shard', label: 'Gemini', description: '',
             author: { name: 'x' },
             source: { npm: 'sh3-gemini-shell' },
-            versions: [{ version: '0.5.0', contractVersion: '0.21.0', archiveUrl: 'bundles/gemini-0.5.0.sh3pkg', integrity: 'sha384-new' }],
+            versions: [{ version: '0.5.0', contractVersion: '1', archiveUrl: 'bundles/gemini-0.5.0.sh3pkg', integrity: 'sha384-new' }],
           },
         ],
       };
@@ -1246,7 +1246,7 @@ describe('sweepOrphans', () => {
           id: 'sh3-editor', type: 'shard', label: 'Editor', description: '',
           author: { name: 'x' },
           source: { npm: '@unfinished-lair/sh3-editor' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/sh3-editor-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       };
 
@@ -1266,7 +1266,7 @@ describe('sweepOrphans', () => {
         packages: [{
           id: 'legacy', type: 'shard', label: 'Legacy', description: '',
           author: { name: 'x' },
-          versions: [{ version: '0.1.0', contractVersion: '0.21.0', archiveUrl: 'bundles/legacy-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
+          versions: [{ version: '0.1.0', contractVersion: '1', archiveUrl: 'bundles/legacy-0.1.0.sh3pkg', integrity: 'sha384-xxx' }],
         }],
       };
 

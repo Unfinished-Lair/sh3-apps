@@ -125,14 +125,7 @@ export function discoverPackages(repoRoot) {
 
     const manifest = readManifestFromShPkg(shPkgPath);
 
-    // Derive the sh3-core version for the registry contractVersion field.
-    // Strips semver range prefix (^, ~, >=, etc.) from the devDependency value.
-    const sh3CoreDep =
-      pkgJson.devDependencies?.['sh3-core'] ??
-      pkgJson.peerDependencies?.['sh3-core'] ??
-      '';
-    const contractVersion =
-      sh3CoreDep.replace(/^[\^~>=<\s]+/, '').split(/[\s,]/)[0] || '0.21.0';
+    const contractVersion = '1';
 
     const requires = (manifest.requiredShards ?? []).map((id) => ({
       id,

@@ -347,6 +347,19 @@ export async function main({ repoRoot, pagesDir }) {
     }
   }
 
+  // 3c. Promote any "unchanged" package whose stored entry still uses the old
+  //     bundleUrl format (no archiveUrl) to "bump" so it gets migrated on the
+  //     next publish. Packages without buildSuffix:'auto' (like sh3-registry)
+  //     never advance their version, so diffPackage returns 'unchanged' forever
+  //     and the old-format guard in isArtifactContentUnchanged is never reached.
+  for (const c of classified) {
+    if (c.outcome !== 'unchanged') continue;
+    const entry = registry.packages.find((p) => p.id === c.pkg.id);
+    if (entry?.versions?.[0] && !entry.versions[0].archiveUrl) {
+      c.outcome = 'bump';
+    }
+  }
+
   // 4. Fail fast on any regression
   const regressions = classified.filter((c) => c.outcome === 'regression');
   if (regressions.length > 0) {

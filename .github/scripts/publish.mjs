@@ -340,15 +340,20 @@ export async function main({ repoRoot, pagesDir }) {
     }
   }
 
-  // 3c. Promote any "unchanged" package whose stored entry still uses the old
-  //     bundleUrl format (no archiveUrl) to "bump" so it gets migrated on the
-  //     next publish. Packages without buildSuffix:'auto' (like sh3-registry)
-  //     never advance their version, so diffPackage returns 'unchanged' forever
-  //     and the old-format guard in isArtifactContentUnchanged is never reached.
+  // 3c. Promote any "unchanged" package whose stored entry needs a one-time
+  //     migration to "bump". Two cases:
+  //     (a) Old bundleUrl format (no archiveUrl) — migrate to .sh3pkg format.
+  //     (b) Wrong contractVersion (e.g. '0.21.0' written before the spec fixed
+  //         it to '1') — rewrite the entry with the correct value.
+  //     Packages without buildSuffix:'auto' (like sh3-registry) never advance
+  //     their version, so diffPackage returns 'unchanged' forever and the
+  //     content-unchanged guard is never reached without this promotion.
   for (const c of classified) {
     if (c.outcome !== 'unchanged') continue;
     const entry = registry.packages.find((p) => p.id === c.pkg.id);
-    if (entry?.versions?.[0] && !entry.versions[0].archiveUrl) {
+    const stored = entry?.versions?.[0];
+    if (!stored) continue;
+    if (!stored.archiveUrl || stored.contractVersion !== '1') {
       c.outcome = 'bump';
     }
   }

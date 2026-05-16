@@ -1024,6 +1024,31 @@ describe('main()', () => {
     }
   });
 
+  it('force-republishes unchanged package with wrong contractVersion', async () => {
+    setup();
+    try {
+      makePkg('sh3-registry', '0.1.7');
+      seedRegistry({
+        version: 1,
+        packages: [{
+          id: 'sh3-registry', type: 'shard', label: 'Registry', description: '',
+          author: { name: 'x' },
+          source: { npm: 'sh3-registry' },
+          versions: [{ version: '0.1.7', contractVersion: '0.21.0', archiveUrl: 'bundles/sh3-registry-0.1.7.sh3pkg', integrity: 'sha384-old' }],
+        }],
+      });
+      writeFileSync(join(tmp, '_pages', 'bundles', 'sh3-registry-0.1.7.sh3pkg'), 'old');
+
+      const result = await publish.main({ repoRoot: tmp, pagesDir: join(tmp, '_pages') });
+
+      assert.deepEqual(result.registryPublished, ['sh3-registry']);
+      const reg = JSON.parse(readFileSync(join(tmp, '_pages', 'registry.json'), 'utf-8'));
+      assert.equal(reg.packages[0].versions[0].contractVersion, '1');
+    } finally {
+      teardown();
+    }
+  });
+
   it('fails fast on regression', async () => {
     setup();
     try {

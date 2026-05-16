@@ -20,7 +20,7 @@
   let lastStatusOk: boolean                = $state(false);
   let responseBody: string | null          = $state(null);
   let isTesting: boolean                   = $state(false);
-  let knownTenant: string                  = $state('');
+  const knownTenant = diagnosticContext.tenantId;
   let copiedFlash: boolean                 = $state(false);
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -128,20 +128,7 @@
     }
   }
 
-  async function loadKnownTenant() {
-    try {
-      const res = await diagnosticContext.fetch('/api/tenants');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const first = data[0];
-        knownTenant = typeof first === 'string' ? first : (first.id ?? first.name ?? '');
-      }
-    } catch {}
-  }
-
   loadRoutes();
-  loadKnownTenant();
 
   function methodCls(m: string) {
     const map: Record<string, string> = { GET: 'get', POST: 'post', DELETE: 'del', PUT: 'put', PATCH: 'patch' };

@@ -48,6 +48,7 @@ type Behavior = 'dock' | 'silent';
 export let diagnosticContext: {
   fetch: ShardContext['fetch'];
   docs: ReturnType<ShardContext['documents']>;
+  tenantId: string;
 } = undefined!;
 
 export const diagnosticShard: SourceShard = {
@@ -68,6 +69,7 @@ export const diagnosticShard: SourceShard = {
     diagnosticContext = {
       fetch: ctx.fetch.bind(ctx),
       docs: ctx.documents({ format: 'text' }),
+      tenantId: ctx.tenantId,
     };
 
     const factory: ViewFactory = {

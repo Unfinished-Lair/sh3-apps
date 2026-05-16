@@ -184,8 +184,8 @@
             class="toggle-btn"
             class:on={hideWildcards}
             onclick={() => { hideWildcards = !hideWildcards; }}
-            title="Hide routes with parametric segments (/:param)"
-          >/:*</button>
+            title="Hide wildcard routes (/:param)"
+          >*</button>
         </div>
 
         <!-- Prefix / shard selector -->

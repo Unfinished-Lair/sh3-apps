@@ -9,6 +9,6 @@
   },
   "devDependencies": {
     "fflate": "^0.8.0",
-    "sh3-core": "^0.21.0"
+    "sh3-core": "^0.21.2"
   }
 }

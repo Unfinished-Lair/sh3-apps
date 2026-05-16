@@ -11,6 +11,7 @@
   let searchQuery: string                  = $state('');
   let methodFilter: Set<string>            = $state(new Set());  // empty = all
   let prefixFilter: string                 = $state('');         // '' = all
+  let hideWildcards: boolean               = $state(true);
 
   // ── Test panel ────────────────────────────────────────────────────
   let urlTemplate: string                  = $state('');
@@ -47,6 +48,7 @@
     if (methodFilter.size > 0 && !methodFilter.has(r.method)) return false;
     if (prefixFilter && routePrefix(r.path) !== prefixFilter) return false;
     if (searchQuery && !r.path.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (hideWildcards && r.path.includes('/:')) return false;
     return true;
   }));
 
@@ -166,16 +168,24 @@
           spellcheck="false"
         />
 
-        <!-- Method chips -->
-        <div class="method-chips">
-          {#each allMethods as m}
-            <button
-              class="chip {methodCls(m)}"
-              class:active={methodFilter.size === 0 || methodFilter.has(m)}
-              onclick={() => toggleMethod(m)}
-              title="{methodCount(m)} routes"
-            >{m}</button>
-          {/each}
+        <!-- Method chips + wildcard toggle -->
+        <div class="chips-row">
+          <div class="method-chips">
+            {#each allMethods as m}
+              <button
+                class="chip {methodCls(m)}"
+                class:active={methodFilter.size === 0 || methodFilter.has(m)}
+                onclick={() => toggleMethod(m)}
+                title="{methodCount(m)} routes"
+              >{m}</button>
+            {/each}
+          </div>
+          <button
+            class="toggle-btn"
+            class:on={hideWildcards}
+            onclick={() => { hideWildcards = !hideWildcards; }}
+            title="Hide routes with parametric segments (/:param)"
+          >/:*</button>
         </div>
 
         <!-- Prefix / shard selector -->
@@ -374,10 +384,39 @@
     border-color: var(--sh3-input-border-focus, var(--sh3-accent));
   }
 
+  .chips-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
   .method-chips {
+    flex: 1;
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
+  }
+
+  .toggle-btn {
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--sh3-border);
+    background: transparent;
+    color: var(--sh3-fg-subtle);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 80ms, color 80ms, border-color 80ms, background 80ms;
+  }
+
+  .toggle-btn.on {
+    opacity: 1;
+    color: var(--sh3-warning);
+    border-color: color-mix(in srgb, var(--sh3-warning) 45%, transparent);
+    background: color-mix(in srgb, var(--sh3-warning) 10%, transparent);
   }
 
   .chip {

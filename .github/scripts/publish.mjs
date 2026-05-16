@@ -3,15 +3,13 @@
  *
  * Reads:
  *   - packages/<name>/package.json
- *   - packages/<name>/dist/artifact/manifest.json
- *   - packages/<name>/dist/artifact/client.js (and server.js if present)
+ *   - packages/<name>/dist/artifact/<id>-<version>.sh3pkg
  *   - _pages/registry.json
  *
  * Writes:
  *   - _pages/registry.json
- *   - _pages/bundles/{id}-{version}.js
- *   - _pages/bundles/{id}-{version}-server.js
- *   (and deletes previous bundles for bumped packages, plus any
+ *   - _pages/bundles/{id}-{version}.sh3pkg
+ *   (and deletes previous archives for bumped packages, plus any
  *    orphans whose source workspace now publishes under a different id)
  *
  * Emits to stdout:
@@ -19,11 +17,14 @@
  *   - Followed by a markdown summary for $GITHUB_STEP_SUMMARY
  *
  * Exit code 0 on success (including "nothing to do"); non-zero on any error.
+ *
+ * Registry format follows registry-spec.md (ratified v0.21.0).
  */
 
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, copyFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
+import { unzipSync } from 'fflate';
 
 // Helpers exported for unit tests.
 //
@@ -74,6 +75,22 @@ export function saveRegistry(pagesDir, registry) {
   writeFileSync(join(pagesDir, 'registry.json'), JSON.stringify(registry, null, 2));
 }
 
+// Read and parse manifest.json from inside a .sh3pkg ZIP archive.
+export function readManifestFromShPkg(archivePath) {
+  const bytes = readFileSync(archivePath);
+  const files = unzipSync(bytes);
+  const manifestBytes = files['manifest.json'];
+  if (!manifestBytes) throw new Error(`No manifest.json in ${archivePath}`);
+  return JSON.parse(Buffer.from(manifestBytes).toString('utf-8'));
+}
+
+// Find the single .sh3pkg file in an artifact directory. Returns null if absent.
+export function findShPkgPath(artifactDir) {
+  if (!existsSync(artifactDir)) return null;
+  const found = readdirSync(artifactDir).find((f) => f.endsWith('.sh3pkg'));
+  return found ? join(artifactDir, found) : null;
+}
+
 // TEMP: sh3-sync is broken and blocks deploy; re-enable once fixed.
 const SKIP_PACKAGES = new Set(['sh3-sync']);
 
@@ -99,14 +116,29 @@ export function discoverPackages(repoRoot) {
     }
 
     const artifactDir = join(pkgDir, 'dist', 'artifact');
-    const manifestPath = join(artifactDir, 'manifest.json');
-    if (!existsSync(manifestPath)) {
+    const shPkgPath = findShPkgPath(artifactDir);
+    if (!shPkgPath) {
       throw new Error(
-        `Package "${name}" has missing artifact at ${manifestPath}. Run 'npm run build:artifact' in the package first.`,
+        `Package "${name}" has missing artifact at ${artifactDir}. Run 'npm run build:artifact' in the package first.`,
       );
     }
 
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+    const manifest = readManifestFromShPkg(shPkgPath);
+
+    // Derive the sh3-core version for the registry contractVersion field.
+    // Strips semver range prefix (^, ~, >=, etc.) from the devDependency value.
+    const sh3CoreDep =
+      pkgJson.devDependencies?.['sh3-core'] ??
+      pkgJson.peerDependencies?.['sh3-core'] ??
+      '';
+    const contractVersion =
+      sh3CoreDep.replace(/^[\^~>=<\s]+/, '').split(/[\s,]/)[0] || '0.21.0';
+
+    const requires = (manifest.requiredShards ?? []).map((id) => ({
+      id,
+      versionRange: '*',
+    }));
+
     result.push({
       id: manifest.id,
       npmName: pkgJson.name,
@@ -115,12 +147,13 @@ export function discoverPackages(repoRoot) {
       version: pkgJson.version,
       // `artifactVersion` is what sh3-core's sh3Artifact plugin wrote into
       // manifest.json — `package.json.version` plus an optional `+build`
-      // suffix from `git rev-list --count <lastTag>..HEAD`. Drives bundle
-      // filenames and registry-entry versions so distinct builds of the
-      // same release keep distinct identities + SRI hashes.
+      // suffix. Drives archive filenames and registry-entry versions.
       artifactVersion: manifest.version ?? pkgJson.version,
+      contractVersion,
+      requires,
       dir: pkgDir,
       artifactDir,
+      shPkgPath,
     });
   }
 
@@ -138,108 +171,131 @@ export function diffPackage(pkg, liveRegistry) {
   const cmp = compareVer(parseVer(pkg.artifactVersion), parseVer(oldVersion));
   if (cmp > 0) return { outcome: 'bump', oldVersion };
   if (cmp < 0) return { outcome: 'regression', oldVersion };
-  // Precedence-equal: same release. Full-string equality decides whether
-  // the build-metadata suffix changed; if it did, treat as a refresh
-  // ('bump') so the registry entry + bundle SRI get rewritten. Callers
-  // then run isArtifactContentUnchanged() to filter out the common case
-  // where only the suffix advanced (every push to main increments
-  // `git rev-list --count <lastTag>..HEAD` for the whole repo, so the
-  // suffix moves for every package even when source didn't change).
   if (pkg.artifactVersion === oldVersion) return { outcome: 'unchanged', oldVersion };
   return { outcome: 'bump', oldVersion };
 }
 
 /**
- * Returns true iff every bundle the new artifact would publish is byte-identical
- * to what the registry already has.
+ * Returns true iff the new .sh3pkg archive contains byte-identical client.js
+ * (and server.js, if present on either side) compared with the stored archive.
  *
  * Motivation: `sh3Artifact({ buildSuffix: 'auto' })` derives the `+build<N>`
  * suffix from `git rev-list --count <lastTag>..HEAD`, which is a repo-wide
  * counter. So every push to main advances the suffix for every package, even
  * those whose source code didn't change. Without this gate, `diffPackage` flags
  * each as a precedence-equal "bump" and `applyPackageUpdate` rewrites the
- * bundle + registry entry for byte-identical content.
+ * archive + registry entry for byte-identical content.
  *
- * Comparisons:
- *   - new client.js   ↔ registry.versions[0].integrity (stored)
- *   - new server.js   ↔ bundles/<old-server>.js on disk (recomputed),
- *                       only if either side has one
- *
- * Server-bundle presence must match (both have it or neither does); the
- * server integrity is recomputed from disk because the registry only stores
- * client integrity today. Missing on-disk server bundle → return false (fail
- * closed: republish so the bundles directory stays consistent).
+ * Comparisons are done on extracted bytes to be robust against non-deterministic
+ * ZIP metadata (timestamps, etc.) in the outer archive wrapper.
  */
 export function isArtifactContentUnchanged(pkg, pagesDir, liveRegistry) {
   const entry = liveRegistry.packages.find((p) => p.id === pkg.id);
   const stored = entry?.versions?.[0];
   if (!stored) return false;
 
-  const newClient = join(pkg.artifactDir, 'client.js');
-  if (!existsSync(newClient)) return false;
-  if (computeIntegrity(newClient) !== stored.integrity) return false;
+  // Support both new format (archiveUrl) and old format (bundleUrl) during transition.
+  const archiveUrl = stored.archiveUrl ?? stored.bundleUrl;
+  if (!archiveUrl) return false;
+  if (!pkg.shPkgPath || !existsSync(pkg.shPkgPath)) return false;
 
-  const newServer = join(pkg.artifactDir, 'server.js');
-  const hasNewServer = existsSync(newServer);
-  const hasStoredServer = !!stored.serverBundleUrl;
-  if (hasNewServer !== hasStoredServer) return false;
+  const storedArchivePath = join(pagesDir, archiveUrl);
+  if (!existsSync(storedArchivePath)) return false;
 
-  if (hasNewServer) {
-    const storedServerPath = join(pagesDir, stored.serverBundleUrl);
-    if (!existsSync(storedServerPath)) return false;
-    if (computeIntegrity(newServer) !== computeIntegrity(storedServerPath)) return false;
+  try {
+    if (stored.archiveUrl) {
+      // New format: extract and compare client.js + server.js bytes from archives.
+      const newFiles = unzipSync(readFileSync(pkg.shPkgPath));
+      const storedFiles = unzipSync(readFileSync(storedArchivePath));
+
+      const newClient = newFiles['client.js'];
+      const storedClient = storedFiles['client.js'];
+      if (!newClient || !storedClient) return false;
+      if (Buffer.compare(Buffer.from(newClient), Buffer.from(storedClient)) !== 0) return false;
+
+      const newServer = newFiles['server.js'];
+      const storedServer = storedFiles['server.js'];
+      if (!!newServer !== !!storedServer) return false;
+      if (newServer && storedServer) {
+        if (Buffer.compare(Buffer.from(newServer), Buffer.from(storedServer)) !== 0) return false;
+      }
+
+      return true;
+    } else {
+      // Old format (bundleUrl): integrity was of the client.js bytes only.
+      // Extract client.js from new archive and compare against stored integrity.
+      const newFiles = unzipSync(readFileSync(pkg.shPkgPath));
+      const newClient = newFiles['client.js'];
+      if (!newClient) return false;
+      const newClientIntegrity =
+        'sha384-' + createHash('sha384').update(Buffer.from(newClient)).digest('base64');
+      if (newClientIntegrity !== stored.integrity) return false;
+
+      // Check server presence consistency.
+      const newServer = newFiles['server.js'];
+      const hasStoredServer = !!stored.serverBundleUrl;
+      if (!!newServer !== hasStoredServer) return false;
+      if (newServer && hasStoredServer) {
+        const storedServerPath = join(pagesDir, stored.serverBundleUrl);
+        if (!existsSync(storedServerPath)) return false;
+        if (
+          Buffer.compare(
+            Buffer.from(newServer),
+            readFileSync(storedServerPath),
+          ) !== 0
+        ) return false;
+      }
+
+      return true;
+    }
+  } catch {
+    return false;
   }
-
-  return true;
 }
 
 export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
-  const manifestPath = join(pkg.artifactDir, 'manifest.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  const manifest = readManifestFromShPkg(pkg.shPkgPath);
 
   const bundlesDir = join(pagesDir, 'bundles');
   mkdirSync(bundlesDir, { recursive: true });
 
-  // ---- Delete old bundles if there was a previous entry ----
+  // ---- Delete old archives if there was a previous entry ----
   const existingIdx = liveRegistry.packages.findIndex((p) => p.id === pkg.id);
   if (existingIdx >= 0) {
     const oldEntry = liveRegistry.packages[existingIdx];
     for (const ver of oldEntry.versions) {
-      const oldClient = join(pagesDir, ver.bundleUrl);
-      if (existsSync(oldClient)) unlinkSync(oldClient);
-      if (ver.serverBundleUrl) {
-        const oldServer = join(pagesDir, ver.serverBundleUrl);
-        if (existsSync(oldServer)) unlinkSync(oldServer);
+      // Support both old format (bundleUrl/serverBundleUrl) and new (archiveUrl).
+      const urls = ver.archiveUrl
+        ? [ver.archiveUrl]
+        : [ver.bundleUrl, ver.serverBundleUrl].filter(Boolean);
+      for (const url of urls) {
+        const filePath = join(pagesDir, url);
+        if (existsSync(filePath)) unlinkSync(filePath);
       }
     }
   }
 
-  // ---- Copy new bundles in ----
-  const clientSrc = join(pkg.artifactDir, 'client.js');
-  const clientDst = join(bundlesDir, `${pkg.id}-${pkg.artifactVersion}.js`);
-  copyFileSync(clientSrc, clientDst);
-  const integrity = computeIntegrity(clientDst);
-
-  let serverBundleUrl;
-  const serverSrc = join(pkg.artifactDir, 'server.js');
-  if (existsSync(serverSrc)) {
-    const serverDst = join(bundlesDir, `${pkg.id}-${pkg.artifactVersion}-server.js`);
-    copyFileSync(serverSrc, serverDst);
-    serverBundleUrl = `bundles/${pkg.id}-${pkg.artifactVersion}-server.js`;
-  }
+  // ---- Copy new .sh3pkg archive ----
+  const archiveFilename = `${pkg.id}-${pkg.artifactVersion}.sh3pkg`;
+  const archiveDst = join(bundlesDir, archiveFilename);
+  copyFileSync(pkg.shPkgPath, archiveDst);
+  const integrity = computeIntegrity(archiveDst);
 
   // ---- Build new entry ----
   const versionEntry = {
     version: pkg.artifactVersion,
-    contractVersion: String(manifest.contractVersion ?? 1),
-    bundleUrl: `bundles/${pkg.id}-${pkg.artifactVersion}.js`,
+    contractVersion: pkg.contractVersion,
+    archiveUrl: `bundles/${archiveFilename}`,
     integrity,
   };
-  if (serverBundleUrl) versionEntry.serverBundleUrl = serverBundleUrl;
+  if (pkg.requires && pkg.requires.length > 0) {
+    versionEntry.requires = pkg.requires;
+  }
 
-  const authorName = typeof manifest.author === 'string'
-    ? manifest.author
-    : (manifest.author?.name ?? 'Unknown');
+  const authorName =
+    typeof manifest.author === 'string'
+      ? manifest.author
+      : (manifest.author?.name ?? 'Unknown');
 
   const newEntry = {
     id: manifest.id,
@@ -262,16 +318,7 @@ export function applyPackageUpdate(pkg, pagesDir, liveRegistry) {
 
 /**
  * Drop entries whose source workspace now publishes under a different manifest id.
- *
- * `entry.source.npm` is stamped on every publish (see applyPackageUpdate). If a
- * workspace's manifest id later changes — e.g. a package transitions from
- * combo (app id wins) to shard-only (shard id wins) — the previous entry would
- * otherwise linger under the stale id forever. This sweep removes those.
- *
- * Entries with no `source.npm` (published before this field existed) are left
- * alone: the sweep can't safely attribute them. They will be backfilled the
- * next time their workspace publishes, since applyPackageUpdate stamps the
- * field on every write.
+ * Supports both old format (bundleUrl/serverBundleUrl) and new (archiveUrl).
  */
 export function sweepOrphans(packages, pagesDir, liveRegistry) {
   const workspaceMap = new Map();
@@ -284,8 +331,10 @@ export function sweepOrphans(packages, pagesDir, liveRegistry) {
     const currentId = sourceNpm ? workspaceMap.get(sourceNpm) : undefined;
     if (currentId !== undefined && entry.id !== currentId) {
       for (const ver of entry.versions) {
-        for (const url of [ver.bundleUrl, ver.serverBundleUrl]) {
-          if (!url) continue;
+        const urls = ver.archiveUrl
+          ? [ver.archiveUrl]
+          : [ver.bundleUrl, ver.serverBundleUrl].filter(Boolean);
+        for (const url of urls) {
           const bundlePath = join(pagesDir, url);
           if (existsSync(bundlePath)) unlinkSync(bundlePath);
         }
@@ -316,10 +365,9 @@ export async function main({ repoRoot, pagesDir }) {
   }));
 
   // 3b. Demote precedence-equal "bump" outcomes (i.e. build-suffix-only
-  //     advances) to "unchanged-content" when the new artifact's bundles are
+  //     advances) to "unchanged-content" when the new artifact's content is
   //     byte-identical to the registry's. Defends against the every-push
-  //     republish cycle that buildSuffix:'auto' would otherwise cause — see
-  //     isArtifactContentUnchanged for the underlying mechanism.
+  //     republish cycle that buildSuffix:'auto' would otherwise cause.
   for (const c of classified) {
     if (c.outcome !== 'bump') continue;
     const cmp = compareVer(parseVer(c.pkg.artifactVersion), parseVer(c.oldVersion));
@@ -339,18 +387,16 @@ export async function main({ repoRoot, pagesDir }) {
   }
 
   // 5. Apply updates for new and bump outcomes.
-  // npm eligibility uses the bare release version (`pkg.version`) so that a
-  // build-only refresh (same release, new build-metadata suffix) does NOT
-  // re-publish to npm — `isNpmEligible` compares semver precedence, which
-  // ignores build metadata, so suffix-only bumps short-circuit to false.
   const registryPublished = [];
   const npmEligible = [];
   for (const c of classified) {
     if (c.outcome === 'new' || c.outcome === 'bump') {
       applyPackageUpdate(c.pkg, pagesDir, registry);
       registryPublished.push(c.pkg.id);
-      if (NPM_ELIGIBLE_PACKAGES.has(c.pkg.npmName)
-          && isNpmEligible(c.outcome, c.oldVersion, c.pkg.version)) {
+      if (
+        NPM_ELIGIBLE_PACKAGES.has(c.pkg.npmName) &&
+        isNpmEligible(c.outcome, c.oldVersion, c.pkg.version)
+      ) {
         npmEligible.push(c.pkg.npmName);
       }
     }

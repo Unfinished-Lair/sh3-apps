@@ -3,15 +3,13 @@
  *
  * Routes (relative to /api/sh3-registry/):
  *   GET  /registry.json           — public registry index
- *   GET  /bundles/:filename       — public bundle download
- *   POST /publish                 — upload artifact (manifest + bundles) (admin)
+ *   GET  /bundles/:filename       — public archive download
+ *   POST /publish                 — upload .sh3pkg artifact (admin)
  *   PATCH /packages/:id           — update package metadata (admin)
  *   DELETE /packages/:id          — delete a package (admin)
- *   GET  /keys                    — list API keys (admin)
- *   POST /keys                    — generate API key (admin)
- *   DELETE /keys/:id              — revoke API key (admin)
  *
  * All data stored in ctx.dataDir.
+ * Registry format follows registry-spec.md (ratified v0.21.0).
  */
 
 import {
@@ -23,25 +21,31 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { unzipSync } from 'fflate';
 
 // ---- Types ----
 
+interface PackageVersion {
+  version: string;
+  contractVersion: string;
+  archiveUrl: string;
+  integrity: string;
+  requires?: Array<{ id: string; versionRange: string }>;
+}
+
+interface PackageEntry {
+  id: string;
+  type: string;
+  label: string;
+  description: string;
+  author: { name: string };
+  icon?: string;
+  versions: PackageVersion[];
+}
+
 interface RegistryJson {
-  version: number;
-  packages: Array<{
-    id: string;
-    type: string;
-    label: string;
-    description: string;
-    author: { name: string };
-    versions: Array<{
-      version: string;
-      contractVersion: string;
-      bundleUrl?: string;
-      integrity?: string;
-      serverBundleUrl?: string;
-    }>;
-  }>;
+  version: 1;
+  packages: PackageEntry[];
 }
 
 // ---- Helpers ----
@@ -57,6 +61,13 @@ function loadRegistryJson(path: string): RegistryJson {
 
 function saveRegistryJson(path: string, registry: RegistryJson): void {
   writeFileSync(path, JSON.stringify(registry, null, 2));
+}
+
+function readManifestFromArchive(bytes: Buffer): Record<string, any> {
+  const files = unzipSync(bytes);
+  const manifestBytes = files['manifest.json'];
+  if (!manifestBytes) throw new Error('Archive missing manifest.json');
+  return JSON.parse(Buffer.from(manifestBytes).toString('utf-8'));
 }
 
 // ---- Server Shard ----
@@ -78,11 +89,10 @@ const registryServer = {
       return c.json(JSON.parse(content));
     });
 
-    // ---- Public: bundle downloads ----
+    // ---- Public: archive downloads ----
     router.get('/bundles/:filename', (c: any) => {
       const filename: string = c.req.param('filename');
       const filePath = join(bundlesDir, filename);
-      // Prevent traversal
       if (!filePath.startsWith(bundlesDir)) {
         return c.json({ error: 'Invalid path' }, 400);
       }
@@ -90,100 +100,89 @@ const registryServer = {
       const content = readFileSync(filePath);
       return new Response(content, {
         headers: {
-          'Content-Type': 'application/javascript',
+          'Content-Type': 'application/octet-stream',
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
       });
     });
 
     // ---- Admin: publish ----
-    // Accepts artifact files: manifest (required), client (optional), server (optional).
-    // All metadata is read from the manifest — no manual fields needed.
+    // Accepts a single .sh3pkg archive in the "archive" form field.
+    // All metadata is extracted from the manifest.json inside the archive.
     router.post('/publish', ctx.adminOnly, async (c: any) => {
       const formData = await c.req.formData();
-      const manifestFile = formData.get('manifest');
-      const clientFile = formData.get('client');
-      const serverFile = formData.get('server');
+      const archiveFile = formData.get('archive');
 
-      if (!manifestFile || !(manifestFile instanceof File)) {
-        return c.json({ error: 'Missing "manifest" file field' }, 400);
+      if (!archiveFile || !(archiveFile instanceof File)) {
+        return c.json({ error: 'Missing "archive" file field (.sh3pkg)' }, 400);
       }
+
+      const archiveBytes = Buffer.from(await archiveFile.arrayBuffer());
 
       let manifest: Record<string, any>;
       try {
-        manifest = JSON.parse(await manifestFile.text());
-      } catch {
-        return c.json({ error: 'Invalid manifest JSON' }, 400);
+        manifest = readManifestFromArchive(archiveBytes);
+      } catch (err) {
+        return c.json({ error: `Cannot read archive: ${err instanceof Error ? err.message : String(err)}` }, 400);
       }
 
-      const { id, type, label, version, description, author } = manifest;
+      const { id, type, label, version, description, author, requiredShards } = manifest;
       if (!id || !type || !label || !version) {
         return c.json({ error: 'Manifest missing required fields (id, type, label, version)' }, 400);
       }
 
-      // Store client bundle and compute integrity
-      let bundleUrl: string | undefined;
-      let integrity: string | undefined;
-      if (clientFile instanceof File) {
-        const bundleBytes = Buffer.from(await clientFile.arrayBuffer());
-        const bundleFilename = `${id}-${version}.js`;
-        writeFileSync(join(bundlesDir, bundleFilename), bundleBytes);
+      // Store archive and compute integrity
+      const archiveFilename = `${id}-${version}.sh3pkg`;
+      const archivePath = join(bundlesDir, archiveFilename);
+      writeFileSync(archivePath, archiveBytes);
 
-        const hash = createHash('sha384').update(bundleBytes).digest('base64');
-        integrity = `sha384-${hash}`;
-        bundleUrl = `bundles/${bundleFilename}`;
-      }
+      const hash = createHash('sha384').update(archiveBytes).digest('base64');
+      const integrity = `sha384-${hash}`;
+      const archiveUrl = `bundles/${archiveFilename}`;
 
-      // Store server bundle
-      let serverBundleUrl: string | undefined;
-      if (serverFile instanceof File) {
-        const serverBytes = Buffer.from(await serverFile.arrayBuffer());
-        const serverFilename = `${id}-${version}-server.js`;
-        writeFileSync(join(bundlesDir, serverFilename), serverBytes);
-        serverBundleUrl = `bundles/${serverFilename}`;
-      }
+      // Build requires from requiredShards
+      const requires = Array.isArray(requiredShards) && requiredShards.length > 0
+        ? requiredShards.map((dep: string) => ({ id: dep, versionRange: '*' }))
+        : undefined;
 
-      // Update registry index — accept client-only, server-only, or combo artifacts.
-      if (bundleUrl || serverBundleUrl) {
-        const registry = loadRegistryJson(registryJsonPath);
-        const existing = registry.packages.findIndex((p) => p.id === id);
+      const registry = loadRegistryJson(registryJsonPath);
+      const existingIdx = registry.packages.findIndex((p) => p.id === id);
 
-        const versionEntry: any = {
-          version,
-          contractVersion: String(manifest.contractVersion ?? 1),
-        };
-        if (bundleUrl) versionEntry.bundleUrl = bundleUrl;
-        if (integrity) versionEntry.integrity = integrity;
-        if (serverBundleUrl) versionEntry.serverBundleUrl = serverBundleUrl;
+      const versionEntry: PackageVersion = { version, contractVersion: '0.21.0', archiveUrl, integrity };
+      if (requires) versionEntry.requires = requires;
 
-        if (existing >= 0) {
-          // Replace existing version or prepend new one
-          const verIdx = registry.packages[existing].versions.findIndex(
-            (v) => v.version === version,
-          );
-          if (verIdx >= 0) {
-            registry.packages[existing].versions[verIdx] = versionEntry;
-          } else {
-            registry.packages[existing].versions.unshift(versionEntry);
+      const authorName = typeof author === 'string' ? author : (author?.name ?? 'Unknown');
+
+      if (existingIdx >= 0) {
+        const pkg = registry.packages[existingIdx];
+        // Delete old archive for this version if it exists
+        const verIdx = pkg.versions.findIndex((v) => v.version === version);
+        if (verIdx >= 0) {
+          const oldUrl = pkg.versions[verIdx].archiveUrl;
+          if (oldUrl && oldUrl !== archiveUrl) {
+            const oldPath = join(ctx.dataDir, oldUrl);
+            if (existsSync(oldPath)) unlinkSync(oldPath);
           }
-          registry.packages[existing].label = label;
-          if (description) registry.packages[existing].description = description;
-          if (author) registry.packages[existing].author = { name: author };
+          pkg.versions[verIdx] = versionEntry;
         } else {
-          registry.packages.push({
-            id,
-            type,
-            label,
-            description: description ?? '',
-            author: { name: author ?? 'Unknown' },
-            versions: [versionEntry],
-          });
+          pkg.versions.unshift(versionEntry);
         }
-
-        saveRegistryJson(registryJsonPath, registry);
+        pkg.label = label;
+        if (description) pkg.description = description;
+        if (author) pkg.author = { name: authorName };
+      } else {
+        registry.packages.push({
+          id,
+          type,
+          label,
+          description: description ?? '',
+          author: { name: authorName },
+          versions: [versionEntry],
+        });
       }
 
-      return c.json({ ok: true, id, version, integrity, bundleUrl, serverBundleUrl });
+      saveRegistryJson(registryJsonPath, registry);
+      return c.json({ ok: true, id, version, integrity, archiveUrl });
     });
 
     // ---- Admin: update metadata ----
@@ -198,6 +197,7 @@ const registryServer = {
       if (body.label !== undefined) pkg.label = body.label;
       if (body.description !== undefined) pkg.description = body.description;
       if (body.author !== undefined) pkg.author = { name: body.author };
+      if (body.icon !== undefined) pkg.icon = body.icon || undefined;
 
       saveRegistryJson(registryJsonPath, registry);
       return c.json({ ok: true });
@@ -211,19 +211,15 @@ const registryServer = {
       if (!pkg) return c.json({ error: 'Package not found' }, 404);
 
       for (const ver of pkg.versions) {
-        for (const url of [ver.bundleUrl, ver.serverBundleUrl]) {
-          if (!url) continue;
-          const filename = url.replace('/bundles/', '');
-          const bundlePath = join(bundlesDir, filename);
-          if (existsSync(bundlePath)) unlinkSync(bundlePath);
-        }
+        if (!ver.archiveUrl) continue;
+        const archivePath = join(ctx.dataDir, ver.archiveUrl);
+        if (existsSync(archivePath)) unlinkSync(archivePath);
       }
 
       registry.packages = registry.packages.filter((p) => p.id !== pkgId);
       saveRegistryJson(registryJsonPath, registry);
       return c.json({ ok: true });
     });
-
   },
 };
 

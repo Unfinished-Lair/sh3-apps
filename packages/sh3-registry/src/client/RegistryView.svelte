@@ -1,17 +1,11 @@
 <script lang="ts">
-  /*
-   * RegistryView — single view for the registry manager shard.
-   *
-   * Sections: header, collapsible publish form, package card list with
-   * inline edit/update/delete actions, empty state, error banner.
-   */
-
+  import { unzipSync } from 'fflate';
   import { registryContext, type RegistryPackage } from './registryShard.svelte';
 
   const ctx = registryContext;
 
   // ---- Publish form state ----
-  let publishFiles = $state<FileList | null>(null);
+  let publishArchive = $state<File | null>(null);
   let publishManifest = $state<Record<string, any> | null>(null);
   let publishing = $state(false);
   let publishError = $state<string | null>(null);
@@ -29,7 +23,7 @@
   let editError = $state<string | null>(null);
 
   // ---- Update form state ----
-  let updateFiles = $state<FileList | null>(null);
+  let updateArchive = $state<File | null>(null);
   let updateManifest = $state<Record<string, any> | null>(null);
   let updatePublishing = $state(false);
   let updateError = $state<string | null>(null);
@@ -38,59 +32,47 @@
   let deleteInProgress = $state(false);
   let deleteError = $state<string | null>(null);
 
-  // ---- Artifact file helpers ----
-  function findFile(files: FileList, name: string): File | undefined {
-    for (const f of files) {
-      if (f.name === name) return f;
-    }
-  }
-
-  async function readManifestFromFiles(files: FileList): Promise<Record<string, any> | null> {
-    const manifestFile = findFile(files, 'manifest.json');
-    if (!manifestFile) return null;
+  // ---- Archive helpers ----
+  async function readManifestFromShPkg(file: File): Promise<Record<string, any> | null> {
     try {
-      return JSON.parse(await manifestFile.text());
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const files = unzipSync(bytes);
+      const manifestBytes = files['manifest.json'];
+      if (!manifestBytes) return null;
+      return JSON.parse(new TextDecoder().decode(manifestBytes));
     } catch {
       return null;
     }
   }
 
   // ---- Publish handlers ----
-  async function onPublishFilesSelect(e: Event) {
+  async function onPublishSelect(e: Event) {
     const input = e.target as HTMLInputElement;
-    publishFiles = input.files;
+    const file = input.files?.[0] ?? null;
+    publishArchive = file;
     publishError = null;
-    if (publishFiles?.length) {
-      const m = await readManifestFromFiles(publishFiles);
+    publishManifest = null;
+    if (file) {
+      const m = await readManifestFromShPkg(file);
       if (m) {
         publishManifest = m;
       } else {
-        publishManifest = null;
-        publishError = 'No valid manifest.json found in selection';
+        publishError = 'Could not read manifest.json from archive';
       }
-    } else {
-      publishManifest = null;
     }
   }
 
   async function handlePublish() {
-    if (!publishFiles || !publishManifest) return;
+    if (!publishArchive || !publishManifest) return;
     publishing = true;
     publishError = null;
     publishSuccess = false;
 
     try {
       const form = new FormData();
-      const manifestFile = findFile(publishFiles, 'manifest.json');
-      const clientFile = findFile(publishFiles, 'client.js');
-      const serverFile = findFile(publishFiles, 'server.js');
-      if (manifestFile) form.append('manifest', manifestFile);
-      if (clientFile) form.append('client', clientFile);
-      if (serverFile) form.append('server', serverFile);
-
+      form.append('archive', publishArchive);
       await ctx.publishPackage(form);
-
-      publishFiles = null;
+      publishArchive = null;
       publishManifest = null;
       publishSuccess = true;
       publishDetailsOpen = false;
@@ -130,41 +112,34 @@
   // ---- Update handlers ----
   function startUpdate(pkg: RegistryPackage) {
     expandedAction = `update:${pkg.id}`;
-    updateFiles = null;
+    updateArchive = null;
     updateManifest = null;
     updateError = null;
   }
 
-  async function onUpdateFilesSelect(e: Event) {
+  async function onUpdateSelect(e: Event) {
     const input = e.target as HTMLInputElement;
-    updateFiles = input.files;
+    const file = input.files?.[0] ?? null;
+    updateArchive = file;
     updateError = null;
-    if (updateFiles?.length) {
-      const m = await readManifestFromFiles(updateFiles);
+    updateManifest = null;
+    if (file) {
+      const m = await readManifestFromShPkg(file);
       if (m) {
         updateManifest = m;
       } else {
-        updateManifest = null;
-        updateError = 'No valid manifest.json found in selection';
+        updateError = 'Could not read manifest.json from archive';
       }
-    } else {
-      updateManifest = null;
     }
   }
 
   async function handleUpdatePublish() {
-    if (!updateFiles || !updateManifest) return;
+    if (!updateArchive || !updateManifest) return;
     updatePublishing = true;
     updateError = null;
     try {
       const form = new FormData();
-      const manifestFile = findFile(updateFiles, 'manifest.json');
-      const clientFile = findFile(updateFiles, 'client.js');
-      const serverFile = findFile(updateFiles, 'server.js');
-      if (manifestFile) form.append('manifest', manifestFile);
-      if (clientFile) form.append('client', clientFile);
-      if (serverFile) form.append('server', serverFile);
-
+      form.append('archive', updateArchive);
       await ctx.publishPackage(form);
       expandedAction = null;
     } catch (err) {
@@ -226,7 +201,7 @@
     <summary>Publish New Package</summary>
     <div class="reg-publish-form">
       <div class="reg-form-row">
-        <input type="file" multiple accept=".json,.js" onchange={onPublishFilesSelect} class="reg-input" />
+        <input type="file" accept=".sh3pkg" onchange={onPublishSelect} class="reg-input" />
         <button
           class="reg-btn reg-btn-primary"
           onclick={handlePublish}
@@ -235,7 +210,7 @@
           {publishing ? 'Publishing...' : 'Publish'}
         </button>
       </div>
-      <div class="reg-hint">Select artifact files: manifest.json (required), client.js, server.js</div>
+      <div class="reg-hint">Select a .sh3pkg archive produced by <code>npm run build:artifact</code></div>
       {#if publishManifest}
         <div class="reg-manifest-preview">
           <span class="reg-badge" class:badge-shard={publishManifest.type === 'shard'} class:badge-app={publishManifest.type === 'app'} class:badge-combo={publishManifest.type === 'combo'}>
@@ -303,7 +278,7 @@
           {#if expandedAction === `update:${pkg.id}`}
             <div class="reg-inline-form">
               <div class="reg-form-row">
-                <input type="file" multiple accept=".json,.js" onchange={onUpdateFilesSelect} class="reg-input" />
+                <input type="file" accept=".sh3pkg" onchange={onUpdateSelect} class="reg-input" />
                 <button
                   class="reg-btn reg-btn-primary"
                   onclick={handleUpdatePublish}
@@ -313,7 +288,7 @@
                 </button>
                 <button class="reg-btn reg-btn-secondary" onclick={cancelAction}>Cancel</button>
               </div>
-              <div class="reg-hint">Select artifact files: manifest.json (required), client.js, server.js</div>
+              <div class="reg-hint">Select a .sh3pkg archive for the new version</div>
               {#if updateManifest}
                 <div class="reg-manifest-preview">
                   <span class="reg-badge" class:badge-shard={updateManifest.type === 'shard'} class:badge-app={updateManifest.type === 'app'} class:badge-combo={updateManifest.type === 'combo'}>
@@ -531,6 +506,12 @@
   .reg-hint {
     font-size: 0.75rem;
     color: var(--sh3-fg-muted, #888);
+  }
+  .reg-hint code {
+    font-family: var(--sh3-font-mono, monospace);
+    background: color-mix(in srgb, var(--sh3-fg, #e0e0e0) 8%, transparent);
+    padding: 1px 4px;
+    border-radius: 2px;
   }
   .reg-manifest-preview {
     display: flex;

@@ -8,6 +8,7 @@
     "test:publish": "node --test .github/scripts/publish.test.mjs"
   },
   "devDependencies": {
-    "sh3-core": "^0.20.3"
+    "fflate": "^0.8.0",
+    "sh3-core": "^0.21.0"
   }
 }

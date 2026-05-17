@@ -6,7 +6,7 @@ export const app: SourceApp = {
     icon: 'git-merge',
     label: 'Pipeline',
     requiredShards: ['sh3-pipeline', 'sh3-editor'],
-    layoutVersion: 3,
+    layoutVersion: 4,
     menus: [
       { id: 'file',     label: 'File' },
       { id: 'pipeline', label: 'Pipeline' },
@@ -39,7 +39,7 @@ export const app: SourceApp = {
                   { type: 'slot', slotId: 'inspector', viewId: 'sh3-editor:inspector', role: 'inspector'},
                 ],
               },
-              { type: 'tabs', tabs: [ {label: 'Logs', slotId: 'log', viewId: null}], activeTab: 0},
+              { type: 'tabs', tabs: [ {label: 'Logs', slotId: 'log', viewId: 'diagnostic:logs'}], activeTab: 0},
             ],
           },
           floats: []

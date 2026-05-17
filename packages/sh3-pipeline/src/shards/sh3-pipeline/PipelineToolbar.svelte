@@ -34,24 +34,24 @@
     gap: 6px;
     height: 100%;
     padding: 0 8px;
-    background: var(--shell-bg, #1a1a1a);
-    color: var(--shell-fg, #eee);
-    font-family: var(--shell-font-ui);
+    background: var(--sh3-bg-elevated);
+    color: var(--sh3-fg);
+    font-family: var(--sh3-font-ui);
     font-size: 12px;
-    border-bottom: 1px solid var(--shell-fg-subtle, #333);
+    border-bottom: 1px solid var(--sh3-border);
   }
   .sep {
     width: 1px;
     height: 16px;
-    background: var(--shell-fg-subtle, #333);
+    background: var(--sh3-border);
     margin: 0 4px;
   }
   button {
     padding: 3px 10px;
-    background: var(--shell-bg-elevated, #2a2a2a);
-    color: var(--shell-fg, #eee);
-    border: 1px solid var(--shell-fg-subtle, #333);
-    border-radius: 3px;
+    background: var(--sh3-input-bg);
+    color: var(--sh3-fg);
+    border: 1px solid var(--sh3-border);
+    border-radius: var(--sh3-radius-sm);
     cursor: pointer;
     font: inherit;
   }
@@ -61,9 +61,9 @@
   }
   .docid {
     margin-left: auto;
-    font-family: var(--shell-font-mono);
+    font-family: var(--sh3-font-mono);
     font-size: 11px;
-    color: var(--shell-fg-muted, #888);
+    color: var(--sh3-fg-muted);
     max-width: 320px;
     overflow: hidden;
     text-overflow: ellipsis;

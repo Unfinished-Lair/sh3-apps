@@ -206,10 +206,10 @@
       },
       "versions": [
         {
-          "version": "0.1.8",
+          "version": "0.1.8+448",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-registry-0.1.8.sh3pkg",
-          "integrity": "sha384-NzotZK29u5ZM/eTwL6oyE2swMDC4sw17r0UVSoSCTk0ugRE2ghs742O4MtQjWXuX"
+          "archiveUrl": "bundles/sh3-registry-0.1.8+448.sh3pkg",
+          "integrity": "sha384-t8cUkkeJkMYAAWX+TcSGpGFny/bk0rj2oiRxN4MCU8OoxrC+xFL3YcO9KOqlqB2i"
         }
       ]
     },

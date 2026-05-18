@@ -45,7 +45,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm install
@@ -85,9 +84,7 @@ jobs:
         id: parse
         run: |
           REGISTRY_PUBLISHED=$(jq -r '.registryPublished | join(",")' publish-result.json)
-          NPM_ELIGIBLE=$(jq -r '.npmEligible | join(",")' publish-result.json)
           echo "registry_published=$REGISTRY_PUBLISHED" >> "$GITHUB_OUTPUT"
-          echo "npm_eligible=$NPM_ELIGIBLE" >> "$GITHUB_OUTPUT"
           if [ -z "$REGISTRY_PUBLISHED" ]; then
             echo "has_registry_changes=false" >> "$GITHUB_OUTPUT"
           else
@@ -103,13 +100,3 @@ jobs:
           git add -A
           git commit -m "publish: ${{ steps.parse.outputs.registry_published }}"
           git push origin HEAD:gh-pages
-
-      - name: Build sh3-editor types tarball
-        if: contains(steps.parse.outputs.npm_eligible, '@unfinished-lair/sh3-editor') && inputs.dry_run != true
-        run: npm run build -w @unfinished-lair/sh3-editor
-
-      - name: Publish sh3-editor to npm
-        if: contains(steps.parse.outputs.npm_eligible, '@unfinished-lair/sh3-editor') && inputs.dry_run != true
-        run: npm publish -w @unfinished-lair/sh3-editor --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

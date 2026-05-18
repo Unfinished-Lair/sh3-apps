@@ -502,6 +502,31 @@ describe('bindDocument — path mode initial load', () => {
     expect(entry.document.dirty).toBe(true);
   });
 
+  it('does not call readText when seed.path is empty (deferred-bind pattern)', async () => {
+    const docs = new MockDocuments();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-empty',
+      // Contribution registers path-mode early with no real path yet; it
+      // will call replace({ path: '…' }) once the path is known.
+      seed: { kind: 'path', path: '' },
+    }]);
+    bindDocument({ slotId: 's-empty', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    expect(docs.readCalls).toEqual([]);
+  });
+
+  it('does not call readText when seed.path is undefined (contract violation)', async () => {
+    const docs = new MockDocuments();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-undef',
+      // Out-of-contract: path is typed required, but runtime-tolerated.
+      seed: { kind: 'path', path: undefined as unknown as string },
+    }]);
+    bindDocument({ slotId: 's-undef', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    expect(docs.readCalls).toEqual([]);
+  });
+
   it('warns and falls back when no DocumentHandle is provided', async () => {
     const warn = vi.fn();
     const ctx = makeContextWithContributions([{

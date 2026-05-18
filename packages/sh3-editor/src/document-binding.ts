@@ -223,6 +223,10 @@ async function initialReadFromDisk(
   internals: ApiInternals,
   warn: (msg: string) => void,
 ): Promise<void> {
+  // Contribution registered path mode without a usable path (empty string or
+  // unset). The contributor is expected to swap a real path in via
+  // replace({ path }); skip the initial read so we don't fire readText(undefined).
+  if (!state.boundPath) return;
   try {
     const fromDisk = await documents.readText(state.boundPath);
     if (state.disposed) return;

@@ -8,6 +8,7 @@ export default defineConfig({
     sh3CssInline(),
     sh3Artifact({
       serverEntry: 'dist/server/index.js',
+      buildSuffix: 'auto',
       manifest: {
         description: 'Host and manage an SH3 package registry',
         author: 'SH3',

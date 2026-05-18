@@ -9,8 +9,8 @@ function makeFakeHandle(): DocumentHandle & { _store: Map<string, string> } {
     async list(): Promise<DocumentMeta[]> {
       return Array.from(store.keys()).map((path) => ({ path, size: store.get(path)!.length, lastModified: 0 }));
     },
-    async read(path: string) { return store.get(path) ?? null; },
-    async write(path: string, content: string) { store.set(path, content); },
+    async readText(path: string) { return store.get(path) ?? null; },
+    async writeText(path: string, content: string) { store.set(path, content); },
     async delete(path: string) { store.delete(path); },
     async exists(path: string) { return store.has(path); },
     async status() { return null; },

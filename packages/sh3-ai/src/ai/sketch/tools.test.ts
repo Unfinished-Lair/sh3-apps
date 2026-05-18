@@ -7,7 +7,7 @@ import { DocsStore } from '../docs/store';
 
 function fakeHandle() {
   const files = new Map<string, string>();
-  const handle: Pick<DocumentHandle, 'list' | 'read' | 'write' | 'delete'> & {
+  const handle: Pick<DocumentHandle, 'list' | 'readText' | 'writeText' | 'delete'> & {
     _files: Map<string, string>;
   } = {
     _files: files,
@@ -18,10 +18,10 @@ function fakeHandle() {
         lastModified: 0,
       }));
     },
-    async read(path: string) {
+    async readText(path: string) {
       return files.has(path) ? (files.get(path) ?? null) : null;
     },
-    async write(path: string, content: string) {
+    async writeText(path: string, content: string) {
       files.set(path, content);
     },
     async delete(path: string) {

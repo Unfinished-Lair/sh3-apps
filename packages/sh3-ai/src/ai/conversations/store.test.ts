@@ -13,14 +13,12 @@ import { serializeConversation } from './serialize';
 function fakeHandle() {
   const docs = new Map<string, string>();
   const watchers = new Set<(c: DocumentChange) => void>();
-  const fireWatch = (type: DocumentChange['type'], path: string, oldPath?: string) => {
-    for (const w of watchers) {
-      w({ type, path, oldPath, tenantId: 't', shardId: 'ai' });
-    }
+  const fireWatch = (change: DocumentChange) => {
+    for (const w of watchers) w(change);
   };
   const handle: Pick<
     DocumentHandle,
-    'list' | 'read' | 'write' | 'delete' | 'rename' | 'exists' | 'watch' | 'autosave'
+    'list' | 'readText' | 'writeText' | 'delete' | 'rename' | 'exists' | 'watch' | 'autosave'
   > & { _docs: Map<string, string> } = {
     _docs: docs,
     async list(): Promise<DocumentMeta[]> {
@@ -28,23 +26,23 @@ function fakeHandle() {
         path, size: content.length, lastModified: 0,
       }));
     },
-    async read(path: string) {
+    async readText(path: string) {
       return docs.has(path) ? (docs.get(path) ?? null) : null;
     },
-    async write(path: string, content: string) {
+    async writeText(path: string, content: string) {
       const had = docs.has(path);
       docs.set(path, content);
-      fireWatch(had ? 'update' : 'create', path);
+      fireWatch({ type: had ? 'update' : 'create', path, tenantId: 't', shardId: 'ai' });
     },
     async delete(path: string) {
-      if (docs.delete(path)) fireWatch('delete', path);
+      if (docs.delete(path)) fireWatch({ type: 'delete', path, tenantId: 't', shardId: 'ai' });
     },
     async rename(oldPath: string, newPath: string) {
       const c = docs.get(oldPath);
       if (c === undefined) throw new Error('missing');
       docs.delete(oldPath);
       docs.set(newPath, c);
-      fireWatch('rename', newPath, oldPath);
+      fireWatch({ type: 'rename', path: newPath, oldPath, tenantId: 't', shardId: 'ai' });
     },
     async exists(path: string) {
       return docs.has(path);
@@ -58,7 +56,7 @@ function fakeHandle() {
       const controller = {
         dirty: false,
         update(content: string) {
-          handle.write(path, content);
+          handle.writeText(path, content);
         },
         async flush() {},
         async dispose() {},

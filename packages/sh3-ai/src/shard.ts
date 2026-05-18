@@ -164,7 +164,7 @@ export const shard: SourceShard = {
     ],
   },
 
-  async activate(ctx: ShardContext) {
+  async register(ctx: ShardContext) {
     const state = ctx.state<{
       user: {
         activeProviderId: string | null;
@@ -202,13 +202,14 @@ export const shard: SourceShard = {
     };
 
     const conversation = new ConversationState();
-    const docHandle = ctx.documents({ format: 'text', extensions: ['.json'] });
-    const store = new ConversationStore(docHandle);
-
-    // Separate handle (no extensions filter) for the AI-managed docs zone.
-    // Same backend, different scope — the store filters to `docs/` paths.
-    const docsHandle = ctx.documents({ format: 'text' });
-    const docsStore = new DocsStore(docsHandle);
+    // v3: ctx.documents is the pre-minted DocumentHandle; format moves per
+    // call (readText/writeText/readJson/writeJson). Both stores share the
+    // same handle now — ConversationStore already scopes to `conversations/`
+    // and DocsStore to `docs/`, so a single handle is sufficient. The .json
+    // extension filter previously passed at construction is enforced
+    // implicitly by ConversationStore which only ever writes .json paths.
+    const store = new ConversationStore(ctx.documents);
+    const docsStore = new DocsStore(ctx.documents);
 
     const sketchState = new SketchState();
 
@@ -1136,10 +1137,6 @@ export const shard: SourceShard = {
       },
     });
   },
-
-  // Empty body — keeps the shard resident so the `ai` mode and verbs are
-  // reachable when no provider app/view is open.
-  autostart() {},
 
   deactivate() {
     assistant.stop();

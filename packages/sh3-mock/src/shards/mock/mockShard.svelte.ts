@@ -30,7 +30,7 @@ export const mockShard: SourceShard = {
     label: 'Mock',
     views: [{ id: 'mock:panel', label: 'Mock Panel' }],
   },
-  activate(ctx) {
+  register(ctx) {
     const state = ctx.state({
       workspace: {
         countersBySlot: {} as Record<string, number>,

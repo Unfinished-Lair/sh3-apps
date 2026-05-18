@@ -19,7 +19,7 @@ export const shard: SourceShard = {
     permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     const store = createExplorerStore(ctx);
     activeStore = store;
 

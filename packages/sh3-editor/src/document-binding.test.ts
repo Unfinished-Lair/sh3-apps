@@ -1,22 +1,128 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { bindDocument } from './document-binding';
 import { InstanceRegistry } from './model/instance-registry.svelte';
 import { createApi } from './model/api';
 import type { OpenDocumentOptions } from './types';
+import {
+  EDITOR_DOCUMENT_POINT,
+  type EditorDocumentContribution,
+  type EditorReplacePatch,
+} from './contributions';
+import type { DocumentChange, DocumentHandle, DocumentMeta, DocStatus } from 'sh3-core';
+
+// ============================================================================
+// Test helpers
+// ============================================================================
 
 function makeContext() {
   const registry = new InstanceRegistry();
   const { internals } = createApi(registry);
-  // Minimal ContributionsApi mock — list returns [], register/onChange are no-ops.
   const contributions = {
     list: <T>(_pointId: string): T[] => [],
     register: <T>(_pointId: string, _desc: T) => () => {},
     onChange: (_pointId: string, _cb: () => void) => () => {},
+    onAnyChange: (_cb: () => void) => () => {},
     listPoints: () => [] as string[],
   };
   const defaultOptions: OpenDocumentOptions = { content: 'Hello, World' };
   return { registry, internals, contributions, defaultOptions };
 }
+
+function makeContextWithContributions(descriptors: EditorDocumentContribution[]) {
+  const registry = new InstanceRegistry();
+  const { internals } = createApi(registry);
+  const contributions = {
+    list: <T>(pointId: string): T[] =>
+      pointId === EDITOR_DOCUMENT_POINT
+        ? (descriptors as unknown as T[])
+        : [],
+    register: <T>(_pointId: string, _desc: T) => () => {},
+    onChange: (_pointId: string, _cb: () => void) => () => {},
+    onAnyChange: (_cb: () => void) => () => {},
+    listPoints: () => [EDITOR_DOCUMENT_POINT],
+  };
+  const defaultOptions: OpenDocumentOptions = { content: 'Hello, World' };
+  return { registry, internals, contributions, defaultOptions };
+}
+
+/** In-memory DocumentHandle stub for path-mode tests. Captures readText /
+ *  writeText calls and lets tests fire watch events synchronously. Only the
+ *  subset bindDocument exercises is implemented. */
+class MockDocuments {
+  files = new Map<string, string>();
+  watchers: Array<(change: DocumentChange) => void> = [];
+  readCalls: string[] = [];
+  writeCalls: Array<{ path: string; content: string }> = [];
+
+  constructor(initial: Record<string, string> = {}) {
+    for (const [k, v] of Object.entries(initial)) this.files.set(k, v);
+  }
+
+  readText(path: string): Promise<string | null> {
+    this.readCalls.push(path);
+    return Promise.resolve(this.files.has(path) ? this.files.get(path)! : null);
+  }
+  writeText(path: string, content: string): Promise<void> {
+    this.writeCalls.push({ path, content });
+    const existed = this.files.has(path);
+    this.files.set(path, content);
+    // Mimic real backend: emit a watch event after the write resolves.
+    queueMicrotask(() => {
+      const change: DocumentChange = {
+        type: existed ? 'update' : 'create',
+        path,
+        tenantId: 'test',
+        shardId: 'test',
+      };
+      for (const cb of this.watchers) cb(change);
+    });
+    return Promise.resolve();
+  }
+  watch(cb: (change: DocumentChange) => void): () => void {
+    this.watchers.push(cb);
+    return () => {
+      const i = this.watchers.indexOf(cb);
+      if (i !== -1) this.watchers.splice(i, 1);
+    };
+  }
+
+  /** Test-only: simulate an external write (no echo guard). */
+  emitExternal(path: string, content: string): void {
+    const existed = this.files.has(path);
+    this.files.set(path, content);
+    const change: DocumentChange = {
+      type: existed ? 'update' : 'create',
+      path,
+      tenantId: 'test',
+      shardId: 'test',
+    };
+    for (const cb of this.watchers) cb(change);
+  }
+
+  // Unused methods — stubbed to satisfy DocumentHandle shape when cast.
+  readBinary(): Promise<ArrayBuffer | null> { return Promise.resolve(null); }
+  readJson(): Promise<unknown> { return Promise.resolve(null); }
+  writeBinary(): Promise<void> { return Promise.resolve(); }
+  writeJson(): Promise<void> { return Promise.resolve(); }
+  delete(): Promise<void> { return Promise.resolve(); }
+  rename(): Promise<void> { return Promise.resolve(); }
+  mkdir(): Promise<void> { return Promise.resolve(); }
+  rmdir(): Promise<void> { return Promise.resolve(); }
+  renameFolder(): Promise<void> { return Promise.resolve(); }
+  list(): Promise<DocumentMeta[]> { return Promise.resolve([]); }
+  listFolders(): Promise<string[]> { return Promise.resolve([]); }
+  exists(path: string): Promise<boolean> { return Promise.resolve(this.files.has(path)); }
+  status(): Promise<DocStatus | null> { return Promise.resolve(null); }
+  resolveConflict(): Promise<void> { return Promise.resolve(); }
+  readBranch(): Promise<string | null> { return Promise.resolve(null); }
+  dispose(): void { /* no-op */ }
+}
+
+const flushAsync = () => new Promise<void>((r) => queueMicrotask(() => queueMicrotask(r)));
+
+// ============================================================================
+// Existing behavior — content mode + fallback
+// ============================================================================
 
 describe('bindDocument — fallback paths (no contribution)', () => {
   it('reuses existing registry entry when present', () => {
@@ -39,31 +145,12 @@ describe('bindDocument — fallback paths (no contribution)', () => {
   });
 });
 
-import { vi } from 'vitest';
-import { EDITOR_DOCUMENT_POINT, type EditorDocumentContribution, type EditorDocumentSeed } from './contributions';
-
-function makeContextWithContributions(descriptors: EditorDocumentContribution[]) {
-  const registry = new InstanceRegistry();
-  const { internals } = createApi(registry);
-  const contributions = {
-    list: <T>(pointId: string): T[] =>
-      pointId === EDITOR_DOCUMENT_POINT
-        ? (descriptors as unknown as T[])
-        : [],
-    register: <T>(_pointId: string, _desc: T) => () => {},
-    onChange: (_pointId: string, _cb: () => void) => () => {},
-    listPoints: () => [EDITOR_DOCUMENT_POINT],
-  };
-  const defaultOptions: OpenDocumentOptions = { content: 'Hello, World' };
-  return { registry, internals, contributions, defaultOptions };
-}
-
-describe('bindDocument — contribution lookup', () => {
+describe('bindDocument — contribution lookup (content mode)', () => {
   it('seeds the entry from a matching contribution', () => {
     const ctx = makeContextWithContributions([
       {
         slotId: 'slot-A',
-        seed: { content: 'from-contribution', language: 'rust' },
+        seed: { kind: 'content', content: 'from-contribution', language: 'rust' },
       },
     ]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -73,7 +160,7 @@ describe('bindDocument — contribution lookup', () => {
 
   it('ignores contributions with mismatched slotId', () => {
     const ctx = makeContextWithContributions([
-      { slotId: 'slot-OTHER', seed: { content: 'other' } },
+      { slotId: 'slot-OTHER', seed: { kind: 'content', content: 'other' } },
     ]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
     expect(entry.document.content).toBe('Hello, World');
@@ -82,8 +169,8 @@ describe('bindDocument — contribution lookup', () => {
   it('first registered wins on slotId collision and warns', () => {
     const warn = vi.fn();
     const ctx = makeContextWithContributions([
-      { slotId: 'slot-A', seed: { content: 'first' } },
-      { slotId: 'slot-A', seed: { content: 'second' } },
+      { slotId: 'slot-A', seed: { kind: 'content', content: 'first' } },
+      { slotId: 'slot-A', seed: { kind: 'content', content: 'second' } },
     ]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx, warn });
     expect(entry.document.content).toBe('first');
@@ -93,7 +180,7 @@ describe('bindDocument — contribution lookup', () => {
 
   it('does not re-seed a registry entry that already exists (open beats seed)', () => {
     const ctx = makeContextWithContributions([
-      { slotId: 'slot-A', seed: { content: 'from-seed' } },
+      { slotId: 'slot-A', seed: { kind: 'content', content: 'from-seed' } },
     ]);
     ctx.registry.open('slot-A', { content: 'from-imperative-open' });
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -101,13 +188,13 @@ describe('bindDocument — contribution lookup', () => {
   });
 });
 
-describe('bindDocument — replace swap channel', () => {
+describe('bindDocument — replace swap channel (content mode)', () => {
   it('captures replace via bind() at mount and disposes on cleanup', () => {
-    let captured: ((next: Partial<EditorDocumentSeed>) => void) | null = null;
+    let captured: ((next: EditorReplacePatch) => void) | null = null;
     let disposed = false;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(replace) {
         captured = replace;
         return () => { disposed = true; };
@@ -120,15 +207,14 @@ describe('bindDocument — replace swap channel', () => {
   });
 
   it('replace({ content }) mutates entry, clears history, fires events', () => {
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(r) { captured = r; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
 
-    // Seed the history with one push so we can observe the clear.
     ctx.internals.history('slot-A').push({ apply() {}, revert() {} });
     expect(ctx.internals.history('slot-A').canUndo).toBe(true);
 
@@ -149,10 +235,10 @@ describe('bindDocument — replace swap channel', () => {
   });
 
   it('replace({ content: same }) is silent', () => {
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(r) { captured = r; return () => {}; },
     }]);
     bindDocument({ slotId: 'slot-A', ...ctx });
@@ -163,10 +249,10 @@ describe('bindDocument — replace swap channel', () => {
   });
 
   it('field-only replace does not fire content events', () => {
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(r) { captured = r; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -181,10 +267,10 @@ describe('bindDocument — replace swap channel', () => {
   });
 
   it('replace updates wrapper options (toolbarActions, fontSize, etc.)', () => {
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(r) { captured = r; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -197,7 +283,7 @@ describe('bindDocument — replace swap channel', () => {
   it('cleanup is safe when bind returned no disposer', () => {
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(_r) { /* no return — disposer is optional */ },
     }]);
     const { cleanup } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -205,12 +291,12 @@ describe('bindDocument — replace swap channel', () => {
   });
 });
 
-describe('bindDocument — edit-flow-back forwarders', () => {
+describe('bindDocument — edit-flow-back forwarders (content mode)', () => {
   it('onContentChange fires only for matching slotId', () => {
     const onContentChange = vi.fn();
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       onContentChange,
     }]);
     bindDocument({ slotId: 'slot-A', ...ctx });
@@ -228,7 +314,7 @@ describe('bindDocument — edit-flow-back forwarders', () => {
     const onPrefsChange = vi.fn();
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       onDirtyChange, onSave, onPrefsChange,
     }]);
     bindDocument({ slotId: 'slot-A', ...ctx });
@@ -251,7 +337,7 @@ describe('bindDocument — edit-flow-back forwarders', () => {
     const onContentChange = vi.fn();
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       onContentChange,
     }]);
     const { cleanup } = bindDocument({ slotId: 'slot-A', ...ctx });
@@ -264,8 +350,8 @@ describe('bindDocument — edit-flow-back forwarders', () => {
     const aSpy = vi.fn();
     const bSpy = vi.fn();
     const ctx = makeContextWithContributions([
-      { slotId: 'slot-A', seed: { content: 'a' }, onContentChange: aSpy },
-      { slotId: 'slot-B', seed: { content: 'b' }, onContentChange: bSpy },
+      { slotId: 'slot-A', seed: { kind: 'content', content: 'a' }, onContentChange: aSpy },
+      { slotId: 'slot-B', seed: { kind: 'content', content: 'b' }, onContentChange: bSpy },
     ]);
     bindDocument({ slotId: 'slot-A', ...ctx });
     bindDocument({ slotId: 'slot-B', ...ctx });
@@ -280,11 +366,11 @@ describe('bindDocument — edit-flow-back forwarders', () => {
   });
 
   it('replace({ content }) is observed by the contribution onContentChange', () => {
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const onContentChange = vi.fn();
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
-      seed: { content: 'init' },
+      seed: { kind: 'content', content: 'init' },
       bind(r) { captured = r; return () => {}; },
       onContentChange,
     }]);
@@ -299,7 +385,7 @@ describe('document-binding — preview additions (0.11.0)', () => {
     const customRender = (t: string) => `<x>${t}</x>`;
     const ctx = makeContextWithContributions([{
       slotId: 'p1',
-      seed: { content: 'hello', render: customRender, startInPreview: true },
+      seed: { kind: 'content', content: 'hello', render: customRender, startInPreview: true },
     }]);
     const { entry } = bindDocument({ slotId: 'p1', ...ctx });
     expect(entry.options.render).toBe(customRender);
@@ -309,10 +395,10 @@ describe('document-binding — preview additions (0.11.0)', () => {
   it('makeReplace updates seed.render at runtime', () => {
     const r1 = (t: string) => `<a>${t}</a>`;
     const r2 = (t: string) => `<b>${t}</b>`;
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'p2',
-      seed: { content: '', render: r1 },
+      seed: { kind: 'content', content: '', render: r1 },
       bind(r) { captured = r; return () => {}; },
     }]);
     const { entry, cleanup } = bindDocument({ slotId: 'p2', ...ctx });
@@ -326,7 +412,7 @@ describe('document-binding — preview additions (0.11.0)', () => {
     const onLinkClick = () => 'handled' as const;
     const ctx = makeContextWithContributions([{
       slotId: 'p3',
-      seed: { content: '' },
+      seed: { kind: 'content', content: '' },
       onLinkClick,
     }]);
     const result = bindDocument({ slotId: 'p3', ...ctx });
@@ -343,7 +429,7 @@ describe('document-binding — preview additions (0.11.0)', () => {
     const customTransform = (t: string) => `T:${t}`;
     const ctx = makeContextWithContributions([{
       slotId: 'p5',
-      seed: { content: 'hello', transform: customTransform },
+      seed: { kind: 'content', content: 'hello', transform: customTransform },
     }]);
     const { entry } = bindDocument({ slotId: 'p5', ...ctx });
     expect(entry.options.transform).toBe(customTransform);
@@ -352,10 +438,10 @@ describe('document-binding — preview additions (0.11.0)', () => {
   it('makeReplace updates seed.transform at runtime', () => {
     const t1 = (t: string) => `1:${t}`;
     const t2 = (t: string) => `2:${t}`;
-    let captured!: (next: Partial<EditorDocumentSeed>) => void;
+    let captured!: (next: EditorReplacePatch) => void;
     const ctx = makeContextWithContributions([{
       slotId: 'p6',
-      seed: { content: '', transform: t1 },
+      seed: { kind: 'content', content: '', transform: t1 },
       bind(r) { captured = r; return () => {}; },
     }]);
     const { entry, cleanup } = bindDocument({ slotId: 'p6', ...ctx });
@@ -363,5 +449,300 @@ describe('document-binding — preview additions (0.11.0)', () => {
     captured({ transform: t2 });
     expect(entry.options.transform).toBe(t2);
     cleanup();
+  });
+});
+
+// ============================================================================
+// New: path-mode behavior (contract v3)
+// ============================================================================
+
+describe('bindDocument — path mode initial load', () => {
+  it('opens with disk content when readText returns non-null', async () => {
+    const docs = new MockDocuments({ 'value.json': '{"hello":1}' });
+    const ctx = makeContextWithContributions([{
+      slotId: 's1',
+      seed: { kind: 'path', path: 'value.json', language: 'json' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's1', ...ctx, documents: docs as unknown as DocumentHandle });
+    // Synchronous mount: buffer starts empty (no initialContent), filePath
+    // chip shows path.
+    expect(entry.document.content).toBe('');
+    expect(entry.document.filePath).toBe('value.json');
+    await flushAsync();
+    expect(entry.document.content).toBe('{"hello":1}');
+    expect(entry.document.dirty).toBe(false);
+  });
+
+  it('falls back to initialContent when readText returns null', async () => {
+    const docs = new MockDocuments();
+    const ctx = makeContextWithContributions([{
+      slotId: 's2',
+      seed: { kind: 'path', path: 'new.txt', initialContent: 'starter' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's2', ...ctx, documents: docs as unknown as DocumentHandle });
+    expect(entry.document.content).toBe('starter');
+    await flushAsync();
+    // Still 'starter' because the file didn't exist; no write happens until Save.
+    expect(entry.document.content).toBe('starter');
+    expect(docs.writeCalls).toHaveLength(0);
+  });
+
+  it('does not overwrite in-flight edits when readText resolves late', async () => {
+    const docs = new MockDocuments({ 'value.json': 'disk-version' });
+    const ctx = makeContextWithContributions([{
+      slotId: 's3',
+      seed: { kind: 'path', path: 'value.json' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's3', ...ctx, documents: docs as unknown as DocumentHandle });
+    // Simulate the user typing before readText resolves.
+    entry.document.content = 'user-typed';
+    entry.document.dirty = true;
+    await flushAsync();
+    expect(entry.document.content).toBe('user-typed');
+    expect(entry.document.dirty).toBe(true);
+  });
+
+  it('warns and falls back when no DocumentHandle is provided', async () => {
+    const warn = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's4',
+      seed: { kind: 'path', path: 'x.md', initialContent: 'fallback' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's4', ...ctx, warn });
+    expect(warn).toHaveBeenCalled();
+    expect(entry.document.content).toBe('fallback');
+  });
+});
+
+describe('bindDocument — path mode save flow', () => {
+  it('writes buffer to disk on save and clears dirty', async () => {
+    const docs = new MockDocuments({ 'value.json': 'orig' });
+    const onSave = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's5',
+      seed: { kind: 'path', path: 'value.json' },
+      onSave,
+    }]);
+    const { entry } = bindDocument({ slotId: 's5', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    entry.document.content = 'edited';
+    entry.document.dirty = true;
+    ctx.internals.saveEvent.emit('s5');
+    await flushAsync();
+    expect(docs.writeCalls).toEqual([{ path: 'value.json', content: 'edited' }]);
+    expect(entry.document.dirty).toBe(false);
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('save creates the file when it did not exist (lastPersisted was null)', async () => {
+    const docs = new MockDocuments();
+    const ctx = makeContextWithContributions([{
+      slotId: 's6',
+      seed: { kind: 'path', path: 'new.txt', initialContent: 'seed' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's6', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    entry.document.content = 'seed';
+    entry.document.dirty = true;
+    ctx.internals.saveEvent.emit('s6');
+    await flushAsync();
+    expect(docs.writeCalls).toEqual([{ path: 'new.txt', content: 'seed' }]);
+    expect(docs.files.get('new.txt')).toBe('seed');
+  });
+
+  it('save error keeps dirty true and does not fire onSave', async () => {
+    const docs = new MockDocuments();
+    docs.writeText = () => Promise.reject(new Error('boom'));
+    const onSave = vi.fn();
+    const warn = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's7',
+      seed: { kind: 'path', path: 'x.md', initialContent: '' },
+      onSave,
+    }]);
+    const { entry } = bindDocument({ slotId: 's7', ...ctx, documents: docs as unknown as DocumentHandle, warn });
+    await flushAsync();
+    entry.document.content = 'unsaved';
+    entry.document.dirty = true;
+    ctx.internals.saveEvent.emit('s7');
+    await flushAsync();
+    expect(entry.document.dirty).toBe(true);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('save filters by slotId — other slots do not trigger writes', async () => {
+    const docs = new MockDocuments();
+    const ctx = makeContextWithContributions([{
+      slotId: 's8',
+      seed: { kind: 'path', path: 'a.md', initialContent: '' },
+    }]);
+    bindDocument({ slotId: 's8', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    ctx.internals.saveEvent.emit('other-slot');
+    await flushAsync();
+    expect(docs.writeCalls).toHaveLength(0);
+  });
+});
+
+describe('bindDocument — path mode external watch', () => {
+  it('updates buffer on external write when clean', async () => {
+    const docs = new MockDocuments({ 'x.md': 'v1' });
+    const ctx = makeContextWithContributions([{
+      slotId: 's9',
+      seed: { kind: 'path', path: 'x.md' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's9', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    expect(entry.document.content).toBe('v1');
+    docs.emitExternal('x.md', 'v2');
+    await flushAsync();
+    expect(entry.document.content).toBe('v2');
+    expect(entry.document.dirty).toBe(false);
+  });
+
+  it('skips external update when buffer is dirty', async () => {
+    const docs = new MockDocuments({ 'x.md': 'v1' });
+    const warn = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's10',
+      seed: { kind: 'path', path: 'x.md' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's10', ...ctx, documents: docs as unknown as DocumentHandle, warn });
+    await flushAsync();
+    entry.document.content = 'local-edit';
+    entry.document.dirty = true;
+    docs.emitExternal('x.md', 'external');
+    await flushAsync();
+    expect(entry.document.content).toBe('local-edit');
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('ignores own-write echo from the save path', async () => {
+    const docs = new MockDocuments({ 'x.md': 'v1' });
+    const contentSpy = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's11',
+      seed: { kind: 'path', path: 'x.md' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's11', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    ctx.internals.contentChange.on(contentSpy);
+    entry.document.content = 'v2';
+    entry.document.dirty = true;
+    ctx.internals.saveEvent.emit('s11');
+    await flushAsync();
+    // After save, an echo event fires (queueMicrotask in mock writeText).
+    // contentChange should NOT be re-emitted for the echo — the buffer is
+    // already 'v2'.
+    const sawWatchTriggeredChange = contentSpy.mock.calls.some(
+      (c) => c[1] === 'v2' && c[0] === 's11',
+    );
+    expect(sawWatchTriggeredChange).toBe(false);
+  });
+
+  it('ignores events for other paths', async () => {
+    const docs = new MockDocuments({ 'x.md': 'v1', 'y.md': 'other' });
+    const ctx = makeContextWithContributions([{
+      slotId: 's12',
+      seed: { kind: 'path', path: 'x.md' },
+    }]);
+    const { entry } = bindDocument({ slotId: 's12', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    docs.emitExternal('y.md', 'other-v2');
+    await flushAsync();
+    expect(entry.document.content).toBe('v1');
+  });
+});
+
+describe('bindDocument — path mode replace path swap', () => {
+  it('swaps to a new path, reads it, clears history', async () => {
+    const docs = new MockDocuments({ 'a.md': 'A', 'b.md': 'B' });
+    let captured!: (n: EditorReplacePatch) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 's13',
+      seed: { kind: 'path', path: 'a.md' },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry } = bindDocument({ slotId: 's13', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    expect(entry.document.content).toBe('A');
+    ctx.internals.history('s13').push({ apply() {}, revert() {} });
+    captured({ path: 'b.md' });
+    await flushAsync();
+    expect(entry.document.content).toBe('B');
+    expect(entry.document.filePath).toBe('b.md');
+    expect(ctx.internals.history('s13').canUndo).toBe(false);
+  });
+
+  it('flushes dirty buffer to the OLD path before swapping', async () => {
+    const docs = new MockDocuments({ 'a.md': 'A', 'b.md': 'B' });
+    let captured!: (n: EditorReplacePatch) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 's14',
+      seed: { kind: 'path', path: 'a.md' },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry } = bindDocument({ slotId: 's14', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    entry.document.content = 'A-modified';
+    entry.document.dirty = true;
+    captured({ path: 'b.md' });
+    await flushAsync();
+    expect(docs.files.get('a.md')).toBe('A-modified');
+    expect(entry.document.content).toBe('B');
+  });
+
+  it('swap to a non-existent path resets buffer to empty', async () => {
+    const docs = new MockDocuments({ 'a.md': 'A' });
+    let captured!: (n: EditorReplacePatch) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 's15',
+      seed: { kind: 'path', path: 'a.md' },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry } = bindDocument({ slotId: 's15', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    captured({ path: 'nope.md' });
+    await flushAsync();
+    expect(entry.document.content).toBe('');
+    expect(entry.document.filePath).toBe('nope.md');
+  });
+
+  it('replace({ content }) in path mode pokes buffer without writing', async () => {
+    const docs = new MockDocuments({ 'a.md': 'A' });
+    let captured!: (n: EditorReplacePatch) => void;
+    const ctx = makeContextWithContributions([{
+      slotId: 's16',
+      seed: { kind: 'path', path: 'a.md' },
+      bind(r) { captured = r; return () => {}; },
+    }]);
+    const { entry } = bindDocument({ slotId: 's16', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    captured({ content: 'poked' });
+    expect(entry.document.content).toBe('poked');
+    // Dirty becomes true because lastPersisted='A' and buffer='poked'.
+    expect(entry.document.dirty).toBe(true);
+    // No write happened.
+    expect(docs.writeCalls).toHaveLength(0);
+  });
+});
+
+describe('bindDocument — path mode cleanup', () => {
+  it('cleanup unsubscribes the watcher', async () => {
+    const docs = new MockDocuments({ 'x.md': 'v1' });
+    const ctx = makeContextWithContributions([{
+      slotId: 's17',
+      seed: { kind: 'path', path: 'x.md' },
+    }]);
+    const { entry, cleanup } = bindDocument({ slotId: 's17', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    expect(docs.watchers).toHaveLength(1);
+    cleanup();
+    expect(docs.watchers).toHaveLength(0);
+    // Late external events do not mutate the entry.
+    docs.emitExternal('x.md', 'late');
+    await flushAsync();
+    expect(entry.document.content).toBe('v1');
   });
 });

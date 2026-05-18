@@ -1,6 +1,6 @@
 {
   "name": "sh3-editor-fiddle",
-  "version": "0.3.14",
+  "version": "0.4.0",
   "author": "@unfinished-lair",
   "type": "module",
   "private": true,
@@ -10,12 +10,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
-    "@unfinished-lair/sh3-editor": "^0.13.0",
-    "sh3-core": "^0.21.2"
+    "@unfinished-lair/sh3-editor": "^0.14.0",
+    "sh3-core": "^0.22.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "sh3-core": "^0.21.2",
+    "sh3-core": "^0.22.0",
     "svelte": "^5.0.0",
     "typescript": "^5.5.0",
     "vite": "^6.0.0",

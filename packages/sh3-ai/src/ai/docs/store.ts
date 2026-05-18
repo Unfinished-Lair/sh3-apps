@@ -36,7 +36,7 @@ export class DocsStore {
   /** Read by absolute-under-`docs/` path, e.g. `'gemini/notes.md'`. */
   async read(absPath: string): Promise<string | null> {
     validateAbsPath(absPath);
-    return this.handle.read(`${DIR}${absPath}`);
+    return this.handle.readText(`${DIR}${absPath}`);
   }
 
   /** Write under the given provider's folder. `relPath` is relative to
@@ -44,7 +44,7 @@ export class DocsStore {
   async write(provider: string, relPath: string, content: string): Promise<void> {
     validateProvider(provider);
     validateRelPath(relPath);
-    await this.handle.write(`${DIR}${provider}/${relPath}`, content);
+    await this.handle.writeText(`${DIR}${provider}/${relPath}`, content);
   }
 
   /** Delete by absolute-under-`docs/` path. The path must start with

@@ -27,7 +27,7 @@ export async function listTargets(handle: DocumentHandle): Promise<BackupTarget[
   const out: BackupTarget[] = [];
   for (const meta of metas) {
     if (!meta.path.startsWith(DIR) || !meta.path.endsWith('.json')) continue;
-    const raw = await handle.read(meta.path);
+    const raw = await handle.readText(meta.path);
     if (!raw) continue;
     try {
       out.push(JSON.parse(raw) as BackupTarget);
@@ -39,7 +39,7 @@ export async function listTargets(handle: DocumentHandle): Promise<BackupTarget[
 }
 
 export async function saveTarget(handle: DocumentHandle, tgt: BackupTarget): Promise<void> {
-  await handle.write(`${DIR}${tgt.id}.json`, JSON.stringify(tgt, null, 2));
+  await handle.writeText(`${DIR}${tgt.id}.json`, JSON.stringify(tgt, null, 2));
 }
 
 export async function deleteTarget(handle: DocumentHandle, id: string): Promise<void> {

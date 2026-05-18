@@ -63,7 +63,7 @@ export const shard: SourceShard = {
     ],
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     const initial: Tree = { user: {}, session: {} };
     for (const p of PROVIDERS) {
       initial.user[p.id] = {
@@ -79,10 +79,6 @@ export const shard: SourceShard = {
       registerProvider(ctx, p, state);
     }
   },
-
-  // Empty body — keeps the shard resident so provider contributions and
-  // palette actions stay alive even when no app/view is open.
-  autostart() {},
 };
 
 function registerProvider(

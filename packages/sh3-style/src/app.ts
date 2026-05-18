@@ -1,5 +1,5 @@
 import type { SourceApp } from 'sh3-core';
-import { restoreConfirmedTheme } from './shard';
+import { restoreConfirmedTheme } from './shard.svelte';
 
 export const app: SourceApp = {
   manifest: {

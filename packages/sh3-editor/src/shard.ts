@@ -70,7 +70,7 @@ export const shard: SourceShard = {
     ],
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     registry = new InstanceRegistry();
     const { api, internals, teardown } = createApi(registry);
     apiRef = api;
@@ -155,6 +155,7 @@ export const shard: SourceShard = {
           registry: registry!,
           internals: internalsRef!,
           defaultOptions,
+          documents: ctx.documents,
         });
         const { entry, cleanup } = bindResult;
         const opts = entry.options;
@@ -195,6 +196,7 @@ export const shard: SourceShard = {
           registry: registry!,
           internals: internalsRef!,
           defaultOptions,
+          documents: ctx.documents,
         });
         const { entry, cleanup } = bindResult;
         const opts = entry.options;
@@ -616,12 +618,6 @@ export const shard: SourceShard = {
       run() { getActiveGraph()?.dismissPalette(); },
     });
   },
-
-  // Self-start so the color-picker (and other shell-level) contributions
-  // registered in `activate` go live at framework boot — without this,
-  // `sh3.color.pick()` would fall through to the native <input type="color">
-  // until some app first launches sh3-editor.
-  autostart() { /* contributions are wired in `activate`; no work to do here. */ },
 
   deactivate() {
     unsubscribeDomainContributions?.();

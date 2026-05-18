@@ -8,13 +8,8 @@ import type { MatchingConfig, ToolbarAction, UserPrefs } from './types';
  */
 export const EDITOR_DOCUMENT_POINT = 'sh3-editor.document';
 
-/** Initial state seed for an editor slot. Read once at mount; later changes
- *  flow through `bind`/`replace`. Field set mirrors `OpenDocumentOptions`. */
-export interface EditorDocumentSeed {
-  /** Initial buffer text. */
-  content: string;
-  /** Toolbar file chip; informational only — editor never reads/writes it. */
-  filePath?: string | null;
+/** Shared options carried by both seed variants. */
+export interface EditorDocumentSeedCommon {
   /** Forwarded to `highlight(text, language)`. */
   language?: string | null;
   /** Indent + brace auto-edit config. */
@@ -35,15 +30,53 @@ export interface EditorDocumentSeed {
    *  When absent for any other language, Preview falls back to escaped
    *  <pre>{content}</pre>. */
   render?: (text: string, language: string | null) => string;
-  /** Pre-render text→text hook. Runs before the resolved renderer
-   *  (the explicit `render`, the bundled markdown renderer, or the
-   *  `<pre>` fallback). Use for small text rewrites — wiki-link sugar,
-   *  footnote stubs — without bundling a markdown parser yourself. */
+  /** Pre-render text→text hook. Runs before the resolved renderer. */
   transform?: (text: string, language: string | null) => string;
-  /** Editor-only: whether the editor toggle starts in preview mode. Ignored
-   *  by the Reader view (which is always preview). Default false. */
+  /** Editor-only: whether the editor toggle starts in preview mode. */
   startInPreview?: boolean;
 }
+
+/** Path-backed seed (contract v3). Editor owns persistence: reads from
+ *  `ctx.documents.readText(path)` at mount, writes via `writeText` on Save,
+ *  observes external changes through `ctx.documents.watch`. */
+export interface EditorPathSeed extends EditorDocumentSeedCommon {
+  kind: 'path';
+  /** Path resolved against `ctx.documents` — i.e. the active app's namespace
+   *  when this slot lives inside an app, the editor shard's own namespace
+   *  otherwise. */
+  path: string;
+  /** Written by the editor on first save iff `readText` returns null at mount.
+   *  Lets contributors seed a starter for "new file" cases without doing the
+   *  write themselves. Optional. */
+  initialContent?: string;
+  /** Editor save model. 'manual' (default) saves on Mod+S only. Reserved
+   *  for a future 'autosave' mode — currently treated as 'manual' if set. */
+  save?: 'manual';
+}
+
+/** Content-backed seed (legacy / transient). Editor never persists.
+ *  Use for ephemeral surfaces — float-spawned markdown previews, ad-hoc
+ *  scratch buffers, contributor-owned storage. */
+export interface EditorContentSeed extends EditorDocumentSeedCommon {
+  kind: 'content';
+  /** Initial buffer text. */
+  content: string;
+  /** Toolbar file chip; informational only — editor never reads/writes it. */
+  filePath?: string | null;
+}
+
+export type EditorDocumentSeed = EditorPathSeed | EditorContentSeed;
+
+/** Swappable subset for `bind(replace)`. Mode is fixed at mount; field set
+ *  matches whichever variant the contribution registered with.
+ *  - Content mode: any common field plus `content` / `filePath`.
+ *  - Path mode: any common field plus `path`. Replacing `path` flushes
+ *    pending dirty writes (to the old path), reads the new path, clears
+ *    history. Replacing `content` in path mode pokes the local buffer
+ *    without writing — useful for previews / transforms. */
+export type EditorReplacePatch =
+  | (Partial<Omit<EditorContentSeed, 'kind'>> & { content?: string })
+  | (Partial<Omit<EditorPathSeed, 'kind'>> & { content?: string });
 
 /** Descriptor registered under EDITOR_DOCUMENT_POINT. One descriptor binds
  *  one editor slot keyed by `slotId`. */
@@ -60,13 +93,15 @@ export interface EditorDocumentContribution {
    *  the closure and calls it whenever it wants to swap fields on the live
    *  document. The returned disposer (if any) is invoked on slot unmount;
    *  the contributor should drop its `replace` reference there. */
-  bind?(replace: (next: Partial<EditorDocumentSeed>) => void): (() => void) | void;
+  bind?(replace: (next: EditorReplacePatch) => void): (() => void) | void;
 
-  /** Editor → contributor: user edit committed. */
+  /** Editor → contributor: user edit committed. Fires in both modes. */
   onContentChange?(content: string): void;
-  /** Editor → contributor: dirty flag flipped. */
+  /** Editor → contributor: dirty flag flipped. In path mode, dirty = buffer
+   *  differs from last-persisted snapshot. */
   onDirtyChange?(dirty: boolean): void;
-  /** Editor → contributor: Ctrl+S pressed inside the textarea. */
+  /** Editor → contributor: Save action ran. In path mode, fires AFTER the
+   *  successful `writeText`. */
   onSave?(): void;
   /** Editor → contributor: settings gear changed prefs. */
   onPrefsChange?(prefs: UserPrefs): void;

@@ -7,3 +7,7 @@ test-server/
 docs/records.zip
 # Internal planning + author-only notes — not part of the published doc set.
 docs/claude-plans/
+# Local registry mirror — populated by .github/scripts/publish.mjs for testing
+# against a static server (gh-pages-style). Production gh-pages branch is
+# managed by the publish workflow.
+_pages/

@@ -21,12 +21,19 @@ interface StyleEnv {
   defaultTheme: DefaultTheme | null;
 }
 
-// Module-level refs so autostart and deactivate can access shard state.
+// Module-level refs so the env-reactive effect and deactivate hook can
+// access shard state.
 let stateRef: ThemeState | null = null;
 let envRef: StyleEnv | null = null;
-// True once autostart() has run (env is hydrated). Before this point,
-// applyConfirmed must not permanently mutate useDefault.
+// True once env has finished hydrating from the server. Before this
+// point, applyConfirmed must not permanently mutate useDefault. The
+// env-reactive effect inside register() flips this on the first
+// post-hydration fire.
 let envHydrated = false;
+// Disposer for the $effect.root that watches env.defaultTheme. Captured
+// during register(); torn down in deactivate(). Replaces v2's autostart
+// hook which fired once after env hydration.
+let stopEnvEffect: (() => void) | null = null;
 
 /**
  * Restore the confirmed theme (undo any in-progress preview).
@@ -63,7 +70,7 @@ export const shard: SourceShard = {
     ],
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     const state = ctx.state<{
       user: ThemeState;
       ephemeral: { previewThemeId: string | null };
@@ -204,16 +211,30 @@ export const shard: SourceShard = {
         });
       },
     });
-  },
 
-  // Self-starting: ensures the theme is applied at shell boot for all
-  // clients, even those that never open the Style app. This hook runs
-  // after env hydration, so the admin default is available.
-  autostart() {
-    envHydrated = true;
-    if (stateRef && envRef) {
-      applyConfirmed(stateRef, envRef);
-    }
+    // Re-apply whenever env hydrates with a server-side default theme.
+    // Replaces v2's autostart() hook: v3 runs register() before env
+    // hydrate, so we observe env.defaultTheme reactively. The env proxy
+    // is a Svelte 5 $state, so Object.assign at hydration time triggers
+    // this effect even when the value is unchanged.
+    //
+    // First fire is synchronous during register() and is redundant with
+    // the eager applyConfirmed() above — skip it. Subsequent fires
+    // happen after the framework's env hydrate completes; that's where
+    // envHydrated flips and the confirmed theme is re-applied.
+    let firstFire = true;
+    stopEnvEffect = $effect.root(() => {
+      $effect(() => {
+        const _dep = env.defaultTheme;
+        void _dep;
+        if (firstFire) {
+          firstFire = false;
+          return;
+        }
+        envHydrated = true;
+        if (stateRef && envRef) applyConfirmed(stateRef, envRef);
+      });
+    });
   },
 
   // Restore the confirmed theme when the user hits Home (undo any preview).
@@ -222,6 +243,8 @@ export const shard: SourceShard = {
   },
 
   deactivate() {
+    stopEnvEffect?.();
+    stopEnvEffect = null;
     // Restore the confirmed theme on shard teardown (undo any preview).
     restoreConfirmedTheme();
     stateRef = null;

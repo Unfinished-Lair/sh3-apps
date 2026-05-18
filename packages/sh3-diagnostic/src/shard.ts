@@ -1,8 +1,8 @@
-import type { Shard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import ZoneManager from './manager/ZoneManager.svelte';
 
-export const shard: Shard = {
+export const shard: SourceShard = {
   manifest: {
     id: 'sh3-zones',
     label: 'Zones',
@@ -10,7 +10,7 @@ export const shard: Shard = {
     permissions: ['state:manage'],
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     ctx.registerView('sh3-zones-manager', {
       mount(container) {
         if (!ctx.zones) {

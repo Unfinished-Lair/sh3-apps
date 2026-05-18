@@ -1,53 +1,30 @@
 /*
- * Diagnostic shard — self-driving framework introspection shard.
- *
- * Always loaded in phase 8 (no env split yet). Self-starts via its
- * `autostart` hook:
- *   - If the shell is on home at boot: silently attempt to splice a
- *     diagnostic panel into home's layout. Home is a single-slot layout
- *     in phase 8, so this gracefully no-ops when no tabs group is found.
- *   - If an app is active: read own workspace zone for a per-app
- *     `sessionBehavior` preference. If 'silent', do nothing. If 'dock',
- *     attempt dock. If unset, open a modal asking "Dock" vs "Silent".
- *     Persist the choice and act on it.
+ * Diagnostic shard — registers the panel/routes/logs views and installs
+ * the global log capture at register() time. No self-injection or
+ * per-app prompting in v3; SH3 surfaces diagnostic at the framework
+ * level now.
  *
  * Note on internal imports: DiagnosticPanel.svelte reads from
  * `shards/activate.svelte.ts` directly for the registeredShards /
- * activeShards reactive maps. That's a deliberate phase-8 shortcut —
- * introspection helpers belong on the public api.ts surface long-term,
- * but factoring them out is a phase-9 concern.
- *
- * Note on the modal path: in phase 8 all shards load at boot, so
- * autostart runs while the shell is on home. The per-app modal prompt
- * path is therefore effectively dead code in phase 8 (it would only be
- * reachable if diagnostic were activated mid-session after an app had
- * launched). Included for design completeness.
+ * activeShards reactive maps. That's a deliberate shortcut —
+ * introspection helpers belong on the public api.ts surface long-term.
  */
 
 import { mount, unmount } from 'svelte';
 import DiagnosticPanel from './manager/DiagnosticPanel.svelte';
 import DiagnosticRoutes from './manager/DiagnosticRoutes.svelte';
-import DiagnosticPromptModal from './manager/DiagnosticPromptModal.svelte';
 import LogPanel from './manager/LogPanel.svelte';
-import type { SourceShard, ViewFactory, ViewHandle, MountContext, LayoutNode, ShardContext } from 'sh3-core';
-import {
-  sh3,
-  getActiveApp,
-  spliceIntoActiveLayout,
-  inspectActiveLayout,
-} from 'sh3-core';
+import type { SourceShard, ViewFactory, ViewHandle, MountContext, ShardContext } from 'sh3-core';
 import { installLogCapture } from './log/capture.svelte';
 
-type Behavior = 'dock' | 'silent';
-
 /**
- * Module-level context captured during activate(). Leaf views import this
+ * Module-level context captured during register(). Leaf views import this
  * to route HTTP through ctx.fetch (Tauri-safe transport) and to write into
  * the shard's own document zone via docs.
  */
 export let diagnosticContext: {
   fetch: ShardContext['fetch'];
-  docs: ReturnType<ShardContext['documents']>;
+  docs: ShardContext['documents'];
   tenantId: string;
 } = undefined!;
 
@@ -61,14 +38,14 @@ export const diagnosticShard: SourceShard = {
       { id: 'diagnostic:logs', label: 'Logs', standalone: true },
     ],
   },
-  activate(ctx) {
+  register(ctx) {
     // Patch console + window error/rejection listeners ASAP so anything that
     // logs during the rest of activation lands in the buffer.
     installLogCapture();
 
     diagnosticContext = {
       fetch: ctx.fetch.bind(ctx),
-      docs: ctx.documents({ format: 'text' }),
+      docs: ctx.documents,
       tenantId: ctx.tenantId,
     };
 
@@ -108,60 +85,4 @@ export const diagnosticShard: SourceShard = {
     };
     ctx.registerView('diagnostic:logs', logsFactory);
   },
-  autostart(ctx) {
-    const state = ctx.state({
-      workspace: {
-        sessionBehavior: {} as Record<string, Behavior>,
-      },
-    });
-
-    const active = getActiveApp();
-
-    // Home context: attempt a silent dock. Home's single-slot layout has
-    // no tabs group in phase 8 so tryDock will no-op gracefully.
-    if (!active) {
-      tryDock();
-      return;
-    }
-
-    const contextKey = active.id;
-    const stored = state.workspace.sessionBehavior[contextKey];
-    if (stored === 'silent') return;
-    if (stored === 'dock') {
-      tryDock();
-      return;
-    }
-
-    // First-time prompt for this app.
-    sh3.modal.open(DiagnosticPromptModal, {
-      appLabel: active.label,
-      onChoose: (choice: Behavior) => {
-        state.workspace.sessionBehavior[contextKey] = choice;
-        if (choice === 'dock') tryDock();
-      },
-    });
-  },
 };
-
-function tryDock(): void {
-  const { root } = inspectActiveLayout();
-  if (!containsTabs(root.docked)) return;
-  try {
-    spliceIntoActiveLayout({
-      slotId: 'diagnostic.panel',
-      viewId: 'diagnostic:panel',
-      label: 'Diagnostic',
-    });
-  } catch (err) {
-    // Splice can still refuse for reasons the containsTabs probe doesn't
-    // cover (e.g. a layout shape the helper doesn't accept). Failing
-    // silently is the right call for a self-starting introspection shard.
-    console.warn('[diagnostic] splice failed:', err);
-  }
-}
-
-function containsTabs(node: LayoutNode): boolean {
-  if (node.type === 'tabs') return true;
-  if (node.type === 'split') return node.children.some((c) => containsTabs(c));
-  return false;
-}

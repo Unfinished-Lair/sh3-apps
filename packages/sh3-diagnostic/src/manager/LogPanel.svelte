@@ -4,7 +4,7 @@
    *
    * Filter by level, autoscroll-to-bottom toggle, clear, and save-to-doc.
    * Save writes plain text to the diagnostic shard's own document zone via
-   * diagnosticContext.docs (which is just ctx.documents({ format: 'text' })).
+   * diagnosticContext.docs (which is just ctx.documents).
    */
 
   import { sh3 } from 'sh3-core';
@@ -57,7 +57,7 @@
         return;
       }
       const path = logFileName();
-      await docs.write(path, serializeLog(logBuffer));
+      await docs.writeText(path, serializeLog(logBuffer));
       sh3.toast.notify(`Saved ${path}`, { level: 'success' });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

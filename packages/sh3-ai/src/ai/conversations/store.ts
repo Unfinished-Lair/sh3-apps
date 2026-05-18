@@ -17,7 +17,7 @@ export class ConversationStore {
     const summaries: ConversationSummary[] = [];
     for (const meta of metas) {
       if (!meta.path.startsWith(DIR)) continue;
-      const content = await this.handle.read(meta.path);
+      const content = await this.handle.readText(meta.path);
       if (content === null) continue;
       try {
         const doc = parseConversation(content);
@@ -39,7 +39,7 @@ export class ConversationStore {
   }
 
   async load(id: string): Promise<ConversationDocument | null> {
-    const content = await this.handle.read(path(id));
+    const content = await this.handle.readText(path(id));
     if (content === null) return null;
     return parseConversation(content);
   }
@@ -59,7 +59,7 @@ export class ConversationStore {
       toolCalls: seed.toolCalls ?? [],
       toolResults: seed.toolResults ?? [],
     };
-    await this.handle.write(path(id), serializeConversation(doc));
+    await this.handle.writeText(path(id), serializeConversation(doc));
     return doc;
   }
 
@@ -72,7 +72,7 @@ export class ConversationStore {
     if (!doc) throw new Error(`conversation ${id} not found`);
     doc.title = newTitle;
     doc.updatedAt = Date.now();
-    await this.handle.write(path(id), serializeConversation(doc));
+    await this.handle.writeText(path(id), serializeConversation(doc));
   }
 
   /** Returns an autosave controller bound to the conversation's path.

@@ -6,7 +6,7 @@ import type { Tool } from '../catalog/types';
 
 function fakeHandle() {
   const docs = new Map<string, string>();
-  const handle: Pick<DocumentHandle, 'list' | 'read' | 'write' | 'delete'> & {
+  const handle: Pick<DocumentHandle, 'list' | 'readText' | 'writeText' | 'delete'> & {
     _docs: Map<string, string>;
   } = {
     _docs: docs,
@@ -17,10 +17,10 @@ function fakeHandle() {
         lastModified: 0,
       }));
     },
-    async read(path: string) {
+    async readText(path: string) {
       return docs.has(path) ? (docs.get(path) ?? null) : null;
     },
-    async write(path: string, content: string) {
+    async writeText(path: string, content: string) {
       docs.set(path, content);
     },
     async delete(path: string) {

@@ -161,12 +161,7 @@ export const shard: SourceShard = {
     permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
 
-  autostart() {
-    // Presence required so the Control Graph domain stays available even when
-    // the sh3-pipeline app is closed (other apps/shards can still reference it).
-  },
-
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     const state = createPipelineState();
     setActiveState(state);
 

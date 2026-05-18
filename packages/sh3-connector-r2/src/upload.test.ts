@@ -21,8 +21,8 @@ function fakeLogHandle(): DocumentHandle {
   const store = new Map<string, string>();
   return {
     async list() { return Array.from(store.keys()).map((p) => ({ path: p, size: store.get(p)!.length, lastModified: 0 })); },
-    async read(p: string) { return store.get(p) ?? null; },
-    async write(p: string, c: string) { store.set(p, c); },
+    async readText(p: string) { return store.get(p) ?? null; },
+    async writeText(p: string, c: string) { store.set(p, c); },
     async delete(p: string) { store.delete(p); },
     async exists(p: string) { return store.has(p); },
     async status() { return null; },

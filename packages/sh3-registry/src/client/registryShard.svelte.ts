@@ -36,7 +36,7 @@ export interface RegistryContext {
 }
 
 /**
- * Module-level context set during activate(). Imported by the Svelte
+ * Module-level context set during register(). Imported by the Svelte
  * view component so it can read/write state and trigger actions.
  */
 export let registryContext: RegistryContext = undefined!;
@@ -54,7 +54,7 @@ export const registryShard: SourceShard = {
     serverBundle: 'sh3-registry-server.js',
   },
 
-  activate(ctx: ShardContext) {
+  register(ctx: ShardContext) {
     const state = ctx.state<RegistryZoneSchema>({
       ephemeral: {
         packages: [] as RegistryPackage[],
@@ -132,9 +132,5 @@ export const registryShard: SourceShard = {
     };
 
     ctx.registerView('sh3-registry:manage', manageFactory);
-  },
-
-  autostart() {
-    // Self-starting so the view is available from the launcher.
   },
 };

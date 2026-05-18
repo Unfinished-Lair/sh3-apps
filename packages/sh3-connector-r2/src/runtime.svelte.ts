@@ -18,7 +18,7 @@ export interface ProgressState {
 }
 
 export function createRuntime(ctx: ShardContext) {
-  const docs: DocumentHandle = ctx.documents({ format: 'text' });
+  const docs: DocumentHandle = ctx.documents;
 
   let targets = $state<BackupTarget[]>([]);
   let loaded = $state(false);

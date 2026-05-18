@@ -1,16 +1,22 @@
 /*
- * Inspector Fiddle shard.
+ * Inspector Fiddle shard (contract v3).
  *
- * Activates inside the inspector-fiddle app. Holds the parsed value and
- * meta in $state so the inspector's seed.value reactively reflects walker
- * mutations. Hydrates text from a workspace state zone when available;
- * falls back to the starter on first launch.
+ * Lifecycle:
+ *   register(ctx)              — no-op; fiddle is purely an app shard.
+ *   onAppActivate(ctx, appId)  — seeds value.json / meta.json under
+ *                                {scope}/docs/inspector-fiddle-app/, then
+ *                                registers the editor + inspector
+ *                                contributions. All registrations land in
+ *                                the per-app cleanup bag and auto-dispose
+ *                                on app unload.
  *
- * Contribution registrations land in subsequent tasks. This file is
- * deliberately step-built so each behavior is unit-testable in isolation.
+ * The two JSON editors run in path mode — sh3-editor owns persistence
+ * via ctx.documents (shared namespace across all required shards in the
+ * app). The fiddle observes editor onContentChange to drive the live
+ * parser into the inspector.
  */
 
-import type { SourceShard } from 'sh3-core';
+import type { DocumentHandle, SourceShard, ShardContext } from 'sh3-core';
 import { sh3 } from 'sh3-core';
 import type { ToolbarAction } from '@unfinished-lair/sh3-editor';
 import type {
@@ -20,7 +26,7 @@ import type {
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import type {
   EditorDocumentContribution,
-  EditorDocumentSeed,
+  EditorReplacePatch,
 } from '@unfinished-lair/sh3-editor/contributions';
 
 // SH3 runtime resolves bare specifiers via an importmap that does NOT
@@ -31,6 +37,10 @@ import type {
 const EDITOR_DOCUMENT_POINT     = 'sh3-editor.document';
 const INSPECTOR_INSTANCE_POINT  = 'sh3-editor.inspectorInstance';
 const INSPECTOR_RENDERER_POINT  = 'sh3-editor.inspectorRenderer';
+
+const VALUE_PATH = 'value.json';
+const META_PATH  = 'meta.json';
+
 import {
   STARTER_VALUE,
   STARTER_META,
@@ -47,9 +57,7 @@ interface FiddleSnapshot {
 }
 
 /** Build the markdown catalog of inspector renderer types. Pure — exported
- *  for unit testing. Every entry comes from the contributions registry;
- *  the bundled `color` renderer registers itself there too, so we don't
- *  need to inject it manually. */
+ *  for unit testing. */
 export function buildCatalogMarkdown(
   renderers: ReadonlyArray<{ id: string; type: string }>,
 ): string {
@@ -85,67 +93,45 @@ export const inspectorFiddleShard: SourceShard & {
     views: [],
   },
 
-  activate(ctx) {
+  // v3: register runs at SH3 boot for every shard. Fiddle has no
+  // shell-level contributions, so this body is empty.
+  register(_ctx: ShardContext) {
+    // no-op
+  },
+
+  async onAppActivate(ctx: ShardContext, _appId: string) {
+    // ---- 1. First-run seeding ------------------------------------------
+    // ctx.documents resolves to {scope}/docs/inspector-fiddle-app/ for the
+    // duration of this app's activation. If the files don't exist yet,
+    // write the starter — otherwise hydrate live state from what's on disk.
+    await ensureSeedDoc(ctx.documents, VALUE_PATH, STARTER_VALUE_TEXT);
+    await ensureSeedDoc(ctx.documents, META_PATH,  STARTER_META_TEXT);
+
+    const valueText = (await ctx.documents.readText(VALUE_PATH)) ?? STARTER_VALUE_TEXT;
+    const metaText  = (await ctx.documents.readText(META_PATH))  ?? STARTER_META_TEXT;
+
+    // ---- 2. Live state -------------------------------------------------
     const zone = ctx.state({
       workspace: {
-        valueText: '' as string,
-        metaText:  '' as string,
-        liveSync:  false as boolean,
+        liveSync: false as boolean,
       },
     });
 
-    const valueText = zone.workspace.valueText || STARTER_VALUE_TEXT;
-    const metaText  = zone.workspace.metaText  || STARTER_META_TEXT;
-    zone.workspace.valueText = valueText;
-    zone.workspace.metaText  = metaText;
-
-    // The live state. Walker mutations work in place on liveValue; the
-    // editor parse pipeline rotates the reference and re-points the
-    // inspector via handle.replace({ value }).
     const state = $state({
-      liveValue: structuredClone(STARTER_VALUE) as unknown,
-      liveMeta:  structuredClone(STARTER_META)  as InspectorMeta,
-      lastGoodValue: structuredClone(STARTER_VALUE) as unknown,
-      lastGoodMeta:  structuredClone(STARTER_META)  as InspectorMeta,
+      liveValue: tryParse<unknown>(valueText, STARTER_VALUE),
+      liveMeta:  tryParse<InspectorMeta>(metaText, STARTER_META),
+      lastGoodValue: tryParse<unknown>(valueText, STARTER_VALUE),
+      lastGoodMeta:  tryParse<InspectorMeta>(metaText, STARTER_META),
       valueParseError: null as string | null,
       metaParseError:  null as string | null,
       liveSync:        zone.workspace.liveSync,
       inspectorTouched: false,
     });
 
-    // If the zone had user-typed text different from the starter, parse
-    // it now so live{Value,Meta} reflect the persisted text rather than
-    // the starter constants.
-    if (valueText !== STARTER_VALUE_TEXT) {
-      try {
-        const parsed = JSON.parse(valueText);
-        state.liveValue = parsed;
-        state.lastGoodValue = parsed;
-      } catch {
-        // text persisted in error state — leave starter live, surface error.
-        state.valueParseError = 'Persisted value failed to parse on activate.';
-      }
-    }
-    if (metaText !== STARTER_META_TEXT) {
-      try {
-        const parsed = JSON.parse(metaText);
-        state.liveMeta = parsed;
-        state.lastGoodMeta = parsed;
-      } catch {
-        state.metaParseError = 'Persisted meta failed to parse on activate.';
-      }
-    }
+    // ---- 3. Editor handles (populated by bind) -------------------------
+    let valueReplace: ((next: EditorReplacePatch) => void) | null = null;
+    let metaReplace:  ((next: EditorReplacePatch) => void) | null = null;
 
-    // Editor handles, populated by bind(); used by inspector callbacks
-    // in later tasks to push round-tripped content back into the editors.
-    let valueReplace: ((next: Partial<EditorDocumentSeed>) => void) | null = null;
-    let metaReplace:  ((next: Partial<EditorDocumentSeed>) => void) | null = null;
-
-    // Track last-pushed parse-error message per editor so we only ping
-    // valueReplace/metaReplace when the indicator actually changes. Without
-    // this, every parse success after activation would emit an empty
-    // toolbarActions update, which is noisy and breaks consumers that count
-    // replace calls.
     let lastValueErrorPushed: string | null = null;
     let lastMetaErrorPushed:  string | null = null;
 
@@ -195,20 +181,17 @@ export const inspectorFiddleShard: SourceShard & {
       metaReplace({ toolbarActions: actions });
     }
 
-    // Inspector handle, populated by bind() in the inspector contribution
-    // (registered in Task 6). We declare it here so the editor parsers
-    // can reference it via closure.
     let inspectorHandle: InspectorBindHandle | null = null;
 
     // Live-sync loop avoidance: each flag is one-shot and consumed by the
     // next callback in the corresponding direction.
-    let suppressNextEditorParse     = false; // true → next value-editor onContentChange is dropped
-    let suppressNextInspectorChange = false; // true → next inspector onValueChange is dropped
+    let suppressNextEditorParse     = false;
+    let suppressNextInspectorChange = false;
 
     const refreshSnapshot = () => {
       testSnapshot = {
-        valueText: zone.workspace.valueText,
-        metaText:  zone.workspace.metaText,
+        valueText: JSON.stringify(state.liveValue, null, 2),
+        metaText:  JSON.stringify(state.liveMeta,  null, 2),
         liveSync:  state.liveSync,
         inspectorTouched: state.inspectorTouched,
       };
@@ -223,9 +206,6 @@ export const inspectorFiddleShard: SourceShard & {
         refreshSnapshot();
         pushValueToolbar();
         if (inspectorHandle) {
-          // Replacing the inspector value may synchronously fire onValueChange
-          // in the real impl; pre-arm the suppression so we don't bounce back
-          // into valueReplace via the live-sync path.
           suppressNextInspectorChange = true;
           inspectorHandle.replace({ value: parsed });
         }
@@ -236,6 +216,27 @@ export const inspectorFiddleShard: SourceShard & {
         pushValueToolbar();
       },
     });
+
+    const valueDescriptor: EditorDocumentContribution = {
+      slotId: 'fiddle.value',
+      seed: {
+        kind: 'path',
+        path: VALUE_PATH,
+        language: 'json',
+        initialContent: STARTER_VALUE_TEXT,
+      },
+      bind(replace) {
+        valueReplace = replace;
+        return () => { valueReplace = null; };
+      },
+      onContentChange(content) {
+        if (suppressNextEditorParse) {
+          suppressNextEditorParse = false;
+          return;
+        }
+        valueParser.feed(content);
+      },
+    };
 
     const metaParser = createDebouncedParser({
       onSuccess(parsed) {
@@ -254,38 +255,19 @@ export const inspectorFiddleShard: SourceShard & {
       },
     });
 
-    const valueDescriptor: EditorDocumentContribution = {
-      slotId: 'fiddle.value',
-      seed: {
-        content:  valueText,
-        language: 'json',
-      },
-      bind(replace) {
-        valueReplace = replace;
-        return () => { valueReplace = null; };
-      },
-      onContentChange(content) {
-        zone.workspace.valueText = content;
-        if (suppressNextEditorParse) {
-          suppressNextEditorParse = false;
-          return;
-        }
-        valueParser.feed(content);
-      },
-    };
-
     const metaDescriptor: EditorDocumentContribution = {
       slotId: 'fiddle.meta',
       seed: {
-        content:  metaText,
+        kind: 'path',
+        path: META_PATH,
         language: 'json',
+        initialContent: STARTER_META_TEXT,
       },
       bind(replace) {
         metaReplace = replace;
         return () => { metaReplace = null; };
       },
       onContentChange(content) {
-        zone.workspace.metaText = content;
         metaParser.feed(content);
       },
     };
@@ -303,11 +285,6 @@ export const inspectorFiddleShard: SourceShard & {
       onAction() {
         if (!valueReplace) return;
         const text = JSON.stringify(state.liveValue, null, 2);
-        // Suppress the parser pass that would otherwise fire when
-        // valueReplace's onContentChange echoes back. Without this, the
-        // parser re-feeds, calls inspectorHandle.replace({ value: parsed })
-        // ~150ms later, and overwrites any inspector edit the user made
-        // during the debounce window with the snapshot we just pushed.
         suppressNextEditorParse = true;
         valueReplace({ content: text });
         state.inspectorTouched = false;
@@ -338,11 +315,6 @@ export const inspectorFiddleShard: SourceShard & {
           INSPECTOR_RENDERER_POINT,
         ) ?? [];
         const text = buildCatalogMarkdown(renderers);
-        // Open a closable, draggable float mounting an editor view in
-        // markdown-preview mode. The float manager mints its own slot id
-        // for the new view; we register the EditorDocumentContribution
-        // for that slot synchronously so the editor mounts with our
-        // content instead of the bundled fallback.
         const floatId = sh3.float.open('sh3-editor:editor', {
           title: 'Available types',
           size: { w: 520, h: 360 },
@@ -355,6 +327,7 @@ export const inspectorFiddleShard: SourceShard & {
         ctx.contributions.register<EditorDocumentContribution>(EDITOR_DOCUMENT_POINT, {
           slotId,
           seed: {
+            kind: 'content',
             content: text,
             language: 'markdown',
             startInPreview: true,
@@ -383,11 +356,8 @@ export const inspectorFiddleShard: SourceShard & {
         refreshSnapshot();
         if (state.liveSync && valueReplace) {
           const text = JSON.stringify(value, null, 2);
-          // Pre-arm so the synchronous onContentChange fired by valueReplace
-          // is dropped without re-feeding the parser.
           suppressNextEditorParse = true;
           valueReplace({ content: text });
-          zone.workspace.valueText = text;
           state.inspectorTouched = false;
           refreshSnapshot();
         }
@@ -406,3 +376,26 @@ export const inspectorFiddleShard: SourceShard & {
     return testSnapshot;
   },
 };
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+async function ensureSeedDoc(
+  docs: DocumentHandle,
+  path: string,
+  starter: string,
+): Promise<void> {
+  const existing = await docs.readText(path);
+  if (existing === null) {
+    await docs.writeText(path, starter);
+  }
+}
+
+function tryParse<T>(text: string, fallback: T): T {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
+  }
+}

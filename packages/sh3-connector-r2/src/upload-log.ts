@@ -32,7 +32,7 @@ export async function appendLog(handle: DocumentHandle, entry: UploadLogEntry): 
   // Replace them in the filename only; entry.at inside the JSON keeps the canonical ISO string.
   const safeAt = entry.at.replace(/:/g, '-');
   const filename = `${safeAt}-${randomSuffix()}.json`;
-  await handle.write(`${folder}${filename}`, JSON.stringify(entry, null, 2));
+  await handle.writeText(`${folder}${filename}`, JSON.stringify(entry, null, 2));
 }
 
 export async function listRecentLog(handle: DocumentHandle, limit: number): Promise<UploadLogEntry[]> {
@@ -51,7 +51,7 @@ export async function listRecentLog(handle: DocumentHandle, limit: number): Prom
     const monthMatch = sortedMonths.find((mo) => m.path.startsWith(`${DIR}${mo}/`));
     if (!monthMatch) continue;
     if (!m.path.endsWith('.json')) continue;
-    const raw = await handle.read(m.path);
+    const raw = await handle.readText(m.path);
     if (!raw) continue;
     try {
       entries.push(JSON.parse(raw) as UploadLogEntry);
@@ -69,7 +69,7 @@ export async function listAllSuccessfulLog(handle: DocumentHandle): Promise<Uplo
   for (const m of metas) {
     if (!m.path.startsWith(DIR)) continue;
     if (!m.path.endsWith('.json')) continue;
-    const raw = await handle.read(m.path);
+    const raw = await handle.readText(m.path);
     if (!raw) continue;
     try {
       const e = JSON.parse(raw) as UploadLogEntry;

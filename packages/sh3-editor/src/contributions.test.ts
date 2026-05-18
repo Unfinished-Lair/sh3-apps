@@ -1,8 +1,10 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import {
   EDITOR_DOCUMENT_POINT,
+  type EditorContentSeed,
   type EditorDocumentSeed,
   type EditorDocumentContribution,
+  type EditorPathSeed,
   type PreviewLinkEvent,
 } from './contributions';
 
@@ -11,27 +13,48 @@ describe('contributions module', () => {
     expect(EDITOR_DOCUMENT_POINT).toBe('sh3-editor.document');
   });
 
-  it('EditorDocumentContribution requires slotId and seed; bind/handlers are optional', () => {
+  it('EditorDocumentContribution requires slotId and seed', () => {
     const minimal: EditorDocumentContribution = {
       slotId: 'x',
-      seed: { content: 'hello' },
+      seed: { kind: 'content', content: 'hello' },
     };
     expect(minimal.slotId).toBe('x');
-    expect(minimal.seed.content).toBe('hello');
+    if (minimal.seed.kind === 'content') {
+      expect(minimal.seed.content).toBe('hello');
+    }
   });
 
-  it('seed mirrors OpenDocumentOptions field set', () => {
-    expectTypeOf<EditorDocumentSeed>().toMatchTypeOf<{
+  it('content seed accepts filePath / language', () => {
+    expectTypeOf<EditorContentSeed>().toMatchTypeOf<{
+      kind: 'content';
       content: string;
       filePath?: string | null;
       language?: string | null;
     }>();
   });
+
+  it('path seed accepts initialContent / save', () => {
+    expectTypeOf<EditorPathSeed>().toMatchTypeOf<{
+      kind: 'path';
+      path: string;
+      initialContent?: string;
+      save?: 'manual';
+      language?: string | null;
+    }>();
+  });
+
+  it('EditorDocumentSeed is a discriminated union on `kind`', () => {
+    const a: EditorDocumentSeed = { kind: 'content', content: 'x' };
+    const b: EditorDocumentSeed = { kind: 'path', path: 'doc.md' };
+    expect(a.kind).toBe('content');
+    expect(b.kind).toBe('path');
+  });
 });
 
 describe('contributions module — preview additions (0.11.0)', () => {
-  it('seed accepts optional render and startInPreview', () => {
-    const seed: EditorDocumentSeed = {
+  it('content seed accepts optional render and startInPreview', () => {
+    const seed: EditorContentSeed = {
+      kind: 'content',
       content: '# md',
       render: (t, _l) => `<custom>${t}</custom>`,
       startInPreview: true,
@@ -43,7 +66,7 @@ describe('contributions module — preview additions (0.11.0)', () => {
   it('contribution accepts optional onLinkClick', () => {
     const contrib: EditorDocumentContribution = {
       slotId: 'x',
-      seed: { content: '' },
+      seed: { kind: 'content', content: '' },
       onLinkClick(e) {
         return e.kind === 'external' ? 'handled' : 'default';
       },

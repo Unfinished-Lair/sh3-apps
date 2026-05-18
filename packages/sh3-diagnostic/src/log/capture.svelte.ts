@@ -3,9 +3,9 @@
  * window 'error' / 'unhandledrejection' events to feed a bounded ring buffer
  * the LogPanel view renders reactively.
  *
- * Install once, at diagnosticShard.activate() (sh3-core calls activate during
- * shard registration at boot — earlier than autostart). Re-entry is guarded so
- * activate() running twice is a no-op.
+ * Install once, at diagnosticShard.register() (sh3-core calls register during
+ * shard registration at boot). Re-entry is guarded so a duplicate call is a
+ * no-op.
  */
 
 export type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';

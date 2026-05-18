@@ -165,7 +165,9 @@ export const shard: SourceShard = {
     const state = createPipelineState();
     setActiveState(state);
 
-    // 1. Domain contribution.
+    // 1. Domain contribution — global publisher. Other shards can declare
+    // 'sh3-pipeline:control-graph' as their graph domain regardless of
+    // whether the pipeline app is open.
     domainRef = buildControlGraphDomain(ctx as never, {
       log: (...args: unknown[]) => console.debug('[control-graph]', ...args),
     });
@@ -176,64 +178,12 @@ export const shard: SourceShard = {
     };
     ctx.contributions.register<GraphDomainContribution>(GRAPH_DOMAIN_POINT, domainContribution);
 
-    // 2. GraphViewDescriptor — binds the editor's graph slot to our asset state.
-    let inspectorHandle: InspectorBindHandle | null = null;
+    // (Slot-keyed graph + inspector contributions and toolbar actions are
+    // registered in onAppActivate — they only matter while the pipeline app
+    // is loaded, and the framework's per-app cleanup bag auto-disposes them
+    // on onAppDeactivate.)
 
-    // Pull the current selected-node binding out of the controller and push
-    // it to the inspector. Always wrapped in `untrack` because BOTH call
-    // sites (the graph bind callback and the inspector bind callback) run
-    // inside reactive scopes (their parent $effects); subscribing to graph
-    // state from there causes effect_update_depth_exceeded loops.
-    function syncInspector(): void {
-      if (!inspectorHandle || !graphController) return;
-      const ctrl = graphController;
-      const handle = inspectorHandle;
-      untrack(() => {
-        const binding = ctrl.getSelectedInspectorBinding();
-        if (binding) {
-          handle.replace({ value: binding.value, meta: binding.meta });
-        } else {
-          handle.replace({ value: null, meta: {} });
-        }
-      });
-    }
-
-    const graphDescriptor: GraphViewDescriptor = {
-      slotId: GRAPH_SLOT_ID,
-      domainId: 'sh3-pipeline:control-graph',
-      initial: state.asset,
-      onChange: (next: GraphAsset) => {
-        state.asset = next;
-      },
-      bind: (ctrl) => {
-        graphController = ctrl;
-        // selectionSubs callbacks fire outside any tracking scope, but the
-        // initial sync below runs inside this $effect — untrack inside
-        // syncInspector handles both safely.
-        ctrl.onSelectionChange(() => syncInspector());
-        syncInspector();
-      },
-    };
-    ctx.contributions.register<GraphViewDescriptor>(GRAPH_VIEW_POINT, graphDescriptor);
-
-    // 2b. Inspector binding — push the selected graph node's config into the
-    // inspector slot whenever selection changes, and route field edits back
-    // through the graph controller's onCommit (which goes through history).
-    const inspectorContribution: InspectorInstanceContribution = {
-      slotId: INSPECTOR_SLOT_ID,
-      seed: { value: null, meta: {} },
-      bind(handle) {
-        inspectorHandle = handle;
-        syncInspector();
-      },
-      onCommit(path, next) {
-        const binding = graphController?.getSelectedInspectorBinding();
-        return binding?.onCommit(path, next) ?? false;
-      },
-    };
-    ctx.contributions.register<InspectorInstanceContribution>(INSPECTOR_INSTANCE_POINT, inspectorContribution);
-
-    // 3. Toolbar view.
+    // 2. Toolbar view.
     const toolbarFactory: ViewFactory = {
       mount(container: HTMLElement, _mountCtx: MountContext): ViewHandle {
         const instance = mount(PipelineToolbar, {
@@ -369,8 +319,71 @@ export const shard: SourceShard = {
       },
     };
     ctx.registerVerb(rebuildVerb);
+  },
 
-    // 6. Actions (File + Pipeline menu, palette, keyboard).
+  onAppActivate(ctx: ShardContext, _appId: string) {
+    const state = getActiveState();
+    if (!state) return;
+
+    // Slot-keyed graph + inspector contributions — bound to GRAPH_SLOT_ID
+    // and INSPECTOR_SLOT_ID, which only exist inside the pipeline app's
+    // layout. Registering them at register() (boot) would leave dangling
+    // entries in sh3-editor's contribution registry whenever pipeline is
+    // closed, confusing other apps that consume the same slot ids.
+    let inspectorHandle: InspectorBindHandle | null = null;
+
+    // Pull the current selected-node binding out of the controller and push
+    // it to the inspector. Always wrapped in `untrack` because BOTH call
+    // sites (the graph bind callback and the inspector bind callback) run
+    // inside reactive scopes (their parent $effects); subscribing to graph
+    // state from there causes effect_update_depth_exceeded loops.
+    function syncInspector(): void {
+      if (!inspectorHandle || !graphController) return;
+      const ctrl = graphController;
+      const handle = inspectorHandle;
+      untrack(() => {
+        const binding = ctrl.getSelectedInspectorBinding();
+        if (binding) {
+          handle.replace({ value: binding.value, meta: binding.meta });
+        } else {
+          handle.replace({ value: null, meta: {} });
+        }
+      });
+    }
+
+    const graphDescriptor: GraphViewDescriptor = {
+      slotId: GRAPH_SLOT_ID,
+      domainId: 'sh3-pipeline:control-graph',
+      initial: state.asset,
+      onChange: (next: GraphAsset) => {
+        state.asset = next;
+      },
+      bind: (ctrl) => {
+        graphController = ctrl;
+        ctrl.onSelectionChange(() => syncInspector());
+        syncInspector();
+      },
+    };
+    ctx.contributions.register<GraphViewDescriptor>(GRAPH_VIEW_POINT, graphDescriptor);
+
+    const inspectorContribution: InspectorInstanceContribution = {
+      slotId: INSPECTOR_SLOT_ID,
+      seed: { value: null, meta: {} },
+      bind(handle) {
+        inspectorHandle = handle;
+        syncInspector();
+      },
+      onCommit(path, next) {
+        const binding = graphController?.getSelectedInspectorBinding();
+        return binding?.onCommit(path, next) ?? false;
+      },
+    };
+    ctx.contributions.register<InspectorInstanceContribution>(INSPECTOR_INSTANCE_POINT, inspectorContribution);
+
+    // Toolbar actions (File + Pipeline menus, palette, keyboard). Registered
+    // here so they only exist while the pipeline app is open. scope: 'app'
+    // is safe now — v3's dispatcher gates by activeAppId, and the actions
+    // are only in the registry while THIS app is active.
     const fileActions = [
       {
         id: 'sh3-pipeline:doc.new',
@@ -404,9 +417,7 @@ export const shard: SourceShard = {
     for (const a of fileActions) {
       ctx.actions.register({
         ...a,
-        // view-scope on our toolbar = "active iff the sh3-pipeline app is open".
-        // 'app' would activate on any app because the shard autostarts.
-        scope: 'view:sh3-pipeline:toolbar',
+        scope: 'app',
         menuItem: 'file',
         paletteItem: true,
       });
@@ -447,11 +458,18 @@ export const shard: SourceShard = {
     for (const a of pipelineActions) {
       ctx.actions.register({
         ...a,
-        scope: 'view:sh3-pipeline:toolbar',
+        scope: 'app',
         menuItem: 'pipeline',
         paletteItem: true,
       });
     }
+  },
+
+  onAppDeactivate(_ctx: ShardContext, _appId: string) {
+    // Slot-keyed contributions + toolbar actions auto-dispose via the
+    // per-app cleanup bag. Reset the graphController module ref — its
+    // bind callback won't fire again until the next onAppActivate.
+    graphController = null;
   },
 
   deactivate() {

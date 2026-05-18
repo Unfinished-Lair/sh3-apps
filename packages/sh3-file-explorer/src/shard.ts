@@ -24,9 +24,12 @@ export const shard: SourceShard = {
     activeStore = store;
 
     if (store.ready) {
+      // Document hydration + watcher: keep at register(). The store backs
+      // the browser view which is `standalone: true`, so it can be popped
+      // out into a float from any app — the documents list must already be
+      // populated when that happens.
       store.refreshDocuments();
       stopWatch = store.startWatch();
-      stopSelectionMirror = bindSelectionToActions(ctx, store);
 
       ctx.actions.register({
         id: 'sh3-file-explorer:document.delete',
@@ -56,6 +59,26 @@ export const shard: SourceShard = {
         return { unmount() { unmount(component); } };
       },
     });
+  },
+
+  onAppActivate(ctx: ShardContext, _appId: string) {
+    // Selection mirror is app-scoped: it writes file-explorer's local
+    // selection into ctx.actions.selection (a global, single-typed slot).
+    // Outside the owning app, another app's shard may legitimately own that
+    // slot for its own selection type — running the mirror at SH3 boot would
+    // race with that owner and trip the framework's
+    //   [sh3] Shard "..." tried to clear selection owned by "..."
+    // warning. Confining the mirror to onAppActivate scopes it correctly.
+    if (activeStore?.ready) {
+      stopSelectionMirror = bindSelectionToActions(ctx, activeStore);
+    }
+  },
+
+  onAppDeactivate(_ctx: ShardContext, _appId: string) {
+    if (stopSelectionMirror) {
+      stopSelectionMirror();
+      stopSelectionMirror = null;
+    }
   },
 
   deactivate() {

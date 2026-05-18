@@ -291,7 +291,11 @@ export const shard: SourceShard = {
     ctx.actions.register({
       id: 'sh3-ai:sketch.save',
       label: 'AI Sketch: Save…',
-      scope: ['home', 'app'],
+      // Only available while the sketch view is mounted — the action saves the
+      // open sketch, so 'home'/'app' (visible in every palette context) was
+      // over-broad. Sketch is a standalone view so the action stays registered
+      // at boot; the scope gates visibility to when somebody can actually act on it.
+      scope: `view:${SKETCH_VIEW_ID}`,
       paletteItem: true,
       contextItem: false,
       group: 'AI',

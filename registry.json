@@ -14,10 +14,10 @@
       },
       "versions": [
         {
-          "version": "0.6.2+443",
+          "version": "0.7.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/ai-0.6.2+443.sh3pkg",
-          "integrity": "sha384-FFLj/hXqeSKC7trdjP5N4Y9pbhvLA0EzVncWC9WQ5vN54TRw5xws62IFerfpQI0x"
+          "archiveUrl": "bundles/ai-0.7.0+446.sh3pkg",
+          "integrity": "sha384-zN9tBQx0nTs+p7e/2C6jZQIfoA9ZWSSzg/2KA5Np9bRH+9704udtw9A7ipPQ6T7C"
         }
       ]
     },
@@ -34,10 +34,10 @@
       },
       "versions": [
         {
-          "version": "0.4.7+443",
+          "version": "0.5.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-connector-r2-app-0.4.7+443.sh3pkg",
-          "integrity": "sha384-Fg1BvKPdrdahFBVGDR2FZ621CJDOUQTNG2B3fd73NhFCmCP1gWDuNTH4z0uIKOE6"
+          "archiveUrl": "bundles/sh3-connector-r2-app-0.5.0+446.sh3pkg",
+          "integrity": "sha384-Gw6e96KSD9tmwY1ZecRjNG6KHToPl/IZN07xm1r/mqvAIVmV+iCCBPfwNBWtwNME"
         }
       ]
     },
@@ -54,10 +54,10 @@
       },
       "versions": [
         {
-          "version": "0.2.7+443",
+          "version": "0.3.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/diagnostic-app-0.2.7+443.sh3pkg",
-          "integrity": "sha384-Tlx4o9D2sgV68Cs4AvixVzQSe25XC6e6z+mX+8KQhLVVbZYFZsOUv335tBzvFwhx"
+          "archiveUrl": "bundles/diagnostic-app-0.3.0+446.sh3pkg",
+          "integrity": "sha384-n/n6WO9H/oc/0Zlf0Wx4i8Etai84BE0shpKkgWKOaWvzhe79r4aKyxI+mSQigqZg"
         }
       ]
     },
@@ -74,10 +74,10 @@
       },
       "versions": [
         {
-          "version": "0.13.19+443",
+          "version": "0.14.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-editor-0.13.19+443.sh3pkg",
-          "integrity": "sha384-mTjR59WVc2cGBwW0vD15e4iD+Bux21YrMaoLI9XNbGtXXFUMdfR0qWnjNUQJZa02"
+          "archiveUrl": "bundles/sh3-editor-0.14.0+446.sh3pkg",
+          "integrity": "sha384-IGU5b0txZukbedasYlY6lif36cahpj0lp8ws1VaAqk6VX9RaVbxGsJM+htYR4F6z"
         }
       ]
     },
@@ -94,10 +94,10 @@
       },
       "versions": [
         {
-          "version": "0.3.14+443",
+          "version": "0.4.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/inspector-fiddle-app-0.3.14+443.sh3pkg",
-          "integrity": "sha384-bY5ONUS/Cn4/uAVNMTR3DAGv4TIBgVrfAHOFSKoi2sU1dWXxdcT1n4RN5IoZRGsR",
+          "archiveUrl": "bundles/inspector-fiddle-app-0.4.0+446.sh3pkg",
+          "integrity": "sha384-qAfvV8zFPdA9WVS0nNcin62cq3CO1nC8n1AZ3QP40Kb2bPcyRXf+z9T/qf0t9t0f",
           "requires": [
             {
               "id": "sh3-editor",
@@ -120,10 +120,10 @@
       },
       "versions": [
         {
-          "version": "0.7.7+443",
+          "version": "0.8.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-file-explorer-app-0.7.7+443.sh3pkg",
-          "integrity": "sha384-es6IrhssdyYbqP2V2uaK8p7C7n92clEIt0uTZ02/GSxcUXnc64IuItQUoAdkDcHL"
+          "archiveUrl": "bundles/sh3-file-explorer-app-0.8.0+446.sh3pkg",
+          "integrity": "sha384-BE9Ce0hFtLiYDk23Gn/DvNe9fYnh23S0cZT+ndOYhX7NmSdBfLCzy6EPvKEkO022"
         }
       ]
     },
@@ -140,10 +140,10 @@
       },
       "versions": [
         {
-          "version": "0.2.1+443",
+          "version": "0.3.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/llm-providers-0.2.1+443.sh3pkg",
-          "integrity": "sha384-SllczenXgzmjxd/wRrqPb9PcOkzidKOOgKycqWucUwiVwRkKoHiI80/wvHewNenp"
+          "archiveUrl": "bundles/llm-providers-0.3.0+446.sh3pkg",
+          "integrity": "sha384-yOimP0EYrezzuAks9lw3URdGJ+lTFCFmDqLLcfrwNjKl/HbUFYfwGN564nRBO5ms"
         }
       ]
     },
@@ -160,10 +160,10 @@
       },
       "versions": [
         {
-          "version": "0.1.4+443",
+          "version": "0.1.5+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/mock-app-0.1.4+443.sh3pkg",
-          "integrity": "sha384-lR2kp6RFoiLcZdV6X0WPWZqd1A+EzcVPSg1r/knCjf2ABUTxOiHRgm7jZJkf3sRd"
+          "archiveUrl": "bundles/mock-app-0.1.5+446.sh3pkg",
+          "integrity": "sha384-HuSv0PpSY42wFwlq+iYNoIsuGY/6Z5f5kNEqTdvxD3g0lDZXQxuq1cZg3RqJY/om"
         }
       ]
     },
@@ -180,10 +180,10 @@
       },
       "versions": [
         {
-          "version": "0.1.1+445",
+          "version": "0.2.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-pipeline-0.1.1+445.sh3pkg",
-          "integrity": "sha384-VRParZW0hEdZpzUiH9o7QcvNbVR2VlSbcjfPAmpc4mlMJgjcTJrftfIKzB8ONiC5",
+          "archiveUrl": "bundles/sh3-pipeline-0.2.0+446.sh3pkg",
+          "integrity": "sha384-wFzOkkM4QjzDVIEaAGM86Rj5Y1W76qYhxKODRUpNEAKO2Rmz0TP0aWkk95XLd0Xm",
           "requires": [
             {
               "id": "sh3-editor",
@@ -226,10 +226,10 @@
       },
       "versions": [
         {
-          "version": "0.5.1+443",
+          "version": "0.6.0+446",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-style-0.5.1+443.sh3pkg",
-          "integrity": "sha384-MRvEOd/1GTDrijsnnHsozYvbz8VnqXka3iiAgBn8jWN6oC7KeXIRZf/Cc1QZhL+4"
+          "archiveUrl": "bundles/sh3-style-0.6.0+446.sh3pkg",
+          "integrity": "sha384-b2BRCIKGwdR4aDVY8bS4/QLqAuNly4+IZp4KWETJBtzR3RPNBiTP3Yhl2C5sp6nJ"
         }
       ]
     }

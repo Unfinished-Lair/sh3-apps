@@ -45,6 +45,7 @@
       placeholder={widget?.placeholder}
       rows={widget?.rows ?? 3}
       disabled={api.readonly || meta?.readonly}
+      selectOnFocus
       oninput={commitLive}
       onchange={commitFinal}
     />

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.1 — 2026-05-19 — Inspector fields select-on-focus
+
+### Changed
+
+- **Peer-dep `sh3-core` bumped to `^0.22.5`.** Picks up the
+  `selectOnFocus` prop on `NumberInput`, `Field`, and `Textarea`.
+- `inspector/widgets/NumberWidget.svelte`,
+  `inspector/widgets/StringWidget.svelte`, and
+  `inspector/widgets/TextWidget.svelte` now pass `selectOnFocus` to their
+  sh3-core inputs so click-to-edit highlights the current value.
+
 ## 0.13.16 — 2026-05-09 — Editor keybindings move to the actions system
 
 `Editor.svelte`'s textarea owned its own keydown handler for Save, Undo,

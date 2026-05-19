@@ -48,6 +48,7 @@
       helper={widget?.helper}
       size={widget?.size ?? 'sm'}
       disabled={api.readonly || meta?.readonly}
+      selectOnFocus
       oninput={commitLive}
       onchange={commitFinal}
     />

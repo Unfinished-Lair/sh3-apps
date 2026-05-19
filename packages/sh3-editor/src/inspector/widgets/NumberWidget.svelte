@@ -47,6 +47,7 @@
       step={widget?.step ?? 1}
       precision={widget?.precision}
       disabled={api.readonly || meta?.readonly}
+      selectOnFocus
       oninput={commitLive}
       onchange={commitFinal}
     />

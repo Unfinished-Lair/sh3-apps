@@ -1,6 +1,9 @@
 import type { Tool, JsonSchema } from '../catalog/types';
 import type { DocsStore } from '../docs/store';
+import { detectMode, withMarker } from './marker';
 import type { RenderMode, SketchState } from './state';
+
+export { SH3_INLINE_MARKER } from './marker';
 
 interface MakeSketchToolsOptions {
   state: SketchState;
@@ -15,12 +18,6 @@ interface MakeSketchToolsOptions {
   isViewOpen: () => boolean;
 }
 
-/** Marker prepended to inline-mode sketches on save so the show tool can
- *  recover the original mode when re-opening by path. Plain HTML comment
- *  — invisible in both render modes. Detection is a substring scan over
- *  the first ~200 chars; presence of `sh3:inline` ⇒ inline mode. */
-export const SH3_INLINE_MARKER = '<!-- sh3:inline -->';
-const MARKER_SCAN_HEAD = 200;
 const SKETCH_DIR = 'sketches';
 const NAME_RE = /^[a-zA-Z0-9._-]+$/;
 
@@ -170,18 +167,6 @@ export function makeSketchTools(opts: MakeSketchToolsOptions): Tool[] {
       },
     },
   ];
-}
-
-function detectMode(html: string): RenderMode {
-  return html.slice(0, MARKER_SCAN_HEAD).includes('sh3:inline')
-    ? 'inline'
-    : 'isolated';
-}
-
-function withMarker(html: string, mode: RenderMode): string {
-  if (mode !== 'inline') return html;
-  if (html.slice(0, MARKER_SCAN_HEAD).includes('sh3:inline')) return html;
-  return `${SH3_INLINE_MARKER}\n${html}`;
 }
 
 function stringField(raw: unknown, key: string): string | null {

@@ -12,6 +12,9 @@
   } from '../history/commands';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
+  import {
+    getEditorPrefs, subscribeEditorPrefs, type GridStyle,
+  } from '../../settings/editor-prefs';
 
   interface Props {
     state: GraphState;
@@ -255,6 +258,31 @@
   let viewport: Viewport = $state({ x: 0, y: 0, zoom: 1 });
   let canvasEl: HTMLDivElement | null = $state(null);
 
+  // Mirror grid-style pref reactively so every open graph re-renders on edit.
+  let gridStyle: GridStyle = $state(getEditorPrefs().gridStyle);
+  $effect(() => {
+    const off = subscribeEditorPrefs((p) => { gridStyle = p.gridStyle; });
+    return off;
+  });
+
+  const GRID_BASE_PX = 20;
+  const gridBackgroundImage = $derived.by(() => {
+    const color = 'var(--sh3-grid, #2a2a2a)';
+    switch (gridStyle) {
+      case 'dots':
+        return `radial-gradient(circle, ${color} 0 1px, transparent 1.5px)`;
+      case 'none':
+        return 'none';
+      case 'cells':
+      default:
+        return [
+          `linear-gradient(${color} 1px, transparent 1px)`,
+          `linear-gradient(90deg, ${color} 1px, transparent 1px)`,
+        ].join(', ');
+    }
+  });
+  const gridSizePx = $derived(GRID_BASE_PX * viewport.zoom);
+
   const PAN_THRESHOLD_PX = 4;
 
   let panState: {
@@ -425,6 +453,9 @@
 
 <div class="graph-canvas"
      bind:this={canvasEl}
+     style:background-image={gridBackgroundImage}
+     style:background-size="{gridSizePx}px {gridSizePx}px"
+     style:background-position="{viewport.x}px {viewport.y}px"
      tabindex="0"
      onfocusin={onCanvasFocusIn}
      onpointerdowncapture={onCanvasPointerDownCapture}
@@ -501,11 +532,8 @@
 
 <style>
   .graph-canvas { position: relative; width: 100%; height: 100%; overflow: hidden;
-                  background: var(--sh3-surface-0, #161616);
-                  background-image:
-                    linear-gradient(var(--sh3-grid, #2a2a2a) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--sh3-grid, #2a2a2a) 1px, transparent 1px);
-                  background-size: 20px 20px; outline: none; }
+                  background-color: var(--sh3-surface-0, #161616);
+                  outline: none; }
   .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
   /* pointer-events:none lets clicks/drags inside the viewport's transformed

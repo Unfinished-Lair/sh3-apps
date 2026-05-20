@@ -48,7 +48,7 @@ let graphController: GraphController | null = null;
 
 const handlers = {
   exact: structuralHandlers.exact,
-  prefixed: [{ prefix: 'verb:', handler: makeVerbHandler({ hasSchema: false }) }],
+  prefixed: [{ prefix: 'verb:', handler: makeVerbHandler() }],
 };
 
 /** Route a RunLogEntry to the browser console with the right severity. */

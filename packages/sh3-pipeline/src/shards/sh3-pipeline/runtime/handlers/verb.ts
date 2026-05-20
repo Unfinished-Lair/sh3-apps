@@ -1,22 +1,34 @@
 import type { NodeHandler } from './index';
 
-export interface VerbHandlerOpts {
-  hasSchema: boolean;
-  /** When hasSchema is true, the list of output port short ids to lift from
-   *  the result object. Empty array → single 'value' scalar port. */
-  outputPortIds?: string[];
+/**
+ * Per-node verb config stamped onto each `verb:*` node by `verbsToTemplates`.
+ * - `hasInputSchema`: true when the verb declared an object-shaped input schema.
+ *   Drives structured-vs-positional dispatch.
+ * - `outputPortIds`: list of output port short ids when the verb declared an
+ *   object-shaped output schema; `[]` for a single scalar `value` port; `null`
+ *   when no output schema was declared (use 4-port fallback shape).
+ */
+interface VerbNodeConfig {
+  shardId?: unknown;
+  name?: unknown;
+  hasInputSchema?: unknown;
+  outputPortIds?: unknown;
 }
 
-export function makeVerbHandler(opts: VerbHandlerOpts): NodeHandler {
+export function makeVerbHandler(): NodeHandler {
   return async (ctx, inv) => {
-    const shardId = String(inv.config.shardId ?? '');
-    const name = String(inv.config.name ?? '');
+    const cfg = inv.config as VerbNodeConfig;
+    const shardId = String(cfg.shardId ?? '');
+    const name = String(cfg.name ?? '');
     if (!shardId || !name) {
       throw new Error(`verb node ${inv.nodeId}: missing shardId/name in config`);
     }
 
+    const hasInputSchema = cfg.hasInputSchema === true;
+    const outputPortIds = normalizeOutputPortIds(cfg.outputPortIds);
+
     let runResult: { result: unknown; scrollback: unknown[] };
-    if (opts.hasSchema) {
+    if (hasInputSchema) {
       const structured: Record<string, unknown> = { ...inv.inputs };
       runResult = await ctx.invokeVerb(shardId, name, [], { signal: ctx.signal, structured });
     } else {
@@ -40,12 +52,18 @@ export function makeVerbHandler(opts: VerbHandlerOpts): NodeHandler {
       });
     }
 
-    const outputs = opts.hasSchema
-      ? mapStructuredOutputs(runResult.result, opts.outputPortIds ?? [])
-      : mapFallbackOutputs(runResult);
+    const outputs = outputPortIds === null
+      ? mapFallbackOutputs(runResult)
+      : mapStructuredOutputs(runResult.result, outputPortIds);
 
     return { outputs, next: 'control-out' };
   };
+}
+
+function normalizeOutputPortIds(v: unknown): string[] | null {
+  if (v === null || v === undefined) return null;
+  if (!Array.isArray(v)) return null;
+  return v.filter((x): x is string => typeof x === 'string');
 }
 
 function scrollbackLevel(rec: Record<string, unknown>): 'debug' | 'info' | 'warn' | 'error' {

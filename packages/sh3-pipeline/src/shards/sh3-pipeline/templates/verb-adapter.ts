@@ -19,8 +19,8 @@ function port(
 
 export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemplate[] {
   return verbs.map((v) => {
-    const inputPorts = buildInputPorts(v);
-    const outputPorts = buildOutputPorts(v);
+    const { ports: inputPorts, hasInputSchema } = buildInputPorts(v);
+    const { ports: outputPorts, outputPortIds } = buildOutputPorts(v);
     return {
       type: `verb:${v.shardId}:${v.name}`,
       category: 'Verbs',
@@ -33,41 +33,48 @@ export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemp
         shardId: v.shardId,
         name: v.name,
         summary: v.summary ?? '',
+        // Per-node schema awareness — the runtime handler reads these to
+        // decide structured-vs-positional dispatch and output mapping.
+        // outputPortIds === null means "no output schema, use fallback ports".
+        hasInputSchema,
+        outputPortIds,
       },
     };
   });
 }
 
-function buildInputPorts(v: VerbDescriptor): GraphAssetPort[] {
+function buildInputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; hasInputSchema: boolean } {
   const ports: GraphAssetPort[] = [port('control-in', 'input', 'control', 'control')];
   const input = (v.schema?.input ?? null) as { type?: string; properties?: Record<string, unknown> } | null;
   if (input && input.type === 'object' && input.properties && typeof input.properties === 'object') {
     for (const [key, prop] of Object.entries(input.properties)) {
       ports.push(port(key, 'input', dataTypeFromJsonSchema(prop), key));
     }
-    return ports;
+    return { ports, hasInputSchema: true };
   }
   ports.push(port('args', 'input', 'string', 'args'));
-  return ports;
+  return { ports, hasInputSchema: false };
 }
 
-function buildOutputPorts(v: VerbDescriptor): GraphAssetPort[] {
+function buildOutputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; outputPortIds: string[] | null } {
   const ports: GraphAssetPort[] = [port('control-out', 'output', 'control', 'control')];
   const output = (v.schema?.output ?? null) as { type?: string; properties?: Record<string, unknown> } | null;
 
   if (output && output.type === 'object' && output.properties && typeof output.properties === 'object') {
+    const ids: string[] = [];
     for (const [key, prop] of Object.entries(output.properties)) {
       ports.push(port(key, 'output', dataTypeFromJsonSchema(prop), key));
+      ids.push(key);
     }
-    return ports;
+    return { ports, outputPortIds: ids };
   }
   if (output) {
     ports.push(port('value', 'output', dataTypeFromJsonSchema(output), 'value'));
-    return ports;
+    return { ports, outputPortIds: [] };
   }
   ports.push(port('result', 'output', 'unknown', 'result'));
   ports.push(port('stdout', 'output', 'string', 'stdout'));
   ports.push(port('stderr', 'output', 'string', 'stderr'));
   ports.push(port('scrollback', 'output', 'array', 'scrollback'));
-  return ports;
+  return { ports, outputPortIds: null };
 }

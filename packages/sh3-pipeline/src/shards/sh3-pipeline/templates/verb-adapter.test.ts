@@ -79,4 +79,67 @@ describe('verbsToTemplates', () => {
     const t = verbsToTemplates([{ shardId: 'ai', name: 'ai:ask', summary: 'Ask the AI' }])[0];
     expect(t.defaultConfig).toMatchObject({ shardId: 'ai', name: 'ai:ask', summary: 'Ask the AI' });
   });
+
+  describe('defaultConfig schema metadata (drives runtime dispatch)', () => {
+    it('no schema → hasInputSchema:false, outputPortIds:null', () => {
+      const t = verbsToTemplates([{ shardId: 'ai', name: 'ai:ask', summary: 'Ask' }])[0];
+      expect(t.defaultConfig).toMatchObject({
+        hasInputSchema: false,
+        outputPortIds: null,
+      });
+    });
+
+    it('object input + object output → hasInputSchema:true, outputPortIds lists props', () => {
+      const t = verbsToTemplates([{
+        shardId: 'demo',
+        name: 'demo:do',
+        summary: 'Do',
+        schema: {
+          input:  { type: 'object', properties: { topic: { type: 'string' } } },
+          output: { type: 'object', properties: { answer: { type: 'string' }, count: { type: 'number' } } },
+        },
+      }])[0];
+      expect(t.defaultConfig).toMatchObject({
+        hasInputSchema: true,
+        outputPortIds: ['answer', 'count'],
+      });
+    });
+
+    it('input schema only (dirt-cli shape) → hasInputSchema:true, outputPortIds:null', () => {
+      const t = verbsToTemplates([{
+        shardId: 'dirt',
+        name: 'dirt-cli',
+        summary: 'Run',
+        schema: {
+          input: {
+            type: 'object',
+            properties: {
+              tool: { type: 'string' },
+              args: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      }])[0];
+      expect(t.defaultConfig).toMatchObject({
+        hasInputSchema: true,
+        outputPortIds: null,
+      });
+    });
+
+    it('scalar output schema → outputPortIds is empty array (single `value` port)', () => {
+      const t = verbsToTemplates([{
+        shardId: 'demo',
+        name: 'demo:do',
+        summary: 'Do',
+        schema: {
+          input: { type: 'object', properties: {} },
+          output: { type: 'string' },
+        },
+      }])[0];
+      expect(t.defaultConfig).toMatchObject({
+        hasInputSchema: true,
+        outputPortIds: [],
+      });
+    });
+  });
 });

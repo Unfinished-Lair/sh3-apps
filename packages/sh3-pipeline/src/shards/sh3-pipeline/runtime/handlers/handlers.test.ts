@@ -146,11 +146,16 @@ describe('verbHandler — fallback (no schema)', () => {
         };
       },
     });
-    const handler = makeVerbHandler({ hasSchema: false });
+    const handler = makeVerbHandler();
     const outcome = await handler(ctx, {
       nodeId: 'v',
       type: 'verb:demo:demo:do',
-      config: { shardId: 'demo', name: 'demo:do' },
+      config: {
+        shardId: 'demo',
+        name: 'demo:do',
+        hasInputSchema: false,
+        outputPortIds: null,
+      },
       inputs: { args: 'arg1 arg2' },
     });
     expect(outcome.next).toBe('control-out');
@@ -158,6 +163,24 @@ describe('verbHandler — fallback (no schema)', () => {
     expect(outcome.outputs.stdout).toBe('hello world');
     expect(outcome.outputs.stderr).toBe('oops');
     expect(Array.isArray(outcome.outputs.scrollback)).toBe(true);
+  });
+
+  it('treats missing schema fields as no-schema (back-compat for legacy configs)', async () => {
+    const ctx: RunContext = ctxStub({
+      invokeVerb: async (_s, _n, args, opts) => {
+        expect(args).toEqual([]);
+        expect(opts?.structured).toBeUndefined();
+        return { result: 'x', scrollback: [] };
+      },
+    });
+    const handler = makeVerbHandler();
+    const outcome = await handler(ctx, {
+      nodeId: 'v',
+      type: 'verb:demo:demo:do',
+      config: { shardId: 'demo', name: 'demo:do' },
+      inputs: {},
+    });
+    expect(outcome.outputs.result).toBe('x');
   });
 });
 
@@ -170,17 +193,75 @@ describe('verbHandler — structured', () => {
         return { result: { answer: 'ok', count: 3 }, scrollback: [] };
       },
     });
-    const handler = makeVerbHandler({
-      hasSchema: true,
-      outputPortIds: ['answer', 'count'],
-    });
+    const handler = makeVerbHandler();
     const outcome = await handler(ctx, {
       nodeId: 'v',
       type: 'verb:demo:demo:do',
-      config: { shardId: 'demo', name: 'demo:do' },
+      config: {
+        shardId: 'demo',
+        name: 'demo:do',
+        hasInputSchema: true,
+        outputPortIds: ['answer', 'count'],
+      },
       inputs: { topic: 'cats', count: 3 },
     });
     expect(outcome.outputs).toEqual({ answer: 'ok', count: 3 });
     expect(outcome.next).toBe('control-out');
+  });
+
+  it('input-schema-only verb: dispatches structured but maps outputs via fallback shape', async () => {
+    // Mirrors dirt-cli: schema.input declares { tool, args } but there is no
+    // schema.output, so outputPortIds === null and the runner must surface
+    // result/stdout/stderr/scrollback.
+    const ctx: RunContext = ctxStub({
+      invokeVerb: async (shardId, name, args, opts) => {
+        expect(shardId).toBe('dirt');
+        expect(name).toBe('dirt-cli');
+        expect(args).toEqual([]);
+        expect(opts?.structured).toEqual({ tool: 'gamecontent', args: ['--list'] });
+        return {
+          result: { exitCode: 0 },
+          scrollback: [
+            { kind: 'text', stream: 'stdout', chunks: ['ran'], ts: 0 },
+          ],
+        };
+      },
+    });
+    const handler = makeVerbHandler();
+    const outcome = await handler(ctx, {
+      nodeId: 'v',
+      type: 'verb:dirt:dirt-cli',
+      config: {
+        shardId: 'dirt',
+        name: 'dirt-cli',
+        hasInputSchema: true,
+        outputPortIds: null,
+      },
+      inputs: { tool: 'gamecontent', args: ['--list'] },
+    });
+    expect(outcome.outputs.result).toEqual({ exitCode: 0 });
+    expect(outcome.outputs.stdout).toBe('ran');
+  });
+
+  it('scalar output schema: lifts result to a single `value` port', async () => {
+    const ctx: RunContext = ctxStub({
+      invokeVerb: async (_s, _n, _a, opts) => {
+        expect(opts?.structured).toEqual({ x: 1 });
+        return { result: 'hello', scrollback: [] };
+      },
+    });
+    const handler = makeVerbHandler();
+    const outcome = await handler(ctx, {
+      nodeId: 'v',
+      type: 'verb:demo:demo:do',
+      config: {
+        shardId: 'demo',
+        name: 'demo:do',
+        hasInputSchema: true,
+        outputPortIds: [],
+      },
+      inputs: { x: 1 },
+    });
+    expect(outcome.outputs).toEqual({ value: 'hello' });
   });
 });

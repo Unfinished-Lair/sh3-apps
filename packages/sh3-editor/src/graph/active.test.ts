@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  setActiveGraph, getActiveGraph, clearActiveGraphIf,
+  setActiveGraph, getActiveGraph, clearActiveGraphIf, onActiveGraphChange,
   type ActiveGraphRef,
 } from './active';
 
@@ -16,6 +16,8 @@ function makeRef(): ActiveGraphRef {
     zoomReset() {},
     fitContent() {},
     dismissPalette() {},
+    insertNodeFromTemplate() {},
+    getRecentDrop() { return null; },
   };
 }
 
@@ -69,6 +71,36 @@ describe('graph/active', () => {
     getActiveGraph()?.fitContent();
     getActiveGraph()?.dismissPalette();
     expect(calls).toEqual(['zoomIn', 'zoomOut', 'zoomReset', 'fitContent', 'dismissPalette']);
+    clearActiveGraphIf(ref);
+  });
+
+  it('onActiveGraphChange fires on setActiveGraph with the new ref', () => {
+    const seen: (ActiveGraphRef | null)[] = [];
+    const ref = makeRef();
+    const unsubscribe = onActiveGraphChange((r) => seen.push(r));
+    setActiveGraph(ref);
+    expect(seen).toEqual([ref]);
+    unsubscribe();
+    clearActiveGraphIf(ref);
+  });
+
+  it('onActiveGraphChange fires with null on clear', () => {
+    const seen: (ActiveGraphRef | null)[] = [];
+    const ref = makeRef();
+    setActiveGraph(ref);
+    const unsubscribe = onActiveGraphChange((r) => seen.push(r));
+    clearActiveGraphIf(ref);
+    expect(seen).toEqual([null]);
+    unsubscribe();
+  });
+
+  it('onActiveGraphChange unsubscribe stops notifications', () => {
+    const seen: (ActiveGraphRef | null)[] = [];
+    const unsubscribe = onActiveGraphChange((r) => seen.push(r));
+    unsubscribe();
+    const ref = makeRef();
+    setActiveGraph(ref);
+    expect(seen).toEqual([]);
     clearActiveGraphIf(ref);
   });
 });

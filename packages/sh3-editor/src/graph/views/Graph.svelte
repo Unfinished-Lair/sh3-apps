@@ -313,6 +313,7 @@
     if (ev.target !== ev.currentTarget) return;
     const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+    paletteDropAtTimestamp = Date.now();
     if (props.domain.useNodePalette) {
       // Keep palette anchor in screen-pixel space for layout (palette is outside .viewport),
       // but stash the graph-space drop point for onPalettePick.
@@ -324,6 +325,7 @@
   }
 
   let paletteDropAt: { x: number; y: number } | null = $state(null);
+  let paletteDropAtTimestamp = $state(0);
 
   function addFreeformAt(g: { x: number; y: number }) {
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -337,21 +339,54 @@
     props.onAssetChanged?.();
   }
 
-  function onPalettePick(t: NodeTemplate) {
-    const drop = paletteDropAt;
-    if (!drop) return;
+  const RECENT_DROP_WINDOW_MS = 5000;
+
+  function viewportGraphCenter(): { x: number; y: number } {
+    if (!canvasEl) return { x: 0, y: 0 };
+    const cx = canvasEl.clientWidth / 2;
+    const cy = canvasEl.clientHeight / 2;
+    return {
+      x: (cx - viewport.x) / viewport.zoom,
+      y: (cy - viewport.y) / viewport.zoom,
+    };
+  }
+
+  function getRecentDrop(): { x: number; y: number } | null {
+    if (!paletteDropAt) return null;
+    if (Date.now() - paletteDropAtTimestamp > RECENT_DROP_WINDOW_MS) return null;
+    return paletteDropAt;
+  }
+
+  function insertNodeFromTemplate(
+    templateType: string,
+    at?: { x: number; y: number },
+  ): void {
+    if (props.state.readonly) return;
+    const tpl = props.domain.getTemplates().find((t) => t.type === templateType);
+    if (!tpl) return;
+    const drop = at ?? getRecentDrop() ?? viewportGraphCenter();
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const ports: GraphAssetPort[] = t.ports.map((p) => ({ ...p, id: `${id}_${p.id}` }));
+    const ports: GraphAssetPort[] = tpl.ports.map((p) => ({ ...p, id: `${id}_${p.id}` }));
     const node: GraphAssetNode = {
-      id, type: t.type,
+      id, type: tpl.type,
       position: { ...drop },
-      config: { ...t.defaultConfig },
+      config: { ...tpl.defaultConfig },
       ports,
     };
     const cmd = makeAddNodeCommand(props.state, props.domain, node);
     cmd.apply();
     props.history.push(cmd);
     props.onAssetChanged?.();
+    props.state.selection.clear();
+    props.state.selection.add(id);
+    props.state.revision++;
+    props.onSelectionChange?.([id]);
+  }
+
+  function onPalettePick(t: NodeTemplate) {
+    const drop = paletteDropAt;
+    if (!drop) return;
+    insertNodeFromTemplate(t.type, drop);
     palette = null;
     paletteDropAt = null;
   }
@@ -410,6 +445,8 @@
     zoomReset: () => zoomReset(),
     fitContent: () => doFitContent(),
     dismissPalette: () => dismissPalette(),
+    insertNodeFromTemplate: (type, at) => insertNodeFromTemplate(type, at),
+    getRecentDrop,
   };
 
   $effect(() => {

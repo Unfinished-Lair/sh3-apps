@@ -14,7 +14,7 @@ import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
 import Sketch from './ai/sketch/Sketch.svelte';
-import { withMarker } from './ai/sketch/marker';
+import { withMarker, detectMode } from './ai/sketch/marker';
 import Edit from './assistant/Edit.svelte';
 import * as assistant from './assistant/mode';
 import { runOneShotStream } from './assistant/runOneShotStream';
@@ -257,6 +257,32 @@ export const shard: SourceShard = {
       }
     }
 
+    async function openSketchViaPicker(): Promise<void> {
+      const result = await ctx.documentPicker.open();
+      if (!result) return; // cancelled or dismissed
+      if (result.kind === 'folder') {
+        sh3.toast.notify('AI Sketch: pick a file, not a folder.', { level: 'warn' });
+        return;
+      }
+      const absPath = `${result.shardId}/${result.path}`;
+      let content: string | null;
+      try {
+        content = await docsStore.read(absPath);
+      } catch (err) {
+        sh3.toast.notify(
+          `AI Sketch: load failed: ${err instanceof Error ? err.message : String(err)}`,
+          { level: 'error' },
+        );
+        return;
+      }
+      if (content === null) {
+        sh3.toast.notify(`AI Sketch: file not found: ${absPath}.`, { level: 'warn' });
+        return;
+      }
+      sketchState.set({ html: content, mode: detectMode(content) });
+      focusOrOpenSketch();
+    }
+
     const sketchFactory: ViewFactory = {
       mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
         const instance = mount(Sketch, {
@@ -279,6 +305,17 @@ export const shard: SourceShard = {
       contextItem: false,
       group: 'AI',
       run() { focusOrOpenSketch(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-ai:sketch.browse',
+      label: 'AI Sketch: Browse…',
+      scope: ['home', 'app'],
+      paletteItem: true,
+      contextItem: false,
+      group: 'AI',
+      aiInvocable: false,
+      run() { openSketchViaPicker(); },
     });
 
     ctx.actions.register({

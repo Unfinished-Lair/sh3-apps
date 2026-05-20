@@ -264,7 +264,17 @@ export const shard: SourceShard = {
         sh3.toast.notify('AI Sketch: pick a file, not a folder.', { level: 'warn' });
         return;
       }
-      const absPath = `${result.shardId}/${result.path}`;
+      // Picker returns the shard-relative path INCLUDING the 'docs/' prefix
+      // (e.g. 'docs/deepseek/sketches/foo.html'). DocsStore.read expects the
+      // path RELATIVE to 'docs/', so strip the prefix here.
+      if (!result.path.startsWith('docs/')) {
+        sh3.toast.notify(
+          `AI Sketch: '${result.path}' is outside the docs zone.`,
+          { level: 'warn' },
+        );
+        return;
+      }
+      const absPath = result.path.slice('docs/'.length);
       let content: string | null;
       try {
         content = await docsStore.read(absPath);

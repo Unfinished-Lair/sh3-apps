@@ -45,6 +45,11 @@ export interface GraphViewDescriptor {
   /** Read-only mode. */
   readonly?: boolean;
 
+  /** Show the toolbar's node-picker button. Default true. Set false for
+   *  read-only views, embedded previews, or any surface where the user
+   *  should not be able to insert nodes from a separate picker. */
+  showNodePicker?: boolean;
+
   /** Inspector commit override — called BEFORE the graph history command
    *  runs. Returning true skips the graph history push. */
   onCommit?: (

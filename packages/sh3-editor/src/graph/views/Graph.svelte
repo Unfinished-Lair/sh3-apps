@@ -15,6 +15,7 @@
   import {
     getEditorPrefs, subscribeEditorPrefs, type GridStyle,
   } from '../../settings/editor-prefs';
+  import { sh3 } from 'sh3-core';
 
   interface Props {
     state: GraphState;
@@ -22,6 +23,8 @@
     history: HistoryController;
     onSelectionChange?: (ids: string[]) => void;
     onAssetChanged?: () => void;
+    /** Default true — toolbar's "Show node picker" button. */
+    showNodePicker?: boolean;
   }
   const props: Props = $props();
 
@@ -430,6 +433,34 @@
   }
   function dismissPalette() { palette = null; paletteDropAt = null; }
 
+  const PICKER_VIEW_ID = 'sh3-editor:graph-node-picker';
+
+  function floatHostsPicker(content: unknown): boolean {
+    // Non-dismissable floats wrap their view in a TabsNode (single tab) so
+    // it can be dragged into the docked tree; dismissable floats use a bare
+    // SlotNode. We check both so toggling stays correct either way.
+    if (!content || typeof content !== 'object') return false;
+    const c = content as { type?: string; viewId?: string;
+                          tabs?: { viewId?: string }[] };
+    if (c.type === 'slot' && c.viewId === PICKER_VIEW_ID) return true;
+    if (c.type === 'tabs' && Array.isArray(c.tabs)) {
+      return c.tabs.some((t) => t.viewId === PICKER_VIEW_ID);
+    }
+    return false;
+  }
+
+  function openNodePicker(): void {
+    const existing = sh3.float.list().find((f) => floatHostsPicker(f.content));
+    if (existing) {
+      sh3.float.focus(existing.id);
+      return;
+    }
+    sh3.float.open(PICKER_VIEW_ID, {
+      title: 'Nodes',
+      size: { w: 280, h: 420 },
+    });
+  }
+
   // Active-graph wiring. Keyboard shortcuts (Delete, Mod+Z/Y, Mod+Shift+Z,
   // viewport ops, Escape) are registered as SH3 actions in shard.ts with
   // scope 'focus:sh3-editor:graph'; their handlers read getActiveGraph() to
@@ -585,10 +616,12 @@
   {/if}
   <GraphToolbar
     zoom={viewport.zoom}
+    showNodePicker={props.showNodePicker ?? true}
     onZoomIn={() => zoomIn()}
     onZoomOut={() => zoomOut()}
     onZoomReset={() => zoomReset()}
     onFit={() => doFitContent()}
+    onOpenNodePicker={openNodePicker}
   />
 </div>
 

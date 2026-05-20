@@ -1,16 +1,23 @@
 <script lang="ts">
   interface Props {
     zoom: number;
+    showNodePicker?: boolean;
     onZoomIn: () => void;
     onZoomOut: () => void;
     onZoomReset: () => void;
     onFit: () => void;
+    onOpenNodePicker?: () => void;
   }
   const props: Props = $props();
   const pct = $derived(`${Math.round(props.zoom * 100)}%`);
+  const showPickerBtn = $derived((props.showNodePicker ?? true) && !!props.onOpenNodePicker);
 </script>
 
 <div class="toolbar" role="toolbar" aria-label="Graph viewport">
+  {#if showPickerBtn}
+    <button type="button" title="Show node picker" onclick={() => props.onOpenNodePicker?.()}>⊞</button>
+    <div class="sep"></div>
+  {/if}
   <button type="button" title="Zoom out (Mod+-)"  onclick={() => props.onZoomOut()}>−</button>
   <button type="button" title="Reset zoom (Mod+0)" class="zoom-label" onclick={() => props.onZoomReset()}>{pct}</button>
   <button type="button" title="Zoom in (Mod+=)"   onclick={() => props.onZoomIn()}>+</button>
@@ -24,12 +31,20 @@
     right: 8px;
     z-index: 5;
     display: flex;
+    align-items: center;
     gap: 2px;
     background: var(--sh3-surface-1, #1f1f1f);
     border: 1px solid var(--sh3-border, #444);
     border-radius: 4px;
     padding: 2px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+  .sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 2px 2px;
+    background: var(--sh3-border, #444);
+    opacity: 0.6;
   }
   button {
     min-width: 24px;

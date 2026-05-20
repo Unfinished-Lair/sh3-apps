@@ -95,6 +95,7 @@
     state={graphState}
     domain={graphDomain}
     history={history}
+    showNodePicker={binding.kind === 'descriptor' ? (binding.descriptor.showNodePicker ?? true) : true}
     onSelectionChange={(ids) => {
       // Re-route through the controller so its onSelectionChange
       // subscribers (e.g. the inspector binding) get notified. The

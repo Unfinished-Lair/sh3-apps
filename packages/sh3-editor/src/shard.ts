@@ -38,6 +38,11 @@ import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
 import { bindInspector } from './inspector-binding';
 import { registerBuiltinWidgets } from './inspector/widgets/register';
+import { SETTINGS_POINT, type SettingsDescriptor } from './settings/contributions';
+import {
+  getEditorPrefs, setGridStyle, subscribeEditorPrefs, hydrateEditorPrefs,
+  type GridStyle,
+} from './settings/editor-prefs';
 
 let registry: InstanceRegistry | null = null;
 let apiRef: EditorApi | null = null;
@@ -49,6 +54,8 @@ let unregisterBuiltinWidgets: (() => void) | null = null;
 let unregisterColorContribution: (() => void) | null = null;
 let domainRegistry: ReturnType<typeof createDomainRegistry> | null = null;
 let unsubscribeDomainContributions: (() => void) | null = null;
+let unregisterSettingsDescriptor: (() => void) | null = null;
+let unsubscribeEditorPrefs: (() => void) | null = null;
 
 export function getApi(): EditorApi | null {
   return apiRef;
@@ -312,6 +319,53 @@ export const shard: SourceShard = {
         };
       },
     });
+
+    // ---- Editor preferences -------------------------------------------------
+    // Hydrate from disk synchronously-best-effort: ctx.documents is async, so
+    // initial state comes from DEFAULT_EDITOR_PREFS; the readJson resolves
+    // shortly after and updates in place via hydrateEditorPrefs (no subscriber
+    // notification). Save-on-change is wired via subscribeEditorPrefs.
+    void (async () => {
+      try {
+        const blob = await ctx.documents.readJson('editor-prefs.json');
+        if (blob !== null) hydrateEditorPrefs(blob);
+      } catch {
+        // Corrupt or unreadable — stay at defaults silently.
+      }
+    })();
+
+    unsubscribeEditorPrefs = subscribeEditorPrefs((prefs) => {
+      void ctx.documents.writeJson('editor-prefs.json', prefs).catch(() => {
+        // Persistence is best-effort; in-memory value is authoritative for the session.
+      });
+    });
+
+    const settingsDescriptor: SettingsDescriptor = {
+      shardId: 'sh3-editor',
+      label: 'Graph',
+      schema: [
+        {
+          key: 'gridStyle',
+          label: 'Grid style',
+          description: 'Background grid rendered behind graph nodes.',
+          type: 'enum',
+          options: [
+            { value: 'cells', label: 'Cells' },
+            { value: 'dots',  label: 'Dots' },
+            { value: 'none',  label: 'None' },
+          ],
+        },
+      ],
+      getValues: () => ({ gridStyle: getEditorPrefs().gridStyle }),
+      onEdit: (key, value) => {
+        if (key === 'gridStyle' && typeof value === 'string') {
+          setGridStyle(value as GridStyle);
+        }
+      },
+      subscribe: (cb) => subscribeEditorPrefs(() => cb()),
+    };
+    unregisterSettingsDescriptor =
+      ctx.contributions.register<SettingsDescriptor>(SETTINGS_POINT, settingsDescriptor);
 
     domainRegistry = createDomainRegistry();
     const refreshDomainContributions = () => {
@@ -620,6 +674,10 @@ export const shard: SourceShard = {
   },
 
   deactivate() {
+    unregisterSettingsDescriptor?.();
+    unregisterSettingsDescriptor = null;
+    unsubscribeEditorPrefs?.();
+    unsubscribeEditorPrefs = null;
     unsubscribeDomainContributions?.();
     unsubscribeDomainContributions = null;
     domainRegistry?.clear();

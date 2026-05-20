@@ -24,6 +24,7 @@ import ColorRenderer from './inspector/color-renderer.svelte';
 import Settings from './settings/Settings.svelte';
 import Help from './views/Help.svelte';
 import GraphHost from './graph/views/GraphHost.svelte';
+import GraphNodePicker from './graph/views/GraphNodePicker.svelte';
 import PopupPickWrapper from './color-picker/PopupPickWrapper.svelte';
 import type { ColorPickViewMeta } from './color-picker/popup-pick';
 import { createDomainRegistry } from './graph/domain/registry';
@@ -74,6 +75,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
       { id: 'sh3-editor:help',         label: 'Help',         standalone: true },
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
+      { id: 'sh3-editor:graph-node-picker', label: 'Graph Node Picker', standalone: true },
     ],
   },
 
@@ -409,6 +411,16 @@ export const shard: SourceShard = {
             offDescChange();
             if (component) { unmount(component); component = null; }
           },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-editor:graph-node-picker', {
+      mount(container) {
+        const component = mount(GraphNodePicker, { target: container, props: {} });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
         };
       },
     });

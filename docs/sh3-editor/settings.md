@@ -1,7 +1,7 @@
 # sh3-editor — Settings View
 
-**Package:** `@unfinished-lair/sh3-editor` (≥ 0.5.0)
-**Peer:** `sh3-core` ^0.10.4
+**Package:** `@unfinished-lair/sh3-editor` (≥ 0.14.1)
+**Peer:** `sh3-core` ^0.22.5 (v3 shard contract)
 **View id:** `sh3-editor:settings`
 **Contribution point:** `sh3-editor.settings`
 
@@ -9,9 +9,11 @@
 
 ## 1. What it is
 
-A reusable, universal settings page for SH3 apps. Any shard active in the running app registers a declarative `SettingsDescriptor` at the `sh3-editor.settings` contribution point; the view renders one section per descriptor with typed field primitives (toggle, text, number, slider, segmented-enum). Contributing shards never expose their state zones to `sh3-editor` — all reads go through `getValues()`, all writes go through `onEdit(key, value)`.
+A reusable, universal settings page for SH3 apps. A shard registers a declarative `SettingsDescriptor` at the `sh3-editor.settings` contribution point; the view renders one section per descriptor with typed field primitives (toggle, text, number, slider, segmented-enum). Contributing shards never expose their state zones to `sh3-editor` — all reads go through `getValues()`, all writes go through `onEdit(key, value)`.
 
-Scope is **per-app by construction**. SH3 activates one app's shards at a time, and `ctx.contributions` auto-cleans registrations on deactivate. The view therefore shows only the currently-active shards' contributions; switching apps rotates the visible settings automatically. No filter logic in the view.
+**Scoping is the contributor's responsibility.** The view does no filtering — it simply lists everything in `sh3-editor.settings`. To get per-app scope (the usual case — you want your section visible only while your app is the active one), register inside `onAppActivate(ctx, appId)`; the framework auto-releases the registration on `onAppDeactivate`, and the view re-lists automatically.
+
+Registering in `register(ctx)` instead is allowed — but the descriptor then lives for the whole SH3 session and shows up in **every** app's Settings view. That is almost never what you want. Use `onAppActivate` unless you specifically want a global section.
 
 When **only one** shard contributes, the per-section header is elided — the user sees a clean flat field list. When **two or more** contribute, each section gets an `<h3>` label so the grouping is clear.
 
@@ -56,7 +58,7 @@ A tagged union. Every variant carries `key` (unique per descriptor), `label`, an
 
 ## 3. Registering a descriptor
 
-From any active shard's `activate(ctx)`:
+Register inside `onAppActivate(ctx, appId)` so the section is bound to the lifetime of the active app. `ctx.state` (and any other zones the descriptor reads from) is typically declared once in `register(ctx)` and captured by closure — only the contribution registration belongs in `onAppActivate`.
 
 ```ts
 import {
@@ -64,35 +66,48 @@ import {
   type SettingsDescriptor,
 } from '@unfinished-lair/sh3-editor/settings/contributions';
 
-activate(ctx) {
-  const state = ctx.state({
-    prefs: { theme: 'dark' as 'dark' | 'light', autoSaveSec: 60, bucket: 'my-backups' },
-  });
+export const shard: SourceShard = {
+  manifest: { /* … */ },
 
-  ctx.contributions.register<SettingsDescriptor>(SETTINGS_POINT, {
-    shardId: 'my-shard',
-    label: 'My Shard',
-    schema: [
-      { key: 'theme', label: 'Theme', type: 'enum', description: 'Interface color scheme',
-        options: [
-          { value: 'dark',  label: 'Dark' },
-          { value: 'light', label: 'Light' },
-        ] },
-      { key: 'autoSaveSec', label: 'Auto-save interval', type: 'number-range',
-        min: 10, max: 300, step: 5, unit: 's' },
-      { key: 'bucket', label: 'Bucket name', type: 'string', placeholder: 'my-bucket' },
-    ],
-    getValues: () => ({ ...state.prefs }),
-    onEdit: (key, value) => {
-      if (key === 'bucket' && typeof value === 'string' && /[^a-z0-9-]/.test(value)) {
-        throw new Error('Lowercase letters, digits and dashes only');
-      }
-      (state.prefs as any)[key] = value;
-    },
-  });
-  // Framework auto-unregisters on deactivate — no need to capture the return value.
-}
+  register(ctx) {
+    // State zones live for the whole SH3 session — declare them once here.
+    const state = ctx.state({
+      prefs: { theme: 'dark' as 'dark' | 'light', autoSaveSec: 60, bucket: 'my-backups' },
+    });
+    // Stash for onAppActivate to reach.
+    (this as any)._state = state;
+  },
+
+  onAppActivate(ctx, _appId) {
+    const state = (this as any)._state;
+
+    ctx.contributions.register<SettingsDescriptor>(SETTINGS_POINT, {
+      shardId: 'my-shard',
+      label: 'My Shard',
+      schema: [
+        { key: 'theme', label: 'Theme', type: 'enum', description: 'Interface color scheme',
+          options: [
+            { value: 'dark',  label: 'Dark' },
+            { value: 'light', label: 'Light' },
+          ] },
+        { key: 'autoSaveSec', label: 'Auto-save interval', type: 'number-range',
+          min: 10, max: 300, step: 5, unit: 's' },
+        { key: 'bucket', label: 'Bucket name', type: 'string', placeholder: 'my-bucket' },
+      ],
+      getValues: () => ({ ...state.prefs }),
+      onEdit: (key, value) => {
+        if (key === 'bucket' && typeof value === 'string' && /[^a-z0-9-]/.test(value)) {
+          throw new Error('Lowercase letters, digits and dashes only');
+        }
+        (state.prefs as any)[key] = value;
+      },
+    });
+    // Framework auto-releases on onAppDeactivate — no need to capture the disposer.
+  },
+};
 ```
+
+> If the same shard contributes settings for several apps with different schemas, branch on `appId` inside `onAppActivate` and register a different descriptor per app. The auto-release on `onAppDeactivate` keeps that book-keeping zero-cost.
 
 ### Consumer side — mounting the view
 
@@ -119,9 +134,10 @@ Or embed the view directly in a tab node, a side panel, or any other layout prim
 
 ## 4. Lifecycle
 
-- **Activation.** When a shard registers a descriptor, the Settings view (if mounted) re-lists via `ctx.contributions.onChange`. Previously-unknown contributors appear live; their initial values are pulled via `getValues()` and rendered.
-- **Deactivation.** `ctx.contributions` auto-unregisters a shard's descriptor when the shard deactivates. The view re-lists and drops that section; any inline error entries scoped to that `shardId` are pruned.
-- **App switches.** Because SH3 activates one app's shards at a time, switching apps triggers the deactivation/activation sequence above for every shard — the Settings view effectively resets to the new app's contributors without any caller action.
+- **App activation.** When the host app becomes active, every shard in its `requiredShards` fires `onAppActivate(ctx, appId)`. Registrations made there land in `ctx.contributions`, and the Settings view (if mounted) re-lists via `ctx.contributions.onChange`. New contributors appear live; their initial values are pulled via `getValues()` and rendered.
+- **App deactivation.** When the app unloads, the framework auto-releases every contribution registered in `onAppActivate`. The view re-lists and drops those sections; any inline error entries scoped to those `shardId`s are pruned. The shard itself stays alive across the unload — only the per-app registrations are torn down.
+- **App switches.** Closing app A and opening app B fires `onAppDeactivate` for A's shards and `onAppActivate` for B's, which rotates the visible Settings sections automatically. No caller action required.
+- **Global (non-per-app) contributions.** If a descriptor is intentionally registered in `register(ctx)` instead, it appears at SH3 boot and stays for the whole session — `ctx.contributions.onChange` still notifies the view, but no rotation happens on app switches.
 
 ---
 
@@ -181,7 +197,7 @@ Errors clear automatically on the next successful edit of the same field, and on
 - **Disabled rows** dim to 50% opacity and become non-interactive.
 - **Section header** uses an uppercase, accent-tinted `<h3>` with a thin divider between sections. Header hidden when `descriptors.length === 1`.
 - **Empty state.** When no descriptors are registered, the view renders `No settings available.`
-- **Styling** follows SH3 shell tokens (`--shell-bg`, `--shell-fg`, `--shell-accent`, `--shell-border`, etc.), so the view inherits the host's theme.
+- **Styling** follows SH3 design tokens (`--sh3-bg`, `--sh3-fg`, `--sh3-accent`, `--sh3-border`, etc.), so the view inherits the host's theme.
 
 ---
 

@@ -47,4 +47,19 @@ describe('resolveScope', () => {
     const r = resolveScope(D, lookup);
     expect(r.whitelist).toEqual(['a.*']); // one entry, not two
   });
+
+  it('produces the same result with no opts as the 2-arg call', () => {
+    const lookup = (id: string) => (id === 'A' ? A : undefined);
+    const r2 = resolveScope(B, lookup);
+    const r3 = resolveScope(B, lookup, undefined);
+    expect(r3).toEqual(r2);
+  });
+
+  it('prepends systemBlacklist patterns and dedupes against walk-derived entries', () => {
+    const r = resolveScope(A, () => undefined, {
+      systemBlacklist: ['sys.deny', 'a.bad'],
+    });
+    expect(r.blacklist).toEqual(['sys.deny', 'a.bad']);
+    expect(r.whitelist).toEqual(['a.*']);
+  });
 });

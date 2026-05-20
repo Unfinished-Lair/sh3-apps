@@ -90,7 +90,7 @@ import { actionsToTools } from './ai/catalog/action-adapter';
 import { assembleCatalog, filterByScope } from './ai/catalog/assemble';
 import { makeScopeLookup, addUserScope, removeUserScope, type UserScopes } from './ai/scope/store';
 import { resolveScope } from './ai/scope/resolve';
-import { SCOPE_NONE, BUILTIN_SCOPES } from './ai/scope/builtins';
+import { SCOPE_NONE, BUILTIN_SCOPES, AI_SYSTEM_BLACKLIST } from './ai/scope/builtins';
 import { parseScopeSaveArgs } from './ai/scope/parse-args';
 import {
   SH3_AI_TOOL_CONTRIBUTION,
@@ -439,7 +439,7 @@ export const shard: SourceShard = {
     function currentResolvedScope() {
       const lookup = makeScopeLookup(state.user.scopes);
       const root = lookup(state.user.activeScopeId) ?? SCOPE_NONE;
-      return resolveScope(root, lookup);
+      return resolveScope(root, lookup, { systemBlacklist: AI_SYSTEM_BLACKLIST });
     }
 
     function buildCatalog() {

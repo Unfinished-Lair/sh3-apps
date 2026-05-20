@@ -52,3 +52,14 @@ export const BUILTIN_SCOPES: ReadonlyArray<Scope> = [
 export const BUILTIN_SCOPE_IDS: ReadonlySet<string> = new Set(
   BUILTIN_SCOPES.map((s) => s.id),
 );
+
+/** Always-on deny list applied to every resolved scope (including
+ *  `sh3-ai:everything`). Use for tools that must never be LLM-invocable
+ *  regardless of the user's active scope — typically because the action
+ *  has a UI/human-driven contract that doesn't make sense for an agent.
+ *
+ *  Each entry is a glob pattern matched against Tool.name (the dotted
+ *  form, e.g. `sh3-ai.sketch.browse` for action id `sh3-ai:sketch.browse`). */
+export const AI_SYSTEM_BLACKLIST: ReadonlyArray<string> = [
+  'sh3-ai.sketch.browse',
+];

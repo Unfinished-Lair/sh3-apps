@@ -180,10 +180,10 @@
       },
       "versions": [
         {
-          "version": "0.2.0+451",
+          "version": "0.2.0+456",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-pipeline-0.2.0+451.sh3pkg",
-          "integrity": "sha384-I/huVPVmBm6EO1J6tpNe7UF16f3G6LV5zesTPySUxLmLhj5lNNnjmuDF4eNpbaR3",
+          "archiveUrl": "bundles/sh3-pipeline-0.2.0+456.sh3pkg",
+          "integrity": "sha384-4zsEv6Jv8qbD4BuhbCI6lBiOkVY0+PBKsXhUVEn6IsJz/4HJVWSMLNHzNRvfZgdJ",
           "requires": [
             {
               "id": "sh3-editor",

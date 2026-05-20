@@ -284,6 +284,7 @@
   const gridSizePx = $derived(GRID_BASE_PX * viewport.zoom);
 
   const PAN_THRESHOLD_PX = 4;
+  const DRAG_MIME = 'application/sh3-editor.node-template';
 
   let panState: {
     pointerId: number;
@@ -461,6 +462,28 @@
     (ev.currentTarget as HTMLElement).focus({ preventScroll: true });
   }
 
+  function onCanvasDragOver(ev: DragEvent) {
+    if (props.state.readonly) return;
+    if (!ev.dataTransfer) return;
+    // The MIME presence check is unreliable across browsers during dragover
+    // (some hide the data until drop). Accept any drag — the drop handler
+    // re-validates and no-ops if the payload is wrong.
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'copy';
+  }
+
+  function onCanvasDrop(ev: DragEvent) {
+    if (props.state.readonly) return;
+    if (!ev.dataTransfer) return;
+    const templateType = ev.dataTransfer.getData(DRAG_MIME);
+    if (!templateType) return;
+    ev.preventDefault();
+    if (!canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+    insertNodeFromTemplate(templateType, g);
+  }
+
   function onCanvasWheel(ev: WheelEvent) {
     if (!canvasEl) return;
     // Let wheel events inside the palette popup scroll its list natively.
@@ -500,6 +523,8 @@
      onpointermove={onCanvasPointerMove}
      onpointerup={onCanvasPointerUp}
      onpointercancel={onCanvasPointerUp}
+     ondragover={onCanvasDragOver}
+     ondrop={onCanvasDrop}
      onclick={(ev) => {
        if (ev.target === ev.currentTarget) {
          clearSelection();

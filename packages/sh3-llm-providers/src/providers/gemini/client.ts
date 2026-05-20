@@ -94,6 +94,22 @@ const GEMINI_SCHEMA_KEYS: ReadonlySet<string> = new Set([
   'anyOf', 'propertyOrdering',
 ]);
 
+// Gemini's Schema requires `type` to be a single string. JSON Schema allows
+// `type` to be an array — most commonly `["X","null"]` (nullable shorthand
+// emitted by zod-to-json-schema and similar generators). Translate that to
+// `type:"X", nullable:true`; for unsupported multi-type unions, fall back to
+// the first non-null entry so the request stays valid.
+function normalizeTypeField(value: unknown): { type?: unknown; nullable?: true } {
+  if (typeof value === 'string') return { type: value };
+  if (!Array.isArray(value)) return { type: value };
+  const nonNull = value.filter((t) => t !== 'null');
+  const hasNull = nonNull.length !== value.length;
+  if (nonNull.length === 0) return hasNull ? { nullable: true } : {};
+  const out: { type: unknown; nullable?: true } = { type: nonNull[0] };
+  if (hasNull) out.nullable = true;
+  return out;
+}
+
 export function sanitizeGeminiSchema(schema: unknown): unknown {
   if (schema === null || typeof schema !== 'object' || Array.isArray(schema)) {
     return schema;
@@ -101,7 +117,11 @@ export function sanitizeGeminiSchema(schema: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
     if (!GEMINI_SCHEMA_KEYS.has(key)) continue;
-    if (key === 'properties' && value && typeof value === 'object') {
+    if (key === 'type') {
+      const normalized = normalizeTypeField(value);
+      if ('type' in normalized) out.type = normalized.type;
+      if (normalized.nullable) out.nullable = true;
+    } else if (key === 'properties' && value && typeof value === 'object') {
       const props: Record<string, unknown> = {};
       for (const [propName, propSchema] of Object.entries(value as Record<string, unknown>)) {
         props[propName] = sanitizeGeminiSchema(propSchema);

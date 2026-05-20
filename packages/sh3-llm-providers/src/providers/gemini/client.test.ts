@@ -580,6 +580,56 @@ describe('chatStream tool-call translation', () => {
     });
   });
 
+  it('rewrites JSON-Schema nullable-shorthand type arrays into single type + nullable:true', async () => {
+    // Gemini's Schema requires `type` to be a single string. JSON Schema's
+    // nullable shorthand (`type: ["X","null"]`, emitted by zod-to-json-schema
+    // and friends) must be translated to `type:"X", nullable:true`.
+    mockFetch.mockResolvedValue(sseResponse([
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    ]));
+    await collect(chatStream(
+      'k',
+      [{ role: 'user', content: 'hi' }],
+      'gemini-2.5-flash',
+      new AbortController().signal,
+      undefined,
+      {
+        tools: [
+          {
+            name: 'tool.nullable',
+            description: 'd',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                a: { type: ['string', 'null'] },
+                b: { type: ['null', 'integer'] },
+                c: { type: ['string'] },
+                d: {
+                  type: 'array',
+                  items: { type: ['number', 'null'] },
+                },
+              },
+            },
+          },
+        ],
+      },
+    ));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    const params = body.tools[0].functionDeclarations[0].parameters;
+    expect(params).toEqual({
+      type: 'object',
+      properties: {
+        a: { type: 'string', nullable: true },
+        b: { type: 'integer', nullable: true },
+        c: { type: 'string' },
+        d: {
+          type: 'array',
+          items: { type: 'number', nullable: true },
+        },
+      },
+    });
+  });
+
   it('omits the tools field when no tools given', async () => {
     mockFetch.mockResolvedValue(sseResponse([
       JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),

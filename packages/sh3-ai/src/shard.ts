@@ -14,7 +14,7 @@ import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
 import Sketch from './ai/sketch/Sketch.svelte';
-import { SH3_INLINE_MARKER } from './ai/sketch/tools';
+import { withMarker } from './ai/sketch/marker';
 import Edit from './assistant/Edit.svelte';
 import * as assistant from './assistant/mode';
 import { runOneShotStream } from './assistant/runOneShotStream';
@@ -213,8 +213,6 @@ export const shard: SourceShard = {
 
     const sketchState = new SketchState();
 
-    const SKETCH_MARKER_SCAN = 200;
-
     async function saveSketchViaPicker(): Promise<void> {
       const snap = sketchState.current;
       const providerId = state.user.activeProviderId;
@@ -246,12 +244,7 @@ export const shard: SourceShard = {
       const pickedProvider = docPath.slice(0, slashIdx);
       const relPath = docPath.slice(slashIdx + 1);
 
-      const body =
-        snap.mode !== 'inline'
-          ? snap.html
-          : snap.html.slice(0, SKETCH_MARKER_SCAN).includes('sh3:inline')
-            ? snap.html
-            : `${SH3_INLINE_MARKER}\n${snap.html}`;
+      const body = withMarker(snap.html, snap.mode);
 
       try {
         await docsStore.write(pickedProvider, relPath, body);

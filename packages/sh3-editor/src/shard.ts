@@ -1,5 +1,6 @@
-import type { SourceShard, ShardContext } from 'sh3-core';
+import type { SourceShard, ShardContext, FileHandlerDescriptor } from 'sh3-core';
 import { sh3 } from 'sh3-core';
+import { openInFloat } from './handlers/openInFloat';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry.svelte';
 import { createApi } from './model/api';
@@ -88,6 +89,13 @@ export const shard: SourceShard = {
     teardownRef = teardown;
 
     (shard as any).api = api;
+
+    ctx.contributions.register<FileHandlerDescriptor>('sh3.file-handler', {
+      label: 'Text Editor',
+      match: { extensions: ['.md', '.txt', '.json', '.jsonl'] },
+      open: { type: 'view', open: (file) => openInFloat(ctx, file) },
+      priority: 0,
+    });
 
     // Seed + subscribe to inspector renderer contributions.
     const refresh = () => {

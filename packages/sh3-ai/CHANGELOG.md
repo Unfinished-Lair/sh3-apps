@@ -1,5 +1,15 @@
 # sh3-ai changelog
 
+## 0.7.1 — 2026-05-21 — `sh3.file-handler` contribution for AI Sketch
+
+### Added
+- Registers a `sh3.file-handler` contribution for `.html` files that loads the picked file into the AI Sketch view via the shared `loadIntoSketch` helper.
+- Manifest declares `documents:browse` and `documents:read` so the handler can read sketches owned by other shards.
+
+### Changed
+- `openSketchViaPicker` refactored to delegate to `loadIntoSketch`, reading through `ctx.browse.readFrom` instead of `docsStore.read`. Picker path math is unchanged.
+- Tracks `sh3-core ^0.22.5` for `FileHandlerDescriptor` and `BrowseCapability.readFrom`.
+
 ## 0.5.13 — 2026-05-10 — AI Sketch open-by-path + autonomous save
 
 `ai.sketch.show` now accepts a doc-zone `path` as an alternative to

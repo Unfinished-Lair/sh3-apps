@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.2 — 2026-05-21 — `sh3.file-handler` contribution for text formats
+
+### Added
+- Registers a `sh3.file-handler` contribution claiming `.md`, `.txt`, `.json`, and `.jsonl`. The dispatcher opens an editor float seeded via the `EDITOR_DOCUMENT_POINT` contribution with the right language.
+- Manifest declares `documents:browse` and `documents:read` so the handler can read files owned by other shards.
+
+### Changed
+- Tracks `sh3-core ^0.22.5` for `FileHandlerDescriptor` and `BrowseCapability.readFrom`.
+
 ## 0.14.1 — 2026-05-19 — Inspector fields select-on-focus
 
 ### Changed

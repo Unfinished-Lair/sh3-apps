@@ -1,5 +1,17 @@
 # sh3-file-explorer changelog
 
+## 0.8.0 — 2026-05-21 — File-handler dispatch + clipboard + folder ops
+
+### Added
+- File-handler dispatch: double-click, Enter, and the Open context-menu entry now route through `sh3.file-handler` contributions. Selection panel shows an "Open with <handler>" button when a file is selected.
+- Clipboard actions: Cut (`Ctrl+X`), Copy (`Ctrl+C`), Paste (`Ctrl+V`). Same-shard moves use `browse.renameFrom`; cross-shard moves go via `readFrom` + `writeTo` + `deleteFrom`. Same-folder copies auto-rename with a `(copy)` suffix. Cut rows dim in the tree.
+- Folder operations: `New Folder…` (palette + context, uses a `.keep` placeholder pending [sh3#34](https://github.com/Unfinished-Lair/sh3/issues/34)) and `Rename…` (`F2`) on files and folders. Folder rename and folder paste fan out across descendants with `Promise.allSettled` aggregation.
+- `Open With…` context-menu action that surfaces all matching handlers when several extensions are claimed by multiple shards.
+
+### Changed
+- `peerDependencies.sh3-core` bumped to `^0.22.5` for `FileHandlerDescriptor`, `BrowseCapability.{readFrom,writeTo,renameFrom,deleteFrom}`, and `documents:browse` + `documents:read` + `documents:write` permissions.
+- Vitest config picks up `@sveltejs/vite-plugin-svelte` so `.svelte.ts` runes-based stores can be unit-tested.
+
 ## 0.7.1 — 2026-05-06
 
 ### Changed

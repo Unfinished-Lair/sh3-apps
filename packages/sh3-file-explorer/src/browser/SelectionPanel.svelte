@@ -1,8 +1,40 @@
 <script lang="ts">
   import type { ExplorerStore } from '../explorerShard.svelte';
   import { SELECTION_ACTION_POINT, type SelectionAction, type BadgeDoc } from '../contributions';
+  import { listHandlersFor } from '../openFile/dispatch';
+  import { runOpen } from '../openFile/runOpen';
+  import { SELECTION_TYPE } from '../explorerSelection.svelte';
+  import type { FileHandlerDescriptor, FileRef } from 'sh3-core';
 
   let { store }: { store: ExplorerStore } = $props();
+
+  let handlers = $state<FileHandlerDescriptor[]>([]);
+
+  $effect(() => {
+    if (!store.ready || !store.selection || store.selection.kind !== 'file') {
+      handlers = [];
+      return;
+    }
+    const file: FileRef = {
+      path: `${store.selection.shardId}/${store.selection.path}`,
+      tenantId: (store.ctx as { tenantId?: string }).tenantId ?? '',
+      binary: false,
+    };
+    let cancelled = false;
+    void (async () => {
+      const list = await listHandlersFor(store.ctx, file);
+      if (!cancelled) handlers = list;
+    })();
+    return () => { cancelled = true; };
+  });
+
+  function openSelected(): void {
+    if (!store.ready || !store.selection || store.selection.kind !== 'file') return;
+    void runOpen(store.ctx, {
+      type: SELECTION_TYPE,
+      ref: { shardId: store.selection.shardId, path: store.selection.path, kind: 'file' },
+    });
+  }
 
   let actionTick = $state(0);
   $effect(() => store.ctx.contributions.onChange(SELECTION_ACTION_POINT, () => { actionTick++; }));
@@ -60,6 +92,13 @@
     <div class="sh3-fe-panel__path">{store.selection.path || '(shard root)'}</div>
     <div class="sh3-fe-panel__shard">{store.selection.shardId}</div>
   </header>
+  {#if store.ready && store.selection?.kind === 'file' && handlers.length > 0}
+    <div class="sh3-fe-panel__open">
+      <button class="sh3-fe-panel__action primary" onclick={openSelected}>
+        Open with {handlers[0].label}
+      </button>
+    </div>
+  {/if}
   {#if badges.length > 0}
     <ul class="sh3-fe-panel__badges">
       {#each badges as { providerId, badge } (providerId)}
@@ -116,4 +155,5 @@
   .sh3-fe-panel__badge-text { display: flex; flex-direction: column; }
   .sh3-fe-panel__badge-label { color: var(--sh3-fg); font-weight: 500; }
   .sh3-fe-panel__badge-detail { color: var(--sh3-fg-muted, #888); font-size: 0.85em; }
+  .sh3-fe-panel__open { margin: 8px 0; }
 </style>

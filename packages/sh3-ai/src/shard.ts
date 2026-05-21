@@ -14,7 +14,7 @@ import Conversations from './ai/conversations/Conversations.svelte';
 import ScopeList from './rich/ScopeList.svelte';
 import Defaults from './ai/Defaults.svelte';
 import Sketch from './ai/sketch/Sketch.svelte';
-import { withMarker, detectMode } from './ai/sketch/marker';
+import { withMarker } from './ai/sketch/marker';
 import Edit from './assistant/Edit.svelte';
 import * as assistant from './assistant/mode';
 import { runOneShotStream } from './assistant/runOneShotStream';
@@ -106,6 +106,7 @@ import { DocsStore } from './ai/docs/store';
 import { makeDocTools } from './ai/docs/tools';
 import { SketchState } from './ai/sketch/state';
 import { makeSketchTools } from './ai/sketch/tools';
+import { loadIntoSketch } from './ai/sketch/loadIntoSketch';
 import { makeFieldsTools } from './ai/fields/tools';
 import { makeTemperatureTools } from './ai/temperature/tools';
 
@@ -266,9 +267,6 @@ export const shard: SourceShard = {
         sh3.toast.notify('AI Sketch: pick a file, not a folder.', { level: 'warn' });
         return;
       }
-      // Picker returns the shard-relative path INCLUDING the 'docs/' prefix
-      // (e.g. 'docs/deepseek/sketches/foo.html'). DocsStore.read expects the
-      // path RELATIVE to 'docs/', so strip the prefix here.
       if (!result.path.startsWith('docs/')) {
         sh3.toast.notify(
           `AI Sketch: '${result.path}' is outside the docs zone.`,
@@ -276,23 +274,23 @@ export const shard: SourceShard = {
         );
         return;
       }
-      const absPath = result.path.slice('docs/'.length);
-      let content: string | null;
-      try {
-        content = await docsStore.read(absPath);
-      } catch (err) {
-        sh3.toast.notify(
-          `AI Sketch: load failed: ${err instanceof Error ? err.message : String(err)}`,
-          { level: 'error' },
-        );
+      const docPath = result.path.slice('docs/'.length);
+      const slashIdx = docPath.indexOf('/');
+      if (slashIdx <= 0) {
+        sh3.toast.notify(`AI Sketch: invalid path '${result.path}'.`, { level: 'error' });
         return;
       }
-      if (content === null) {
-        sh3.toast.notify(`AI Sketch: file not found: ${absPath}.`, { level: 'warn' });
+      const shardId = docPath.slice(0, slashIdx);
+      const relPath = docPath.slice(slashIdx + 1);
+      if (!ctx.browse) {
+        sh3.toast.notify('AI Sketch: documents:browse not granted.', { level: 'warn' });
         return;
       }
-      sketchState.set({ html: content, mode: detectMode(content) });
-      focusOrOpenSketch();
+      await loadIntoSketch(shardId, relPath, {
+        state: sketchState,
+        browse: ctx.browse,
+        focusOrOpenSketch,
+      });
     }
 
     const sketchFactory: ViewFactory = {

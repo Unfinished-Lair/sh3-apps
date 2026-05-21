@@ -5,8 +5,7 @@ vi.mock('sh3-core', async () => {
   const actual = await vi.importActual<typeof import('sh3-core')>('sh3-core');
   return {
     ...actual,
-    sh3: { toast: { notify: vi.fn() } },
-    shell: { float: { open: vi.fn(), list: vi.fn(() => []) }, toast: { notify: vi.fn() } },
+    sh3: { toast: { notify: vi.fn() }, float: { open: vi.fn(), list: vi.fn(() => []) } },
   };
 });
 

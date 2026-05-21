@@ -6,7 +6,7 @@ vi.mock('sh3-core', async () => {
   const actual = await vi.importActual<typeof import('sh3-core')>('sh3-core');
   return {
     ...actual,
-    shell: {
+    sh3: {
       float: {
         open: vi.fn(() => 'float-42'),
         list: vi.fn(() => [
@@ -18,7 +18,7 @@ vi.mock('sh3-core', async () => {
   };
 });
 
-import { shell } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import { openInFloat } from './openInFloat';
 
 function makeCtx(readResult: string | null = 'hello'): ShardContext {
@@ -46,7 +46,7 @@ describe('openInFloat', () => {
     const ctx = makeCtx('# hi');
     const file: FileRef = { path: 'notes/readme.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
-    expect(shell.float.open).toHaveBeenCalledWith(
+    expect(sh3.float.open).toHaveBeenCalledWith(
       'sh3-editor:editor',
       expect.objectContaining({ title: 'readme.md' }),
     );
@@ -63,18 +63,18 @@ describe('openInFloat', () => {
     const ctx = makeCtx(null);
     const file: FileRef = { path: 'notes/missing.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
-    expect(shell.toast.notify).toHaveBeenCalledWith(
+    expect(sh3.toast.notify).toHaveBeenCalledWith(
       expect.stringContaining('missing.md'),
       expect.objectContaining({ level: 'warn' }),
     );
-    expect(shell.float.open).not.toHaveBeenCalled();
+    expect(sh3.float.open).not.toHaveBeenCalled();
   });
 
   it('toasts when ctx.browse.readFrom is undefined (permission gate)', async () => {
     const ctx = { browse: {}, contributions: { register: vi.fn() } } as unknown as ShardContext;
     const file: FileRef = { path: 'notes/readme.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
-    expect(shell.toast.notify).toHaveBeenCalledWith(
+    expect(sh3.toast.notify).toHaveBeenCalledWith(
       expect.stringContaining('cannot read'),
       expect.objectContaining({ level: 'warn' }),
     );

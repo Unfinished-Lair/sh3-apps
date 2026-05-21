@@ -266,8 +266,8 @@
   }
   .badge {
     padding: 0 0.4em;
-    border-radius: 2px;
-    background: var(--sh3-fg-dim, #333);
+    border-radius: var(--sh3-radius-sm, 3px);
+    background: var(--sh3-bg-elevated);
     font-size: 0.85em;
   }
   .row-actions {

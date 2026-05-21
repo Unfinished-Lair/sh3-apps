@@ -17,7 +17,8 @@
 // Both honor the same `Transcript` interface so dispatchLoop is unaware of
 // which one it's talking to.
 
-import ResponseCard, { type CardSegment } from '../ResponseCard.svelte';
+import ResponseCard from '../ResponseCard.svelte';
+import type { CardSegment } from '../ResponseCard.types';
 import type { ShellModeOutput, StreamHandle } from 'sh3-core';
 
 interface ScrollbackPushable {

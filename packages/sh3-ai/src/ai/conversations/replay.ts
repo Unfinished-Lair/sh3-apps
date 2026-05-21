@@ -1,5 +1,6 @@
 import type { Scrollback } from 'sh3-core';
-import ResponseCard, { type CardSegment } from '../ResponseCard.svelte';
+import ResponseCard from '../ResponseCard.svelte';
+import type { CardSegment } from '../ResponseCard.types';
 import type {
   ConversationDocument,
   PersistedToolCall,

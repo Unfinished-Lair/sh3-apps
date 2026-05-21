@@ -165,7 +165,7 @@ export const shard: SourceShard = {
       { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
       { id: ASSISTANT_EDIT_VIEW_ID, label: 'AI Edit', standalone: false },
     ],
-    permissions: ['documents:browse', 'documents:read'],
+    permissions: ['documents:browse', 'documents:read', 'documents:write'],
   },
 
   async register(ctx: ShardContext) {
@@ -219,13 +219,8 @@ export const shard: SourceShard = {
 
     async function saveSketchViaPicker(): Promise<void> {
       const snap = sketchState.current;
-      const providerId = state.user.activeProviderId;
       if (!snap) {
         sh3.toast.notify('AI Sketch: nothing to save.', { level: 'warn' });
-        return;
-      }
-      if (!providerId) {
-        sh3.toast.notify('AI Sketch: no active AI provider.', { level: 'warn' });
         return;
       }
       const now = new Date();
@@ -239,20 +234,24 @@ export const shard: SourceShard = {
       const path = await ctx.documentPicker.save({ suggestedName });
       if (!path) return;
 
-      const docPath = path.startsWith('docs/') ? path.slice(5) : path;
-      const slashIdx = docPath.indexOf('/');
+      const slashIdx = path.indexOf('/');
       if (slashIdx <= 0) {
         sh3.toast.notify(`AI Sketch: invalid save path '${path}'.`, { level: 'error' });
         return;
       }
-      const pickedProvider = docPath.slice(0, slashIdx);
-      const relPath = docPath.slice(slashIdx + 1);
+      const shardId = path.slice(0, slashIdx);
+      const relPath = path.slice(slashIdx + 1);
+
+      if (typeof ctx.browse?.writeTo !== 'function') {
+        sh3.toast.notify('AI Sketch: documents:write not granted.', { level: 'warn' });
+        return;
+      }
 
       const body = withMarker(snap.html, snap.mode);
 
       try {
-        await docsStore.write(pickedProvider, relPath, body);
-        sh3.toast.notify(`Saved AI Sketch as ${relPath}.`, { level: 'info' });
+        await ctx.browse.writeTo(shardId, relPath, body);
+        sh3.toast.notify(`Saved AI Sketch as ${path}.`, { level: 'info' });
       } catch (err) {
         sh3.toast.notify(
           `AI Sketch save failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -268,26 +267,11 @@ export const shard: SourceShard = {
         sh3.toast.notify('AI Sketch: pick a file, not a folder.', { level: 'warn' });
         return;
       }
-      if (!result.path.startsWith('docs/')) {
-        sh3.toast.notify(
-          `AI Sketch: '${result.path}' is outside the docs zone.`,
-          { level: 'warn' },
-        );
-        return;
-      }
-      const docPath = result.path.slice('docs/'.length);
-      const slashIdx = docPath.indexOf('/');
-      if (slashIdx <= 0) {
-        sh3.toast.notify(`AI Sketch: invalid path '${result.path}'.`, { level: 'error' });
-        return;
-      }
-      const shardId = docPath.slice(0, slashIdx);
-      const relPath = docPath.slice(slashIdx + 1);
       if (!ctx.browse) {
         sh3.toast.notify('AI Sketch: documents:browse not granted.', { level: 'warn' });
         return;
       }
-      await loadIntoSketch(shardId, relPath, {
+      await loadIntoSketch(result.shardId, result.path, {
         state: sketchState,
         browse: ctx.browse,
         focusOrOpenSketch,

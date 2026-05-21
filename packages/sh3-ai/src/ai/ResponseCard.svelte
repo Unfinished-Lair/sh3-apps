@@ -1,16 +1,6 @@
 <script lang="ts">
   import { marked } from 'marked';
-
-  export type CardSegment =
-    | { kind: 'text'; markdown: string }
-    | {
-        kind: 'tool-call';
-        id: string;
-        name: string;
-        argsPreview: string;
-        resultPreview?: string;
-        error?: boolean;
-      };
+  import type { CardSegment } from './ResponseCard.types';
 
   interface Props {
     /** Preferred — ordered list of text + tool-call segments. */

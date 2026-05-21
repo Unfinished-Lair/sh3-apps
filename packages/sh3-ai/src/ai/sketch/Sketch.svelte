@@ -93,14 +93,14 @@
     align-items: center;
     gap: 8px;
     padding: 4px 8px;
-    border-bottom: 1px solid var(--border, #2a2a2a);
+    border-bottom: 1px solid var(--sh3-border);
     font-size: 12px;
   }
   .mode-badge {
     padding: 2px 6px;
-    border-radius: 4px;
-    background: var(--badge-bg, #2a2a2a);
-    font-family: var(--mono-font, monospace);
+    border-radius: var(--sh3-radius, 4px);
+    background: var(--sh3-bg-elevated);
+    font-family: var(--sh3-mono, monospace);
   }
   .mode-badge.dim {
     opacity: 0.45;
@@ -122,6 +122,6 @@
   }
   .placeholder {
     padding: 16px;
-    color: var(--muted, #888);
+    color: var(--sh3-fg-muted);
   }
 </style>

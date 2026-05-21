@@ -163,6 +163,7 @@ export const shard: SourceShard = {
       { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
       { id: ASSISTANT_EDIT_VIEW_ID, label: 'AI Edit', standalone: false },
     ],
+    permissions: ['documents:browse', 'documents:read'],
   },
 
   async register(ctx: ShardContext) {

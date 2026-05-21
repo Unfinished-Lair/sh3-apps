@@ -8,6 +8,7 @@ import { iterateBadges } from './browser/iterate-badges';
 
 export type Selection = { shardId: string; path: string; kind: 'file' | 'folder' } | null;
 export type BrowseEntry = DocumentMeta & { shardId: string };
+export type Clipboard = { mode: 'cut' | 'copy'; ref: NonNullable<Selection> } | null;
 
 export class PermissionMissingError extends Error {
   constructor() {
@@ -29,7 +30,10 @@ export type ExplorerStore =
       browse: NonNullable<ShardContext['browse']>;
       readonly selection: Selection;
       readonly documents: BrowseEntry[];
+      readonly clipboard: Clipboard;
       setSelection(next: Selection): void;
+      setClipboard(c: Clipboard): void;
+      clearClipboard(): void;
       toggleExpanded(key: string): void;
       isExpanded(key: string): boolean;
       refreshDocuments(): Promise<void>;
@@ -48,8 +52,11 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   let selection = $state<Selection>(null);
   const expanded = $state<Record<string, true>>({});
   let documents = $state<BrowseEntry[]>([]);
+  let clipboard = $state<Clipboard>(null);
 
   function setSelection(next: Selection) { selection = next; }
+  function setClipboard(next: Clipboard) { clipboard = next; }
+  function clearClipboard() { clipboard = null; }
 
   function toggleExpanded(key: string) {
     if (expanded[key]) delete expanded[key];
@@ -108,7 +115,10 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
     browse,
     get selection() { return selection; },
     get documents() { return documents; },
+    get clipboard() { return clipboard; },
     setSelection,
+    setClipboard,
+    clearClipboard,
     toggleExpanded,
     isExpanded,
     refreshDocuments,

@@ -77,6 +77,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
       { id: 'sh3-editor:graph-node-picker', label: 'Graph Node Picker', standalone: true },
     ],
+    permissions: ['documents:browse', 'documents:read'],
   },
 
   register(ctx: ShardContext) {

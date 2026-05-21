@@ -14,10 +14,10 @@
       },
       "versions": [
         {
-          "version": "0.7.0+471",
+          "version": "0.7.0+472",
           "contractVersion": "1",
-          "archiveUrl": "bundles/ai-0.7.0+471.sh3pkg",
-          "integrity": "sha384-5kGraOoG+baU45mVIlvKCMuOsFwzHQAiQhdwCg+Oa2ym98z259S9CDrs62FlmbTr"
+          "archiveUrl": "bundles/ai-0.7.0+472.sh3pkg",
+          "integrity": "sha384-As42xMUZP/fgnWc1m303doCUF+d7C8RGZPT1PfT1Qvz4SJAozeGePFiqKi27DL5w"
         }
       ]
     },
@@ -140,10 +140,10 @@
       },
       "versions": [
         {
-          "version": "0.3.0+470",
+          "version": "0.3.0+472",
           "contractVersion": "1",
-          "archiveUrl": "bundles/llm-providers-0.3.0+470.sh3pkg",
-          "integrity": "sha384-nRlbGw29NZkhaQ4d7zEkNTDaOa7DXkAQhzaoGUWbLMYLKBy0r5SAVbHYhOGtyu/m"
+          "archiveUrl": "bundles/llm-providers-0.3.0+472.sh3pkg",
+          "integrity": "sha384-IxdNWfZQiBMHwkkpIifyKFBqYObupgfN0bdhGVSvV5wX07WTdhUZMV2bMdkE43sY"
         }
       ]
     },

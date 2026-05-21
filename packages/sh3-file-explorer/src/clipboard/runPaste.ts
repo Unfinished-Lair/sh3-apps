@@ -35,7 +35,7 @@ export async function runPaste(
   if (source.kind === 'file') {
     await pasteFile(browse, store, source, targetRef, cb.mode, sameShardAndFolder);
   } else {
-    sh3.toast.notify('Folder paste lands in the next task.', { level: 'warn' });
+    await pasteFolder(browse, store, source, targetRef, cb.mode);
   }
 }
 
@@ -115,4 +115,60 @@ async function pasteFile(
   }
   sh3.toast.notify(`${mode === 'cut' ? 'Moved' : 'Copied'} to ${destPath}.`, { level: 'success' });
   store.setSelection(null);
+}
+
+async function pasteFolder(
+  browse: BrowseCapability,
+  store: ReadyStore,
+  source: Ref,
+  targetRef: Ref,
+  mode: 'cut' | 'copy',
+): Promise<void> {
+  const sourcePrefix = source.path === '' ? '' : `${source.path}/`;
+  const targetFolder = targetRef.kind === 'folder'
+    ? targetRef.path
+    : (targetRef.path.includes('/') ? targetRef.path.slice(0, targetRef.path.lastIndexOf('/')) : '');
+  const newBase = targetFolder
+    ? `${targetFolder}/${basename(source.path)}`
+    : basename(source.path);
+
+  const descendants = store.documents.filter((d) =>
+    d.shardId === source.shardId &&
+    (source.path === '' || d.path === source.path || d.path.startsWith(sourcePrefix)),
+  );
+
+  const tasks = descendants.map(async (d) => {
+    const rel = source.path === '' ? d.path : d.path.slice(sourcePrefix.length);
+    const destPath = rel ? `${newBase}/${rel}` : newBase;
+    if (source.shardId === targetRef.shardId && mode === 'cut') {
+      await browse.renameFrom!(source.shardId, d.path, destPath);
+      return;
+    }
+    const content = await browse.readFrom?.(source.shardId, d.path);
+    if (content == null) throw new Error(`source missing: ${d.path}`);
+    await browse.writeTo!(targetRef.shardId, destPath, content);
+    if (mode === 'cut') {
+      await browse.deleteFrom!(source.shardId, d.path);
+    }
+  });
+
+  const results = await Promise.allSettled(tasks);
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  if (failed === 0) {
+    sh3.toast.notify(`${mode === 'cut' ? 'Moved' : 'Copied'} folder /${source.path} (${descendants.length} files).`, { level: 'success' });
+  } else {
+    sh3.toast.notify(`${descendants.length - failed}/${descendants.length} done; ${failed} failed.`, { level: 'error' });
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`[sh3-file-explorer] paste failed for ${descendants[i].path}:`, r.reason);
+      }
+    });
+  }
+  if (mode === 'cut' && failed === 0) store.clearClipboard();
+  store.setSelection(null);
+}
+
+function basename(path: string): string {
+  const i = path.lastIndexOf('/');
+  return i < 0 ? path : path.slice(i + 1);
 }

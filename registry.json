@@ -14,10 +14,10 @@
       },
       "versions": [
         {
-          "version": "0.7.0+473",
+          "version": "0.7.0+495",
           "contractVersion": "1",
-          "archiveUrl": "bundles/ai-0.7.0+473.sh3pkg",
-          "integrity": "sha384-C5mOsSmuDUV+thiYZtbtj1h65XrVsdXuBRC/OkpFK1YLd4gLYwBYzRsKPPWsgHhy"
+          "archiveUrl": "bundles/ai-0.7.0+495.sh3pkg",
+          "integrity": "sha384-0MVt9qUBqcwlE8yi+E+Tbn8KHBD7NsOovourJcnEqpZ7razH3A1NV+pTf+psufyA"
         }
       ]
     },
@@ -74,10 +74,10 @@
       },
       "versions": [
         {
-          "version": "0.14.1+465",
+          "version": "0.14.1+495",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-editor-0.14.1+465.sh3pkg",
-          "integrity": "sha384-R78wQQHWSeRuxWZFNosJcElUnIE5rnkk5DdCU4ADkuWNJM1nCQ492zx4g2qOsr2N"
+          "archiveUrl": "bundles/sh3-editor-0.14.1+495.sh3pkg",
+          "integrity": "sha384-X5QV8sOWcXuQHHt2OxEJTEd0mbQyx+5tNTQ3xNyzVgifQNQtfD5JDIPawGl+OlJw"
         }
       ]
     },
@@ -120,10 +120,10 @@
       },
       "versions": [
         {
-          "version": "0.8.0+451",
+          "version": "0.8.0+495",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-file-explorer-app-0.8.0+451.sh3pkg",
-          "integrity": "sha384-D406HnXEJ4Q3skWJJK0RUHJUmEG6Xn+7nKCFo19cmFinfjlgr2eyVVriUDMDGycg"
+          "archiveUrl": "bundles/sh3-file-explorer-app-0.8.0+495.sh3pkg",
+          "integrity": "sha384-bu/TD8zMjvbjFHskN4wqL5J6QGcZynV2qPLIF6ZzMft26u6ME1EVG3C1eH/3jUYP"
         }
       ]
     },

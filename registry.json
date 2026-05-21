@@ -14,10 +14,10 @@
       },
       "versions": [
         {
-          "version": "0.7.0+472",
+          "version": "0.7.0+473",
           "contractVersion": "1",
-          "archiveUrl": "bundles/ai-0.7.0+472.sh3pkg",
-          "integrity": "sha384-As42xMUZP/fgnWc1m303doCUF+d7C8RGZPT1PfT1Qvz4SJAozeGePFiqKi27DL5w"
+          "archiveUrl": "bundles/ai-0.7.0+473.sh3pkg",
+          "integrity": "sha384-C5mOsSmuDUV+thiYZtbtj1h65XrVsdXuBRC/OkpFK1YLd4gLYwBYzRsKPPWsgHhy"
         }
       ]
     },

@@ -7,6 +7,7 @@ import type {
   LayoutNode,
   FieldAddress,
   FieldView,
+  FileHandlerDescriptor,
 } from 'sh3-core';
 import { registerShellMode, sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
@@ -310,6 +311,31 @@ export const shard: SourceShard = {
       },
     };
     ctx.registerView(SKETCH_VIEW_ID, sketchFactory);
+
+    ctx.contributions.register<FileHandlerDescriptor>('sh3.file-handler', {
+      label: 'AI Sketch',
+      match: { extensions: ['.html'] },
+      open: {
+        type: 'view',
+        open: async (file) => {
+          const slashIdx = file.path.indexOf('/');
+          if (slashIdx <= 0) {
+            sh3.toast.notify(`AI Sketch: invalid path '${file.path}'.`, { level: 'error' });
+            return;
+          }
+          if (!ctx.browse) {
+            sh3.toast.notify('AI Sketch: documents:browse not granted.', { level: 'warn' });
+            return;
+          }
+          await loadIntoSketch(
+            file.path.slice(0, slashIdx),
+            file.path.slice(slashIdx + 1),
+            { state: sketchState, browse: ctx.browse, focusOrOpenSketch },
+          );
+        },
+      },
+      priority: 0,
+    });
 
     ctx.actions.register({
       id: 'sh3-ai:sketch.open',

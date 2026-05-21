@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ExplorerStore, BrowseEntry, Selection } from '../explorerShard.svelte';
   import { SELECTION_TYPE, selectionToActionPayload } from '../explorerSelection.svelte';
+  import { runOpen } from '../openFile/runOpen';
 
   let { store }: { store: ExplorerStore } = $props();
 
@@ -120,6 +121,20 @@
     if (!store.ready) return;
     store.setSelection({ shardId: node.shardId, path: node.path, kind: 'folder' });
   }
+
+  function onOpenFile(node: FileNode) {
+    if (!store.ready) return;
+    void runOpen(store.ctx, {
+      type: SELECTION_TYPE,
+      ref: { shardId: node.shardId, path: node.path, kind: 'file' },
+    });
+  }
+
+  function isCut(shardId: string, path: string): boolean {
+    if (!store.ready) return false;
+    const cb = store.clipboard;
+    return !!cb && cb.mode === 'cut' && cb.ref.shardId === shardId && cb.ref.path === path;
+  }
 </script>
 
 {#snippet treeNode(node: TreeNode, depth: number)}
@@ -161,9 +176,11 @@
     {:else}
       <div
         class="sh3-fe-row"
+        class:cut={isCut(node.shardId, node.path)}
         data-sh3-scope={ROW_SCOPE}
         style="padding-left: {depth * 12}px"
         oncontextmenu={() => primeContextSelection({ shardId: node.shardId, path: node.path, kind: 'file' })}
+        ondblclick={() => onOpenFile(node)}
       >
         <button
           class="sh3-fe-node sh3-fe-node--file"
@@ -226,4 +243,5 @@
   .sh3-fe-badge--ok { color: var(--sh3-accent, #4a90e2); }
   .sh3-fe-badge--warn { color: #e6a23c; }
   .sh3-fe-badge--muted { color: var(--sh3-fg-muted, #888); }
+  .sh3-fe-row.cut .sh3-fe-node--file { opacity: 0.5; }
 </style>

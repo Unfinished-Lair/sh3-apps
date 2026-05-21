@@ -1,8 +1,16 @@
 import type { SourceShard, ShardContext } from 'sh3-core';
+import { sh3 } from 'sh3-core';
 import { mount, unmount } from 'svelte';
 import { createExplorerStore, type ExplorerStore } from './explorerShard.svelte';
 import { bindSelectionToActions, SELECTION_TYPE } from './explorerSelection.svelte';
 import { runDelete } from './delete/runDelete';
+import { runOpen, runOpenWith, listOpenWithLabels } from './openFile/runOpen';
+import { chooseHandler } from './openFile/chooseHandler';
+import { runCut, runCopy } from './clipboard/runCutCopy';
+import { runPaste } from './clipboard/runPaste';
+import { runRename } from './folder/runRename';
+import { runNewFolder } from './folder/runNewFolder';
+import { promptText } from './folder/prompt';
 import BrowserView from './browser/BrowserView.svelte';
 
 let activeStore: ExplorerStore | null = null;
@@ -50,6 +58,117 @@ export const shard: SourceShard = {
         paletteItem: false,
         contextItem: false,
         run: (dCtx) => runDelete(ctx, store, dCtx, { skipConfirm: true }),
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.open',
+        label: 'Open',
+        scope: { element: SELECTION_TYPE },
+        defaultShortcut: 'Enter',
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        run: (dCtx) => runOpen(ctx, dCtx.selection as never),
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.open-with',
+        label: 'Open With…',
+        scope: { element: SELECTION_TYPE },
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        run: async (dCtx) => {
+          const labels = await listOpenWithLabels(ctx, dCtx.selection as never);
+          if (labels.length === 0) {
+            sh3.toast.notify('No handlers available.', { level: 'warn' });
+            return;
+          }
+          const choice = await chooseHandler(labels);
+          if (!choice) return;
+          await runOpenWith(ctx, dCtx.selection as never, choice);
+        },
+      });
+
+      const writeAvailable = () => typeof ctx.browse?.writeTo === 'function';
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.cut',
+        label: 'Cut',
+        scope: { element: SELECTION_TYPE },
+        defaultShortcut: 'Ctrl+X',
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        disabled: () => !writeAvailable(),
+        run: (dCtx) => { if (store.ready) runCut(store, dCtx.selection as never); },
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.copy',
+        label: 'Copy',
+        scope: { element: SELECTION_TYPE },
+        defaultShortcut: 'Ctrl+C',
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        disabled: () => !writeAvailable(),
+        run: (dCtx) => { if (store.ready) runCopy(store, dCtx.selection as never); },
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.paste',
+        label: 'Paste',
+        scope: { element: SELECTION_TYPE },
+        defaultShortcut: 'Ctrl+V',
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        disabled: () => !writeAvailable() || !store.ready || store.clipboard === null,
+        run: async (dCtx) => {
+          if (!store.ready) return;
+          const ref = (dCtx.selection as { ref?: { shardId: string; path: string; kind: 'file' | 'folder' } } | undefined)?.ref;
+          if (!ref) return;
+          await runPaste(ctx.browse!, store, ref);
+        },
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.rename',
+        label: 'Rename…',
+        scope: { element: SELECTION_TYPE },
+        defaultShortcut: 'F2',
+        group: 'document',
+        paletteItem: false,
+        contextItem: true,
+        disabled: () => typeof ctx.browse?.renameFrom !== 'function',
+        run: async (dCtx) => {
+          if (!store.ready) return;
+          const ref = (dCtx.selection as { ref?: { shardId: string; path: string; kind: 'file' | 'folder' } } | undefined)?.ref;
+          if (!ref) return;
+          const initial = ref.path.split('/').pop() ?? ref.path;
+          const name = await promptText('Rename', initial);
+          if (!name) return;
+          await runRename(ctx.browse!, store, ref, name);
+        },
+      });
+
+      ctx.actions.register({
+        id: 'sh3-file-explorer:document.new-folder',
+        label: 'New Folder…',
+        scope: 'view:sh3-file-explorer-browser',
+        group: 'document',
+        paletteItem: true,
+        contextItem: true,
+        disabled: () => !writeAvailable(),
+        run: async () => {
+          if (!store.ready) return;
+          const sel = store.selection;
+          const target = sel ?? { shardId: store.documents[0]?.shardId ?? 'sh3-file-explorer', path: '', kind: 'folder' as const };
+          const name = await promptText('New folder', '');
+          if (!name) return;
+          await runNewFolder(ctx.browse!, store, target, name);
+        },
       });
     }
 

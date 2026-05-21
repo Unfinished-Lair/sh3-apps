@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { FileHandlerDescriptor, FileRef, ShardContext } from 'sh3-core';
+
+vi.mock('sh3-core', () => ({ launchApp: vi.fn() }));
+
 import { listHandlersFor } from './dispatch';
 
 function ctxWith(handlers: FileHandlerDescriptor[], readResult?: string): ShardContext {

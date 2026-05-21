@@ -4,6 +4,7 @@ import type {
   FileRef,
   ShardContext,
 } from 'sh3-core';
+import { launchApp } from 'sh3-core';
 
 export type DispatchResult =
   | { status: 'opened'; handlerLabel: string }
@@ -86,4 +87,27 @@ export async function listHandlersFor(
     return a.idx - b.idx;
   });
   return winners.map((w) => w.d);
+}
+
+export async function dispatchOpen(
+  ctx: ShardContext,
+  file: FileRef,
+  opts?: { handlerLabel?: string },
+): Promise<DispatchResult> {
+  const candidates = await listHandlersFor(ctx, file);
+  if (candidates.length === 0) return { status: 'no-handler' };
+  const pick = opts?.handlerLabel
+    ? candidates.find((c) => c.label === opts.handlerLabel) ?? null
+    : candidates[0];
+  if (!pick) return { status: 'no-handler' };
+  try {
+    if (pick.open.type === 'view') {
+      await pick.open.open(file);
+    } else {
+      await launchApp(pick.open.appId, { args: { file: file as unknown as Record<string, unknown> } });
+    }
+    return { status: 'opened', handlerLabel: pick.label };
+  } catch (err) {
+    return { status: 'failed', error: err instanceof Error ? err : new Error(String(err)) };
+  }
 }

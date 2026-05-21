@@ -298,7 +298,11 @@ export const shard: SourceShard = {
       mount(container: HTMLElement, _mctx: MountContext): ViewHandle {
         const instance = mount(Sketch, {
           target: container,
-          props: { state: sketchState, onSave: saveSketchViaPicker },
+          props: {
+            state: sketchState,
+            onSave: saveSketchViaPicker,
+            onOpen: openSketchViaPicker,
+          },
         });
         return {
           unmount() { unmount(instance); },

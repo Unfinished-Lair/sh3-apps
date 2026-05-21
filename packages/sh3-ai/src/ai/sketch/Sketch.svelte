@@ -1,15 +1,24 @@
 <script lang="ts">
+  import { Button } from 'sh3-core';
   import type { SketchState, SketchSnapshot } from './state';
 
   // Rename `state` → `sketch` on destructure: a local binding named `state`
   // collides with Svelte 5's `$state` rune detection, same as Defaults.svelte.
-  let { state: sketch, onSave }: { state: SketchState; onSave: () => void } =
-    $props();
+  let {
+    state: sketch,
+    onSave,
+    onOpen,
+  }: { state: SketchState; onSave: () => void; onOpen: () => void } = $props();
 
   // `subscribe` immediately invokes the listener with the current snapshot,
   // so initializing to null is safe — the callback fires synchronously
   // inside the effect.
   let snapshot = $state<SketchSnapshot | null>(null);
+
+  let styleLabel = $derived.by(() => {
+    if (!snapshot) return 'Style: —';
+    return snapshot.mode === 'inline' ? 'Style: SH3' : 'Style: None';
+  });
 
   $effect(() => {
     const off = sketch.subscribe((s) => {
@@ -38,12 +47,22 @@
 <div class="sketch-root">
   <div class="sketch-toolbar">
     <span class="mode-badge" class:dim={!snapshot}>
-      {snapshot?.mode ?? '—'}
+      {styleLabel}
     </span>
     <span class="spacer"></span>
-    <button type="button" disabled={!snapshot} onclick={() => onSave()}>
-      Save…
-    </button>
+    <Button
+      variant="icon"
+      icon="folder-open"
+      title="Open saved sketch…"
+      onclick={() => onOpen()}
+    />
+    <Button
+      variant="icon"
+      icon="save"
+      title="Save sketch…"
+      disabled={!snapshot}
+      onclick={() => onSave()}
+    />
   </div>
 
   <div class="sketch-body">

@@ -56,6 +56,7 @@ function focusOrOpenSettings(viewId: string, title: string): void {
 export const shard: SourceShard = {
   manifest: {
     id: 'llm-providers',
+    kind: 'service',
     label: 'LLM Providers',
     views: [
       { id: 'deepseek:settings', label: 'DeepSeek Settings', standalone: true },

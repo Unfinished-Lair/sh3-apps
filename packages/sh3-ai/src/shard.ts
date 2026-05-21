@@ -156,6 +156,7 @@ export const shard: SourceShard = {
   manifest: {
     id: 'ai',
     label: 'AI',
+    kind: 'system',
     views: [
       { id: CONVERSATIONS_VIEW_ID, label: 'AI Conversations', standalone: true },
       { id: DEFAULTS_VIEW_ID, label: 'AI Defaults', standalone: true },
@@ -324,7 +325,6 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'AI',
-      aiInvocable: false,
       run() { openSketchViaPicker(); },
     });
 

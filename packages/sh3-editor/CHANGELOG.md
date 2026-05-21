@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.15.0 — 2026-05-21 — `EditorEditContribution`: structured byte-offset edits from external shards
+
+### Added
+
+- New `EditorEditContribution` point at `EDITOR_EDIT_POINT` (subpath `./edit/contributions`). Contributors register one descriptor per editor slot; the editor hands each a slot-scoped `EditorEditChannel` with four verbs: `submit(cmd)` for real, undoable, dirty-flagging edits, `applyTransientEdit(cmd)` for no-history, no-dirty previews, and `setActive()` / `clearActive()` for publishing the surface as the active undo/redo/save target so the editor's app-scoped actions land on it.
+- `EditorEdit` byte-offset edit type (`replace` / `insert` / `delete`) — same shape every external tool already uses.
+- Submit-driven edits coalesce on `meta.coalesceKey` within a 1s window (`EDIT_COALESCE_MS`); the editor namespaces keys by submitter identity so multi-submitter slots never collide.
+- Smart-shift caret on submit: caret position is byte/char-converted, walked through the edits, and clamped to the edit start when it falls inside an edit's range.
+
+### Changed
+
+- `EditorReplacePatch.content` JSDoc now warns against mixing buffer-poke `replace({ content })` (which clears history) with the new `EditorEditChannel.submit` against the same slot.
+- `sh3-editor:editor.save` / `.undo` / `.redo` / `.redo-alt` action scopes broadened from `focus:sh3-editor:editor` to `app` so non-editor surfaces that publish via `channel.setActive()` receive the keystroke. `run()` bodies still no-op when no surface is active, so the behavior change is purely additive. `Mod+Shift+V` (preview-toggle) stays editor-focus-scoped — only meaningful for the editor view itself.
+
+### Spec
+
+- `docs/sh3-rfcs/2026-05-21-editor-external-edit-contribution.md` (RFC)
+- `docs/sh3-rfcs/2026-05-21-editor-external-edit-contribution-design.md` (design)
+
 ## 0.14.2 — 2026-05-21 — `sh3.file-handler` contribution for text formats
 
 ### Added

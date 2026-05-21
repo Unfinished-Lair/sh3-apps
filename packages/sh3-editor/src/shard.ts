@@ -38,6 +38,7 @@ import { getActiveGraph } from './graph/active';
 import { getActiveEditor } from './views/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
+import { bindEdits } from './edit/edit-binding';
 import { bindInspector } from './inspector-binding';
 import { registerBuiltinWidgets } from './inspector/widgets/register';
 import { SETTINGS_POINT, type SettingsDescriptor } from './settings/contributions';
@@ -175,6 +176,12 @@ export const shard: SourceShard = {
           defaultOptions,
           documents: ctx.documents,
         });
+        const editResult = bindEdits({
+          slotId,
+          contributions: ctx.contributions,
+          registry: registry!,
+          internals: internalsRef!,
+        });
         const { entry, cleanup } = bindResult;
         const opts = entry.options;
         const component = mount(Editor, {
@@ -199,6 +206,7 @@ export const shard: SourceShard = {
           closable: true,
           unmount() {
             cleanup();
+            editResult.cleanup();
             unmount(component);
           },
         };
@@ -510,10 +518,14 @@ export const shard: SourceShard = {
       },
     });
 
+    // Save/undo/redo are scoped at 'app' (not 'focus:sh3-editor:editor')
+    // so non-editor surfaces that bind an EditorEditContribution and call
+    // channel.setActive() also receive the keystroke. run() bodies no-op
+    // when no surface has published itself as the active target.
     ctx.actions.register({
       id: 'sh3-editor:editor.save',
       label: 'Save Document',
-      scope: 'focus:sh3-editor:editor',
+      scope: 'app',
       defaultShortcut: 'Mod+S',
       allowInInputs: true,
       paletteItem: true,
@@ -525,7 +537,7 @@ export const shard: SourceShard = {
     ctx.actions.register({
       id: 'sh3-editor:editor.undo',
       label: 'Undo',
-      scope: 'focus:sh3-editor:editor',
+      scope: 'app',
       defaultShortcut: 'Mod+Z',
       allowInInputs: true,
       paletteItem: true,
@@ -537,7 +549,7 @@ export const shard: SourceShard = {
     ctx.actions.register({
       id: 'sh3-editor:editor.redo',
       label: 'Redo',
-      scope: 'focus:sh3-editor:editor',
+      scope: 'app',
       defaultShortcut: 'Mod+Shift+Z',
       allowInInputs: true,
       paletteItem: true,
@@ -551,7 +563,7 @@ export const shard: SourceShard = {
     ctx.actions.register({
       id: 'sh3-editor:editor.redo-alt',
       label: 'Redo',
-      scope: 'focus:sh3-editor:editor',
+      scope: 'app',
       defaultShortcut: 'Mod+Y',
       allowInInputs: true,
       paletteItem: false,

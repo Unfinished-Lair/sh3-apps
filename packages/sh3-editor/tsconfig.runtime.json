@@ -19,6 +19,7 @@
     "src/settings/contributions.ts",
     "src/help/contributions.ts",
     "src/color-panel/contributions.ts",
+    "src/edit/contributions.ts",
     "src/graph/contributions.ts",
     "src/graph/types-export.ts",
     "src/graph/history-export.ts",

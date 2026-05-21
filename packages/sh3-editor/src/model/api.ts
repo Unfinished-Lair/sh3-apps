@@ -85,6 +85,8 @@ function makeController(reg: HistoryRegistry, id: string, onAfterMutation: () =>
 }
 
 const TEXT_COALESCE_MS = 300;
+// Submit-driven edits (EditorEditContribution) use EDIT_COALESCE_MS in
+// src/edit/edit-binding.ts (1000ms) — the workloads differ.
 
 export function createApi(
   registry: InstanceRegistry,

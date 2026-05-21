@@ -51,6 +51,89 @@ describe('createTextSwapCommand', () => {
   });
 });
 
+import { createEditBatchCommand } from './history-registry';
+
+describe('createEditBatchCommand', () => {
+  it('apply writes after-state via setter; revert writes before-state via setter', () => {
+    let content = '';
+    let cs = -1;
+    let ce = -1;
+    const setter = (c: string, cursorStart: number, cursorEnd: number) => {
+      content = c;
+      cs = cursorStart;
+      ce = cursorEnd;
+    };
+    const cmd = createEditBatchCommand({
+      setter,
+      before: 'hello',
+      after: 'hello world',
+      cursorBefore: 5,
+      cursorEndBefore: 5,
+      cursorAfter: 11,
+      cursorEndAfter: 11,
+    });
+    cmd.apply();
+    expect(content).toBe('hello world');
+    expect(cs).toBe(11);
+    expect(ce).toBe(11);
+    cmd.revert();
+    expect(content).toBe('hello');
+    expect(cs).toBe(5);
+    expect(ce).toBe(5);
+  });
+
+  it('stamps meta.kind="edit-batch" and carries submittedKind from meta.kind', () => {
+    const cmd = createEditBatchCommand({
+      setter: () => {},
+      before: 'a',
+      after: 'b',
+      cursorBefore: 0, cursorEndBefore: 0,
+      cursorAfter:  0, cursorEndAfter:  0,
+      meta: { kind: 'table-edit', label: 'Cell commit', coalesceKey: 'drag' },
+    });
+    expect(cmd.meta?.kind).toBe('edit-batch');
+    expect((cmd.meta as { submittedKind?: string }).submittedKind).toBe('table-edit');
+    expect(cmd.meta?.label).toBe('Cell commit');
+    expect((cmd.meta as { coalesceKey?: string }).coalesceKey).toBe('drag');
+  });
+
+  it('attaches a six-field snapshot for replaceTop coalescing', () => {
+    const cmd = createEditBatchCommand({
+      setter: () => {},
+      before: 'a', after: 'b',
+      cursorBefore: 1, cursorEndBefore: 1,
+      cursorAfter: 2,  cursorEndAfter: 2,
+    });
+    expect(cmd.meta?.snapshot).toEqual({
+      before: 'a', after: 'b',
+      cursorBefore: 1, cursorEndBefore: 1,
+      cursorAfter: 2,  cursorEndAfter: 2,
+    });
+  });
+
+  it('stamps timestamp when `now` is supplied', () => {
+    const cmd = createEditBatchCommand({
+      setter: () => {},
+      before: 'a', after: 'b',
+      cursorBefore: 0, cursorEndBefore: 0,
+      cursorAfter:  0, cursorEndAfter:  0,
+      now: 42,
+    });
+    expect(cmd.meta?.timestamp).toBe(42);
+  });
+
+  it('carries internalCoalesceKey through meta for the coalesce predicate', () => {
+    const cmd = createEditBatchCommand({
+      setter: () => {},
+      before: 'a', after: 'b',
+      cursorBefore: 0, cursorEndBefore: 0,
+      cursorAfter:  0, cursorEndAfter:  0,
+      internalCoalesceKey: '1:drag',
+    });
+    expect((cmd.meta as { internalCoalesceKey?: string }).internalCoalesceKey).toBe('1:drag');
+  });
+});
+
 describe('HistoryRegistry', () => {
   it('get returns the same engine across calls for a given id', () => {
     const reg = new HistoryRegistry();

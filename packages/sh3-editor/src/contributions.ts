@@ -73,7 +73,11 @@ export type EditorDocumentSeed = EditorPathSeed | EditorContentSeed;
  *  - Path mode: any common field plus `path`. Replacing `path` flushes
  *    pending dirty writes (to the old path), reads the new path, clears
  *    history. Replacing `content` in path mode pokes the local buffer
- *    without writing — useful for previews / transforms. */
+ *    without writing — useful for previews / transforms.
+ *
+ *  NOTE: replace({ content }) clears the slot's history. Do not mix it
+ *  with EditorEditChannel.submit / applyTransientEdit against the same
+ *  slot — pick one channel per concern. See edit/contributions.ts. */
 export type EditorReplacePatch =
   | (Partial<Omit<EditorContentSeed, 'kind'>> & { content?: string })
   | (Partial<Omit<EditorPathSeed, 'kind'>> & { content?: string });

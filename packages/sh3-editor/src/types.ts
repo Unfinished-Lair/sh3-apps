@@ -365,3 +365,12 @@ export type {
 
 // --- Preview / Reader (≥ 0.11.0) ---
 export type { PreviewLinkEvent } from './contributions';
+
+// --- Editor edit channel (≥ 0.15.0) ---
+export type {
+  EditorEdit,
+  EditorEditCommand,
+  EditorEditChannel,
+  EditorEditContribution,
+} from './edit/contributions';
+export { EDITOR_EDIT_POINT } from './edit/contributions';

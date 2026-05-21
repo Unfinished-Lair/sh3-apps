@@ -39,6 +39,11 @@
       "import": "./dist/color-panel/contributions.js",
       "default": "./dist/color-panel/contributions.js"
     },
+    "./edit/contributions": {
+      "types": "./dist/edit/contributions.d.ts",
+      "import": "./dist/edit/contributions.js",
+      "default": "./dist/edit/contributions.js"
+    },
     "./graph/contributions": {
       "types": "./dist/graph/contributions.d.ts",
       "import": "./dist/graph/contributions.js",
@@ -71,6 +76,8 @@
     "dist/help/contributions.js",
     "dist/color-panel/contributions.d.ts",
     "dist/color-panel/contributions.js",
+    "dist/edit/contributions.d.ts",
+    "dist/edit/contributions.js",
     "dist/graph/contributions.d.ts",
     "dist/graph/contributions.js",
     "dist/graph/types-export.d.ts",

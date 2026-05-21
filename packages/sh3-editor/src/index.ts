@@ -9,3 +9,10 @@ export type {
   ColorPanelController,
   PreviewLinkEvent,
 } from './types';
+export type {
+  EditorEdit,
+  EditorEditCommand,
+  EditorEditChannel,
+  EditorEditContribution,
+} from './edit/contributions';
+export { EDITOR_EDIT_POINT } from './edit/contributions';

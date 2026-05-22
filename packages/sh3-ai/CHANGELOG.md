@@ -1,5 +1,22 @@
 # sh3-ai changelog
 
+## 0.8.0 — 2026-05-22 — Context-source contribution + document-browse in the AI Edit modal
+
+### Added
+- Consumes sh3-core's new `CONTEXT_SOURCE_POINT_ID` contribution point (sh3-core 0.24.0). Publisher shards register `ContextSource` descriptors against sh3-core to publish ad-hoc text / markdown / JSON context entries into the AI Edit modal's picker — no devDep on sh3-ai needed. Lifecycle is consumer-owned via the disposer returned from `ctx.contributions.register(...)`.
+- AI Edit modal's context picker grows from a flat list to a three-section dropdown: FIELDS / SOURCES / DOCUMENTS. SOURCES entries are sub-grouped by descriptor `group`. The DOCUMENTS section's `» browse documents…` row opens `ctx.documentPicker` and reads the picked file via `ctx.browse.readFrom`, inferring kind from extension.
+- `formatValue` now wraps `markdown` values in fenced ```` ```markdown ``` ```` blocks and `json` values in fenced ```` ```json ``` ```` blocks so the LLM sees content structure. Truncation happens inside the fence so it stays valid.
+- Consumer guide at `docs/sh3-ai/context-sources.md`.
+
+### Changed
+- `ContextEntry` widened to `{ origin, originKey, label, kind, value }`. The per-entry header in the assembled prompt now reads `[<label>] (<origin>:<originKey>)`. Field-origin entries continue to behave as before, just with the `field:` prefix on the header.
+- `PER_FIELD_CHAR_CAP` renamed to `PER_CONTEXT_CHAR_CAP` — value unchanged at 8000.
+- `Edit.svelte` `selectedAddrs: FieldAddress[]` renamed to `selected: SelectedEntry[]` (discriminated union of field / source / document). `run()` is now async via the new `gatherContexts` helper.
+
+### Internal
+- New `assistant/gather.ts` module hosts `gatherContexts(selected, deps)`. Kept ShardContext-free for unit testing; `Edit.svelte` builds the `GatherDeps` from its own `ctx`.
+- Tracks `sh3-core ^0.24.0` for `CONTEXT_SOURCE_POINT_ID` and `ContextSource`.
+
 ## 0.7.1 — 2026-05-21 — `sh3.file-handler` contribution for AI Sketch
 
 ### Added

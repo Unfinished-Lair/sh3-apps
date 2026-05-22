@@ -1,8 +1,11 @@
 <script lang="ts">
   import type { ShardContext, FieldAddress, FieldView } from 'sh3-core';
   import ContextPicker from './ContextPicker.svelte';
-  import { buildPrompt as buildPromptFn, type ContextEntry } from './prompt';
-  import { addrKey } from './picker';
+  import { buildPrompt } from './prompt';
+  import { gatherContexts, type GatherDeps } from './gather';
+  import type { SelectedEntry } from './picker';
+  import { CONTEXT_SOURCE_POINT_ID } from 'sh3-core';
+  import { sh3 } from 'sh3-core';
 
   type RunStream = (
     prompt: string,
@@ -28,27 +31,22 @@
 
   const original = String(ctx.sh3.fields.get(addr) ?? '');
   let prompt = $state('');
-  let selectedAddrs = $state<FieldAddress[]>([]);
+  let selected = $state<SelectedEntry[]>([]);
   let phase = $state<Phase>({ kind: 'idle' });
   let abortCtrl: AbortController | null = null;
 
-  function buildPrompt(): string {
-    const all = ctx.sh3.fields.list();
-    const contexts: ContextEntry[] = [];
-    for (const a of selectedAddrs) {
-      const k = addrKey(a);
-      const fv = all.find((f) => addrKey(f) === k);
-      if (!fv) continue;
-      contexts.push({
-        shardId: fv.shardId,
-        slotId: fv.slotId,
-        fieldId: fv.fieldId,
-        label: fv.label,
-        kind: fv.kind,
-        value: ctx.sh3.fields.get(a),
-      });
-    }
-    return buildPromptFn({ original, instruction: prompt, contexts });
+  function makeGatherDeps(): GatherDeps {
+    return {
+      fields: {
+        get: (a) => ctx.sh3.fields.get(a),
+        list: (opts) => ctx.sh3.fields.list(opts),
+      },
+      sources: () => ctx.contributions.list(CONTEXT_SOURCE_POINT_ID),
+      readDocument: ctx.browse?.readFrom
+        ? (shardId, path) => ctx.browse!.readFrom!(shardId, path)
+        : undefined,
+      toast: (msg) => sh3.toast.notify(msg, { level: 'warn' }),
+    };
   }
 
   async function run(): Promise<void> {
@@ -57,7 +55,9 @@
     abortCtrl = new AbortController();
     phase = { kind: 'streaming', partial: '' };
     try {
-      const final = await runEditStream(buildPrompt(), abortCtrl.signal, (text) => {
+      const contexts = await gatherContexts(selected, makeGatherDeps());
+      const fullPrompt = buildPrompt({ original, instruction: prompt, contexts });
+      const final = await runEditStream(fullPrompt, abortCtrl.signal, (text) => {
         phase = { kind: 'streaming', partial: text };
       });
       phase = { kind: 'validate-2pane', proposal: final };
@@ -137,7 +137,7 @@
         placeholder="rewrite this more cleanly, fix orthography…"
         rows={4}
       ></textarea>
-      <ContextPicker {ctx} excludeAddr={addr} bind:selected={selectedAddrs} />
+      <ContextPicker {ctx} excludeAddr={addr} bind:selected />
       <details class="orig">
         <summary>Original ({original.length} chars)</summary>
         <pre>{original}</pre>

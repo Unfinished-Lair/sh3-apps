@@ -4,6 +4,7 @@
 
 ### Added
 
+- Editor view now bridges its own dirty bit to the host's tab indicator via `MountContext.setDirty`. Every `sh3-editor:editor` instance gets the colored tab-ring out of the box; contributors no longer need to wire `onDirtyChange` → `setDirty` themselves. Works identically in path-mode and content-mode bindings.
 - New `EditorEditContribution` point at `EDITOR_EDIT_POINT` (subpath `./edit/contributions`). Contributors register one descriptor per editor slot; the editor hands each a slot-scoped `EditorEditChannel` with four verbs: `submit(cmd)` for real, undoable, dirty-flagging edits, `applyTransientEdit(cmd)` for no-history, no-dirty previews, and `setActive()` / `clearActive()` for publishing the surface as the active undo/redo/save target so the editor's app-scoped actions land on it.
 - `EditorEdit` byte-offset edit type (`replace` / `insert` / `delete`) — same shape every external tool already uses.
 - Submit-driven edits coalesce on `meta.coalesceKey` within a 1s window (`EDIT_COALESCE_MS`); the editor namespaces keys by submitter identity so multi-submitter slots never collide.

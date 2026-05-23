@@ -40,6 +40,7 @@ import { makeRemoveSelectionCommand } from './graph/history/commands';
 import { bindDocument } from './document-binding';
 import { bindEdits } from './edit/edit-binding';
 import { bindInspector } from './inspector-binding';
+import { bindTabDirty } from './tab-dirty';
 import { registerBuiltinWidgets } from './inspector/widgets/register';
 import { SETTINGS_POINT, type SettingsDescriptor } from './settings/contributions';
 import {
@@ -182,6 +183,7 @@ export const shard: SourceShard = {
           registry: registry!,
           internals: internalsRef!,
         });
+        const offTabDirty = bindTabDirty(slotId, internalsRef!, context);
         const { entry, cleanup } = bindResult;
         const opts = entry.options;
         const component = mount(Editor, {
@@ -205,6 +207,7 @@ export const shard: SourceShard = {
         return {
           closable: true,
           unmount() {
+            offTabDirty();
             cleanup();
             editResult.cleanup();
             unmount(component);

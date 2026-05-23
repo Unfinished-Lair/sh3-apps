@@ -351,6 +351,8 @@
         oninput={handleInput}
         onscroll={handleScroll}
         onselect={handleSelect}
+        onkeyup={handleSelect}
+        onmouseup={handleSelect}
         onfocus={handleFocus}
       ></textarea>
 

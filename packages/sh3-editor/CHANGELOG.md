@@ -5,6 +5,7 @@
 ### Fixed
 
 - Path-mode dirty bit now reconciles against `lastPersisted` on every contentChange, so an undo (or any edit) that brings the buffer back to the saved snapshot clears dirty (and via `MountContext.setDirty`, the tab ring). Previously the bit was a one-way ratchet to `true` on edit and only `false` again on Save / replace / external watch. New-file mode (lastPersisted=null) is unaffected.
+- Undo no longer jumps the caret to file start. The textarea only bound `onselect` (which fires for range selections, not collapsed cursor moves), so `doc.cursorStart` stayed at its initial value of `0` after the user clicked / arrowed mid-file. `pushContent` then captured `cursorBefore: 0` into the history command. Adding `onmouseup` and `onkeyup` to `handleSelect` keeps the model cursor in sync with the textarea so undo/redo restore the actual pre-edit caret.
 
 ### Added
 

@@ -509,72 +509,6 @@ export const shard: SourceShard = {
     });
 
     ctx.actions.register({
-      id: 'sh3-editor:settings.open',
-      label: 'Open Editor Settings',
-      scope: 'view:sh3-editor:settings',
-      paletteItem: true,
-      contextItem: false,
-      group: 'Editor',
-      run() {
-        // Settings view is standalone-openable via the shell's view launcher.
-        // Placeholder: full wiring belongs in a future task.
-      },
-    });
-
-    // Save/undo/redo are scoped at 'app' (not 'focus:sh3-editor:editor')
-    // so non-editor surfaces that bind an EditorEditContribution and call
-    // channel.setActive() also receive the keystroke. run() bodies no-op
-    // when no surface has published itself as the active target.
-    ctx.actions.register({
-      id: 'sh3-editor:editor.save',
-      label: 'Save Document',
-      scope: 'app',
-      defaultShortcut: 'Mod+S',
-      allowInInputs: true,
-      paletteItem: true,
-      contextItem: false,
-      group: 'Editor',
-      run() { getActiveEditor()?.save(); },
-    });
-
-    ctx.actions.register({
-      id: 'sh3-editor:editor.undo',
-      label: 'Undo',
-      scope: 'app',
-      defaultShortcut: 'Mod+Z',
-      allowInInputs: true,
-      paletteItem: true,
-      contextItem: false,
-      group: 'Editor',
-      run() { getActiveEditor()?.undo(); },
-    });
-
-    ctx.actions.register({
-      id: 'sh3-editor:editor.redo',
-      label: 'Redo',
-      scope: 'app',
-      defaultShortcut: 'Mod+Shift+Z',
-      allowInInputs: true,
-      paletteItem: true,
-      contextItem: false,
-      group: 'Editor',
-      run() { getActiveEditor()?.redo(); },
-    });
-
-    // Windows-style alternate redo binding. Hidden from palette/context to
-    // avoid duplicate entries — primary redo action is above.
-    ctx.actions.register({
-      id: 'sh3-editor:editor.redo-alt',
-      label: 'Redo',
-      scope: 'app',
-      defaultShortcut: 'Mod+Y',
-      allowInInputs: true,
-      paletteItem: false,
-      contextItem: false,
-      run() { getActiveEditor()?.redo(); },
-    });
-
-    ctx.actions.register({
       id: 'sh3-editor:editor.preview-toggle',
       label: 'Toggle Preview',
       scope: 'focus:sh3-editor:editor',
@@ -706,6 +640,64 @@ export const shard: SourceShard = {
       contextItem: false,
       group: 'Graph',
       run() { getActiveGraph()?.dismissPalette(); },
+    });
+  },
+
+  onAppActivate(ctx, appId) {
+    // Save/undo/redo are scoped at 'app' (not 'focus:sh3-editor:editor')
+    // so non-editor surfaces that bind an EditorEditContribution and call
+    // channel.setActive() also receive the keystroke. run() bodies no-op
+    // when no surface has published itself as the active target.
+    ctx.actions.register({
+      id: 'sh3-editor:editor.save',
+      label: 'Save Document',
+      scope: 'app',
+      menuItem: 'file',
+      defaultShortcut: 'Mod+S',
+      allowInInputs: true,
+      paletteItem: true,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.save(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.undo',
+      label: 'Undo',
+      menuItem: 'edit',
+      scope: 'app',
+      defaultShortcut: 'Mod+Z',
+      allowInInputs: true,
+      paletteItem: false,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.undo(); },
+    });
+
+    ctx.actions.register({
+      id: 'sh3-editor:editor.redo',
+      label: 'Redo',
+      menuItem: 'edit',
+      scope: 'app',
+      defaultShortcut: 'Mod+Shift+Z',
+      allowInInputs: true,
+      paletteItem: false,
+      contextItem: false,
+      group: 'Editor',
+      run() { getActiveEditor()?.redo(); },
+    });
+
+    // Windows-style alternate redo binding. Hidden from palette/context to
+    // avoid duplicate entries — primary redo action is above.
+    ctx.actions.register({
+      id: 'sh3-editor:editor.redo-alt',
+      label: 'Redo',
+      scope: 'app',
+      defaultShortcut: 'Mod+Y',
+      allowInInputs: true,
+      paletteItem: false,
+      contextItem: false,
+      run() { getActiveEditor()?.redo(); },
     });
   },
 

@@ -181,6 +181,8 @@ function bindPathMode(
     if (off) offs.push(off);
   }
 
+  offs.push(installDirtyReconciler(slotId, entry, state, internals));
+
   if (bound.bind) {
     const replace = makePathReplace(slotId, entry, state, documents, internals, warn);
     const disposer = bound.bind(replace);
@@ -339,6 +341,33 @@ function installWatcher(
     warn(`[sh3-editor] documents.watch() unavailable: ${stringifyErr(e)}`);
     return null;
   }
+}
+
+/** Recompute dirty against `state.lastPersisted` on every contentChange.
+ *  Path mode's dirty bit is supposed to be `content !== lastPersisted`, but
+ *  Editor.svelte's pushContent / setContent only one-way-ratchets it to true
+ *  on user edits. As a result, an undo back to the persisted snapshot leaves
+ *  dirty stuck at true. This listener closes that loop: any contentChange
+ *  for our slot recomputes dirty and emits the flip if it changed.
+ *
+ *  Skipped when `lastPersisted` is null (no canonical snapshot yet — file
+ *  didn't exist at last read, or initial read hasn't resolved). In that
+ *  case the existing one-way-true behavior is preserved. */
+function installDirtyReconciler(
+  slotId: string,
+  entry: RegistryEntry,
+  state: PathState,
+  internals: ApiInternals,
+): () => void {
+  return internals.contentChange.on((id, content) => {
+    if (id !== slotId) return;
+    if (state.disposed) return;
+    if (state.lastPersisted === null) return;
+    const shouldBeDirty = content !== state.lastPersisted;
+    if (entry.document.dirty === shouldBeDirty) return;
+    entry.document.dirty = shouldBeDirty;
+    internals.dirtyChange.emit(slotId, shouldBeDirty);
+  });
 }
 
 function makePathReplace(

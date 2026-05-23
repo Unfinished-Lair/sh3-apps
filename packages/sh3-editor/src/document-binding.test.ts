@@ -771,3 +771,93 @@ describe('bindDocument — path mode cleanup', () => {
     expect(entry.document.content).toBe('v1');
   });
 });
+
+describe('bindDocument — path mode dirty reconciliation', () => {
+  it('flips dirty=false when content reverts to lastPersisted (undo case)', async () => {
+    const docs = new MockDocuments({ 'a.md': 'orig' });
+    const onDirtyChange = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-rec-1',
+      seed: { kind: 'path', path: 'a.md' },
+      onDirtyChange,
+    }]);
+    const { entry } = bindDocument({ slotId: 's-rec-1', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync(); // lastPersisted = 'orig'
+    onDirtyChange.mockClear();
+
+    // Simulate Editor.svelte's pushContent: ratchet dirty=true and emit contentChange.
+    entry.document.content = 'edited';
+    entry.document.dirty = true;
+    ctx.internals.contentChange.emit('s-rec-1', 'edited');
+    expect(entry.document.dirty).toBe(true);
+    expect(onDirtyChange).not.toHaveBeenCalled(); // we didn't fire dirtyChange manually
+
+    // Now simulate undo: content returns to 'orig' via setContent's contentChange emit.
+    entry.document.content = 'orig';
+    ctx.internals.contentChange.emit('s-rec-1', 'orig');
+    expect(entry.document.dirty).toBe(false);
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('flips dirty=true when content diverges from lastPersisted', async () => {
+    const docs = new MockDocuments({ 'a.md': 'orig' });
+    const onDirtyChange = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-rec-2',
+      seed: { kind: 'path', path: 'a.md' },
+      onDirtyChange,
+    }]);
+    const { entry } = bindDocument({ slotId: 's-rec-2', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    onDirtyChange.mockClear();
+    expect(entry.document.dirty).toBe(false);
+
+    entry.document.content = 'edited';
+    ctx.internals.contentChange.emit('s-rec-2', 'edited');
+    expect(entry.document.dirty).toBe(true);
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('skips reconciliation when lastPersisted is null (new-file case)', async () => {
+    const docs = new MockDocuments(); // file does not exist
+    const onDirtyChange = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-rec-3',
+      seed: { kind: 'path', path: 'new.txt', initialContent: '' },
+      onDirtyChange,
+    }]);
+    const { entry } = bindDocument({ slotId: 's-rec-3', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync(); // lastPersisted stays null
+    onDirtyChange.mockClear();
+
+    // Simulate typing — Editor.svelte would set dirty=true; our reconciler must not undo that.
+    entry.document.content = 'typed';
+    entry.document.dirty = true;
+    ctx.internals.contentChange.emit('s-rec-3', 'typed');
+    expect(entry.document.dirty).toBe(true);
+
+    // And undoing back to '' must NOT clear dirty (no canonical snapshot to compare to).
+    entry.document.content = '';
+    ctx.internals.contentChange.emit('s-rec-3', '');
+    expect(entry.document.dirty).toBe(true);
+    expect(onDirtyChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores contentChange events for other slots', async () => {
+    const docs = new MockDocuments({ 'a.md': 'orig' });
+    const onDirtyChange = vi.fn();
+    const ctx = makeContextWithContributions([{
+      slotId: 's-rec-4',
+      seed: { kind: 'path', path: 'a.md' },
+      onDirtyChange,
+    }]);
+    const { entry } = bindDocument({ slotId: 's-rec-4', ...ctx, documents: docs as unknown as DocumentHandle });
+    await flushAsync();
+    entry.document.dirty = true;
+    onDirtyChange.mockClear();
+
+    ctx.internals.contentChange.emit('other-slot', 'orig');
+    expect(entry.document.dirty).toBe(true);
+    expect(onDirtyChange).not.toHaveBeenCalled();
+  });
+});

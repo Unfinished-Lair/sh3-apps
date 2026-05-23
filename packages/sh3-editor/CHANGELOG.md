@@ -2,6 +2,10 @@
 
 ## 0.15.0 — 2026-05-21 — `EditorEditContribution`: structured byte-offset edits from external shards
 
+### Fixed
+
+- Path-mode dirty bit now reconciles against `lastPersisted` on every contentChange, so an undo (or any edit) that brings the buffer back to the saved snapshot clears dirty (and via `MountContext.setDirty`, the tab ring). Previously the bit was a one-way ratchet to `true` on edit and only `false` again on Save / replace / external watch. New-file mode (lastPersisted=null) is unaffected.
+
 ### Added
 
 - Editor view now bridges its own dirty bit to the host's tab indicator via `MountContext.setDirty`. Every `sh3-editor:editor` instance gets the colored tab-ring out of the box; contributors no longer need to wire `onDirtyChange` → `setDirty` themselves. Works identically in path-mode and content-mode bindings.

@@ -4,10 +4,11 @@ import type { ApiInternals } from './model/api';
 import type { OpenDocumentOptions } from './types';
 import type {
   EditorContentSeed,
+  EditorDocumentChannel,
   EditorDocumentContribution,
   EditorDocumentSeed,
+  EditorOptionsPatch,
   EditorPathSeed,
-  EditorReplacePatch,
 } from './contributions';
 import { EDITOR_DOCUMENT_POINT } from './contributions';
 
@@ -104,36 +105,36 @@ function bindContentMode(
   const entry = registry.get(slotId) ?? registry.open(slotId, seedOpts);
 
   if (bound.bind) {
-    const replace = makeContentReplace(slotId, entry, internals);
-    const disposer = bound.bind(replace);
+    const channel = makeContentChannel(slotId, entry, internals);
+    const disposer = bound.bind(channel);
     if (typeof disposer === 'function') offs.push(disposer);
   }
   return entry;
 }
 
-function makeContentReplace(
+function makeContentChannel(
   slotId: string,
   entry: RegistryEntry,
   internals: ApiInternals,
-): (next: EditorReplacePatch) => void {
-  return (next) => {
-    if (
-      'content' in next &&
-      next.content !== undefined &&
-      next.content !== entry.document.content
-    ) {
-      entry.document.content = next.content;
+): EditorDocumentChannel {
+  return {
+    setBuffer(content) {
+      if (content === entry.document.content) return;
+      entry.document.content = content;
       entry.document.cursorStart = 0;
       entry.document.cursorEnd = 0;
       entry.document.dirty = false;
       internals.history(slotId).clear();
-      internals.contentChange.emit(slotId, next.content);
+      internals.contentChange.emit(slotId, content);
       internals.dirtyChange.emit(slotId, false);
-    }
-    applyCommonReplace(slotId, entry, next);
-    if ('filePath' in next && next.filePath !== undefined) {
-      entry.document.filePath = next.filePath;
-    }
+    },
+    openPath() {
+      // No-op in content mode. The contribution registered a content seed —
+      // path operations are not part of its contract.
+    },
+    setOptions(patch) {
+      applyOptionsPatch(entry, patch);
+    },
   };
 }
 
@@ -184,8 +185,8 @@ function bindPathMode(
   offs.push(installDirtyReconciler(slotId, entry, state, internals));
 
   if (bound.bind) {
-    const replace = makePathReplace(slotId, entry, state, documents, internals, warn);
-    const disposer = bound.bind(replace);
+    const channel = makePathChannel(slotId, entry, state, documents, internals, warn);
+    const disposer = bound.bind(channel);
     if (typeof disposer === 'function') offs.push(disposer);
   }
 
@@ -370,39 +371,39 @@ function installDirtyReconciler(
   });
 }
 
-function makePathReplace(
+function makePathChannel(
   slotId: string,
   entry: RegistryEntry,
   state: PathState,
   documents: DocumentHandle | undefined,
   internals: ApiInternals,
   warn: (msg: string) => void,
-): (next: EditorReplacePatch) => void {
-  return (next) => {
-    if ('path' in next && next.path !== undefined && next.path !== state.boundPath) {
-      void swapPath(slotId, entry, state, next.path, documents, internals, warn);
-      // Other fields are applied below regardless of path swap.
-    }
-    if (
-      'content' in next &&
-      next.content !== undefined &&
-      next.content !== entry.document.content
-    ) {
-      // Buffer poke — does not write to disk. Caller is responsible for
-      // their own semantics (preview overlays, transforms). History clears
-      // because the buffer's authored timeline has been replaced.
-      entry.document.content = next.content;
+): EditorDocumentChannel {
+  return {
+    setBuffer(content) {
+      if (content === entry.document.content) return;
+      // Buffer poke — does not write to disk. History clears because the
+      // buffer's authored timeline has been replaced.
+      entry.document.content = content;
       entry.document.cursorStart = 0;
       entry.document.cursorEnd = 0;
       // Dirty becomes true iff buffer != lastPersisted (poke could diverge
-      // from disk; only Save reconciles).
-      const willBeDirty = state.lastPersisted !== null && next.content !== state.lastPersisted;
+      // from disk; only Save reconciles). When lastPersisted is null
+      // (file didn't exist), the buffer-poke does not flip dirty — Save
+      // reconciles the new-file case.
+      const willBeDirty = state.lastPersisted !== null && content !== state.lastPersisted;
       entry.document.dirty = willBeDirty;
       internals.history(slotId).clear();
-      internals.contentChange.emit(slotId, next.content);
+      internals.contentChange.emit(slotId, content);
       internals.dirtyChange.emit(slotId, willBeDirty);
-    }
-    applyCommonReplace(slotId, entry, next);
+    },
+    openPath(path) {
+      if (path === state.boundPath) return;
+      void swapPath(slotId, entry, state, path, documents, internals, warn);
+    },
+    setOptions(patch) {
+      applyOptionsPatch(entry, patch);
+    },
   };
 }
 
@@ -467,40 +468,39 @@ async function swapPath(
 // Shared helpers
 // ============================================================================
 
-function applyCommonReplace(
-  _slotId: string,
-  entry: RegistryEntry,
-  next: EditorReplacePatch,
-): void {
-  if ('language' in next && next.language !== undefined) {
-    entry.document.language = next.language;
+function applyOptionsPatch(entry: RegistryEntry, patch: EditorOptionsPatch): void {
+  if (patch.language !== undefined) {
+    entry.document.language = patch.language;
   }
-  if ('matchingConfig' in next && next.matchingConfig !== undefined) {
-    entry.options.matchingConfig = next.matchingConfig;
+  if (patch.filePath !== undefined) {
+    entry.document.filePath = patch.filePath;
   }
-  if ('prefs' in next && next.prefs !== undefined) {
-    entry.prefs = { ...entry.prefs, ...next.prefs };
+  if (patch.matchingConfig !== undefined) {
+    entry.options.matchingConfig = patch.matchingConfig;
   }
-  if ('fontSize' in next && next.fontSize !== undefined) {
-    entry.options.fontSize = next.fontSize;
+  if (patch.prefs !== undefined) {
+    entry.prefs = { ...entry.prefs, ...patch.prefs };
   }
-  if ('showSettings' in next && next.showSettings !== undefined) {
-    entry.options.showSettings = next.showSettings;
+  if (patch.fontSize !== undefined) {
+    entry.options.fontSize = patch.fontSize;
   }
-  if ('toolbarActions' in next && next.toolbarActions !== undefined) {
-    entry.options.toolbarActions = next.toolbarActions;
+  if (patch.showSettings !== undefined) {
+    entry.options.showSettings = patch.showSettings;
   }
-  if ('highlight' in next && next.highlight !== undefined) {
-    entry.options.highlight = next.highlight;
+  if (patch.toolbarActions !== undefined) {
+    entry.options.toolbarActions = patch.toolbarActions;
   }
-  if ('render' in next && next.render !== undefined) {
-    entry.options.render = next.render;
+  if (patch.highlight !== undefined) {
+    entry.options.highlight = patch.highlight;
   }
-  if ('transform' in next && next.transform !== undefined) {
-    entry.options.transform = next.transform;
+  if (patch.render !== undefined) {
+    entry.options.render = patch.render;
   }
-  if ('startInPreview' in next && next.startInPreview !== undefined) {
-    entry.options.startInPreview = next.startInPreview;
+  if (patch.transform !== undefined) {
+    entry.options.transform = patch.transform;
+  }
+  if (patch.startInPreview !== undefined) {
+    entry.options.startInPreview = patch.startInPreview;
   }
 }
 

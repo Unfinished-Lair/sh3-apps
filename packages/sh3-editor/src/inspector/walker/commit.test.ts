@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { attemptCommit } from './commit';
+import type { WalkerCommitOverride } from '../../types';
 
 describe('attemptCommit', () => {
   it('calls fallback when override is undefined', () => {
@@ -36,7 +37,7 @@ describe('attemptCommit', () => {
   });
 
   it('forwards the path array untouched to the override', () => {
-    const override = vi.fn(() => true);
+    const override = vi.fn<WalkerCommitOverride>(() => true);
     const path = ['nodes', 3, 'style', 'stroke'] as (string | number)[];
     attemptCommit(override, path, '#000', vi.fn());
     expect(override).toHaveBeenCalledWith(path, '#000');

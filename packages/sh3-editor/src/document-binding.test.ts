@@ -5,8 +5,8 @@ import { createApi } from './model/api';
 import type { OpenDocumentOptions } from './types';
 import {
   EDITOR_DOCUMENT_POINT,
+  type EditorDocumentChannel,
   type EditorDocumentContribution,
-  type EditorReplacePatch,
 } from './contributions';
 import type { DocumentChange, DocumentHandle, DocumentMeta, DocStatus } from 'sh3-core';
 
@@ -21,7 +21,7 @@ function makeContext() {
     list: <T>(_pointId: string): T[] => [],
     register: <T>(_pointId: string, _desc: T) => () => {},
     onChange: (_pointId: string, _cb: () => void) => () => {},
-    onAnyChange: (_cb: () => void) => () => {},
+    onAnyChange: (_cb: (pointId: string) => void) => () => {},
     listPoints: () => [] as string[],
   };
   const defaultOptions: OpenDocumentOptions = { content: 'Hello, World' };
@@ -38,7 +38,7 @@ function makeContextWithContributions(descriptors: EditorDocumentContribution[])
         : [],
     register: <T>(_pointId: string, _desc: T) => () => {},
     onChange: (_pointId: string, _cb: () => void) => () => {},
-    onAnyChange: (_cb: () => void) => () => {},
+    onAnyChange: (_cb: (pointId: string) => void) => () => {},
     listPoints: () => [EDITOR_DOCUMENT_POINT],
   };
   const defaultOptions: OpenDocumentOptions = { content: 'Hello, World' };
@@ -188,30 +188,33 @@ describe('bindDocument — contribution lookup (content mode)', () => {
   });
 });
 
-describe('bindDocument — replace swap channel (content mode)', () => {
-  it('captures replace via bind() at mount and disposes on cleanup', () => {
-    let captured: ((next: EditorReplacePatch) => void) | null = null;
+describe('bindDocument — channel swap (content mode)', () => {
+  it('captures channel via bind() at mount and disposes on cleanup', () => {
+    let captured: EditorDocumentChannel | null = null;
     let disposed = false;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(replace) {
-        captured = replace;
+      bind(channel) {
+        captured = channel;
         return () => { disposed = true; };
       },
     }]);
     const { cleanup } = bindDocument({ slotId: 'slot-A', ...ctx });
-    expect(captured).toBeTypeOf('function');
+    expect(captured).not.toBeNull();
+    expect(captured!.setBuffer).toBeTypeOf('function');
+    expect(captured!.openPath).toBeTypeOf('function');
+    expect(captured!.setOptions).toBeTypeOf('function');
     cleanup();
     expect(disposed).toBe(true);
   });
 
-  it('replace({ content }) mutates entry, clears history, fires events', () => {
-    let captured!: (next: EditorReplacePatch) => void;
+  it('setBuffer(...) mutates entry, clears history, fires events', () => {
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
 
@@ -223,7 +226,7 @@ describe('bindDocument — replace swap channel (content mode)', () => {
     ctx.internals.contentChange.on(contentSpy);
     ctx.internals.dirtyChange.on(dirtySpy);
 
-    captured({ content: 'next' });
+    captured.setBuffer('next');
 
     expect(entry.document.content).toBe('next');
     expect(entry.document.cursorStart).toBe(0);
@@ -234,48 +237,48 @@ describe('bindDocument — replace swap channel (content mode)', () => {
     expect(dirtySpy).toHaveBeenCalledWith('slot-A', false);
   });
 
-  it('replace({ content: same }) is silent', () => {
-    let captured!: (next: EditorReplacePatch) => void;
+  it('setBuffer(same) is silent', () => {
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     bindDocument({ slotId: 'slot-A', ...ctx });
     const contentSpy = vi.fn();
     ctx.internals.contentChange.on(contentSpy);
-    captured({ content: 'init' });
+    captured.setBuffer('init');
     expect(contentSpy).not.toHaveBeenCalled();
   });
 
-  it('field-only replace does not fire content events', () => {
-    let captured!: (next: EditorReplacePatch) => void;
+  it('setOptions(...) does not fire content events', () => {
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
     const contentSpy = vi.fn();
     ctx.internals.contentChange.on(contentSpy);
 
-    captured({ language: 'rust', filePath: '/x.rs' });
+    captured.setOptions({ language: 'rust', filePath: '/x.rs' });
 
     expect(entry.document.language).toBe('rust');
     expect(entry.document.filePath).toBe('/x.rs');
     expect(contentSpy).not.toHaveBeenCalled();
   });
 
-  it('replace updates wrapper options (toolbarActions, fontSize, etc.)', () => {
-    let captured!: (next: EditorReplacePatch) => void;
+  it('setOptions(...) updates wrapper options (toolbarActions, fontSize, etc.)', () => {
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 'slot-A', ...ctx });
     const action = { id: 'a', label: 'A', onAction: () => {} };
-    captured({ toolbarActions: [action], fontSize: 18 });
+    captured.setOptions({ toolbarActions: [action], fontSize: 18 });
     expect(entry.options.toolbarActions).toEqual([action]);
     expect(entry.options.fontSize).toBe(18);
   });
@@ -284,7 +287,7 @@ describe('bindDocument — replace swap channel (content mode)', () => {
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(_r) { /* no return — disposer is optional */ },
+      bind(_c) { /* no return — disposer is optional */ },
     }]);
     const { cleanup } = bindDocument({ slotId: 'slot-A', ...ctx });
     expect(() => cleanup()).not.toThrow();
@@ -365,17 +368,17 @@ describe('bindDocument — edit-flow-back forwarders (content mode)', () => {
     expect(bSpy).toHaveBeenCalledWith('edit-B');
   });
 
-  it('replace({ content }) is observed by the contribution onContentChange', () => {
-    let captured!: (next: EditorReplacePatch) => void;
+  it('setBuffer(...) is observed by the contribution onContentChange', () => {
+    let captured!: EditorDocumentChannel;
     const onContentChange = vi.fn();
     const ctx = makeContextWithContributions([{
       slotId: 'slot-A',
       seed: { kind: 'content', content: 'init' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
       onContentChange,
     }]);
     bindDocument({ slotId: 'slot-A', ...ctx });
-    captured({ content: 'swapped' });
+    captured.setBuffer('swapped');
     expect(onContentChange).toHaveBeenCalledWith('swapped');
   });
 });
@@ -392,18 +395,18 @@ describe('document-binding — preview additions (0.11.0)', () => {
     expect(entry.options.startInPreview).toBe(true);
   });
 
-  it('makeReplace updates seed.render at runtime', () => {
+  it('setOptions updates seed.render at runtime', () => {
     const r1 = (t: string) => `<a>${t}</a>`;
     const r2 = (t: string) => `<b>${t}</b>`;
-    let captured!: (next: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'p2',
       seed: { kind: 'content', content: '', render: r1 },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry, cleanup } = bindDocument({ slotId: 'p2', ...ctx });
     expect(entry.options.render).toBe(r1);
-    captured({ render: r2 });
+    captured.setOptions({ render: r2 });
     expect(entry.options.render).toBe(r2);
     cleanup();
   });
@@ -435,18 +438,18 @@ describe('document-binding — preview additions (0.11.0)', () => {
     expect(entry.options.transform).toBe(customTransform);
   });
 
-  it('makeReplace updates seed.transform at runtime', () => {
+  it('setOptions updates seed.transform at runtime', () => {
     const t1 = (t: string) => `1:${t}`;
     const t2 = (t: string) => `2:${t}`;
-    let captured!: (next: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 'p6',
       seed: { kind: 'content', content: '', transform: t1 },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry, cleanup } = bindDocument({ slotId: 'p6', ...ctx });
     expect(entry.options.transform).toBe(t1);
-    captured({ transform: t2 });
+    captured.setOptions({ transform: t2 });
     expect(entry.options.transform).toBe(t2);
     cleanup();
   });
@@ -680,20 +683,20 @@ describe('bindDocument — path mode external watch', () => {
   });
 });
 
-describe('bindDocument — path mode replace path swap', () => {
+describe('bindDocument — path mode openPath swap', () => {
   it('swaps to a new path, reads it, clears history', async () => {
     const docs = new MockDocuments({ 'a.md': 'A', 'b.md': 'B' });
-    let captured!: (n: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 's13',
       seed: { kind: 'path', path: 'a.md' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 's13', ...ctx, documents: docs as unknown as DocumentHandle });
     await flushAsync();
     expect(entry.document.content).toBe('A');
     ctx.internals.history('s13').push({ apply() {}, revert() {} });
-    captured({ path: 'b.md' });
+    captured.openPath('b.md');
     await flushAsync();
     expect(entry.document.content).toBe('B');
     expect(entry.document.filePath).toBe('b.md');
@@ -702,17 +705,17 @@ describe('bindDocument — path mode replace path swap', () => {
 
   it('flushes dirty buffer to the OLD path before swapping', async () => {
     const docs = new MockDocuments({ 'a.md': 'A', 'b.md': 'B' });
-    let captured!: (n: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 's14',
       seed: { kind: 'path', path: 'a.md' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 's14', ...ctx, documents: docs as unknown as DocumentHandle });
     await flushAsync();
     entry.document.content = 'A-modified';
     entry.document.dirty = true;
-    captured({ path: 'b.md' });
+    captured.openPath('b.md');
     await flushAsync();
     expect(docs.files.get('a.md')).toBe('A-modified');
     expect(entry.document.content).toBe('B');
@@ -720,31 +723,31 @@ describe('bindDocument — path mode replace path swap', () => {
 
   it('swap to a non-existent path resets buffer to empty', async () => {
     const docs = new MockDocuments({ 'a.md': 'A' });
-    let captured!: (n: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 's15',
       seed: { kind: 'path', path: 'a.md' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 's15', ...ctx, documents: docs as unknown as DocumentHandle });
     await flushAsync();
-    captured({ path: 'nope.md' });
+    captured.openPath('nope.md');
     await flushAsync();
     expect(entry.document.content).toBe('');
     expect(entry.document.filePath).toBe('nope.md');
   });
 
-  it('replace({ content }) in path mode pokes buffer without writing', async () => {
+  it('setBuffer(...) in path mode pokes buffer without writing', async () => {
     const docs = new MockDocuments({ 'a.md': 'A' });
-    let captured!: (n: EditorReplacePatch) => void;
+    let captured!: EditorDocumentChannel;
     const ctx = makeContextWithContributions([{
       slotId: 's16',
       seed: { kind: 'path', path: 'a.md' },
-      bind(r) { captured = r; return () => {}; },
+      bind(c) { captured = c; return () => {}; },
     }]);
     const { entry } = bindDocument({ slotId: 's16', ...ctx, documents: docs as unknown as DocumentHandle });
     await flushAsync();
-    captured({ content: 'poked' });
+    captured.setBuffer('poked');
     expect(entry.document.content).toBe('poked');
     // Dirty becomes true because lastPersisted='A' and buffer='poked'.
     expect(entry.document.dirty).toBe(true);

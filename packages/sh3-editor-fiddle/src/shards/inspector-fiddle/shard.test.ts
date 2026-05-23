@@ -51,6 +51,7 @@ import { inspectorFiddleShard, buildCatalogMarkdown } from './shard.svelte';
 import { STARTER_VALUE, STARTER_VALUE_TEXT, STARTER_META_TEXT } from './starter';
 import { EDITOR_DOCUMENT_POINT } from '@unfinished-lair/sh3-editor/contributions';
 import type {
+  EditorDocumentChannel,
   EditorDocumentContribution,
   EditorPathSeed,
   EditorContentSeed,
@@ -166,6 +167,38 @@ function contentSeed(d: EditorDocumentContribution): EditorContentSeed {
 function findInspectorDesc(registered: { pointId: string; descriptor: unknown }[]) {
   return registered.find(r => r.pointId === INSPECTOR_INSTANCE_POINT)!
     .descriptor as InspectorInstanceContribution;
+}
+
+/** Records every channel verb call into a single flat array. Each entry has
+ *  a `kind` discriminator plus the verb's argument fields spread in, so tests
+ *  can read `entry.content` (setBuffer), `entry.path` (openPath), or
+ *  `entry.toolbarActions` (setOptions) directly. */
+interface FakeChannelCall {
+  kind: 'setBuffer' | 'openPath' | 'setOptions';
+  content?: string;
+  path?: string;
+  toolbarActions?: ToolbarAction[];
+  [key: string]: any;
+}
+
+function fakeChannel(onSetBuffer?: (content: string) => void): {
+  channel: EditorDocumentChannel;
+  calls: FakeChannelCall[];
+} {
+  const calls: FakeChannelCall[] = [];
+  const channel: EditorDocumentChannel = {
+    setBuffer(content) {
+      calls.push({ kind: 'setBuffer', content });
+      onSetBuffer?.(content);
+    },
+    openPath(path) {
+      calls.push({ kind: 'openPath', path });
+    },
+    setOptions(patch) {
+      calls.push({ kind: 'setOptions', ...patch });
+    },
+  };
+  return { channel, calls };
 }
 
 function fakeBindHandle(): InspectorBindHandle & { replaceCalls: any[] } {
@@ -363,15 +396,15 @@ describe('inspectorFiddleShard — sync-to-json toolbar action', () => {
     expect(action.disabled).toBe(true);
   });
 
-  it('serializes liveValue and calls valueReplace when clicked', async () => {
+  it('serializes liveValue and calls valueChannel.setBuffer when clicked', async () => {
     const { ctx, registered } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
 
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     inspectorDesc.bind?.(fakeBindHandle());
@@ -381,9 +414,10 @@ describe('inspectorFiddleShard — sync-to-json toolbar action', () => {
     expect(action.disabled).toBe(false);
     action.onAction();
 
-    expect(replaced).toHaveLength(1);
-    expect(typeof replaced[0].content).toBe('string');
-    expect(JSON.parse(replaced[0].content)).toEqual(STARTER_VALUE);
+    const bufferCalls = calls.filter(c => c.kind === 'setBuffer');
+    expect(bufferCalls).toHaveLength(1);
+    expect(typeof bufferCalls[0].content).toBe('string');
+    expect(JSON.parse(bufferCalls[0].content!)).toEqual(STARTER_VALUE);
   });
 
   it('clears inspectorTouched after a successful sync', async () => {
@@ -393,7 +427,8 @@ describe('inspectorFiddleShard — sync-to-json toolbar action', () => {
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    valueDesc.bind?.(() => {});
+    const { channel } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     inspectorDesc.bind?.(fakeBindHandle());
@@ -412,9 +447,10 @@ describe('inspectorFiddleShard — sync-to-json toolbar action', () => {
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    valueDesc.bind?.((next) => {
-      if (typeof next.content === 'string') valueDesc.onContentChange!(next.content);
+    const { channel } = fakeChannel((content) => {
+      valueDesc.onContentChange!(content);
     });
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     const handle = fakeBindHandle();
@@ -461,42 +497,43 @@ describe('inspectorFiddleShard — live-sync toggle', () => {
     expect(zone.workspace.liveSync).toBe(false);
   });
 
-  it('off mode: onValueChange does NOT call valueReplace', async () => {
+  it('off mode: onValueChange does NOT call valueChannel.setBuffer', async () => {
     const { ctx, registered } = makeCtx({ zone: { liveSync: false } });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
 
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     inspectorDesc.bind?.(fakeBindHandle());
     inspectorDesc.onValueChange?.({ name: 'edited' });
-    expect(replaced).toEqual([]);
+    expect(calls.filter(c => c.kind === 'setBuffer')).toEqual([]);
   });
 
-  it('on mode: onValueChange serializes and calls valueReplace', async () => {
+  it('on mode: onValueChange serializes and calls valueChannel.setBuffer', async () => {
     const { ctx, registered } = makeCtx({ zone: { liveSync: true } });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
 
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     inspectorDesc.bind?.(fakeBindHandle());
     (inspectorDesc.seed.value as any).name = 'mutated';
     inspectorDesc.onValueChange?.(inspectorDesc.seed.value);
 
-    expect(replaced).toHaveLength(1);
-    expect(JSON.parse(replaced[0].content).name).toBe('mutated');
+    const bufferCalls = calls.filter(c => c.kind === 'setBuffer');
+    expect(bufferCalls).toHaveLength(1);
+    expect(JSON.parse(bufferCalls[0].content!).name).toBe('mutated');
   });
 
-  it('loop avoidance — value-editor onContentChange triggered by our own replace does NOT re-run parse', async () => {
+  it('loop avoidance — value-editor onContentChange triggered by our own setBuffer does NOT re-run parse', async () => {
     vi.useFakeTimers();
     const { ctx, registered } = makeCtx({ zone: { liveSync: true } });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -505,9 +542,10 @@ describe('inspectorFiddleShard — live-sync toggle', () => {
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
     const inspectorDesc = findInspectorDesc(registered);
-    valueDesc.bind?.((_next) => {
+    const { channel } = fakeChannel(() => {
       valueDesc.onContentChange!(JSON.stringify(inspectorDesc.seed.value, null, 2));
     });
+    valueDesc.bind?.(channel);
 
     const handle = fakeBindHandle();
     inspectorDesc.bind?.(handle);
@@ -520,7 +558,7 @@ describe('inspectorFiddleShard — live-sync toggle', () => {
     vi.useRealTimers();
   });
 
-  it('loop avoidance — inspector replace triggered by editor parse does NOT re-fire valueReplace', async () => {
+  it('loop avoidance — inspector replace triggered by editor parse does NOT re-fire valueChannel.setBuffer', async () => {
     vi.useFakeTimers();
     const { ctx, registered } = makeCtx({ zone: { liveSync: true } });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -528,8 +566,8 @@ describe('inspectorFiddleShard — live-sync toggle', () => {
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     const inspectorDesc = findInspectorDesc(registered);
     const handle = fakeBindHandle();
@@ -543,7 +581,7 @@ describe('inspectorFiddleShard — live-sync toggle', () => {
     vi.advanceTimersByTime(200);
 
     expect(handle.replaceCalls).toHaveLength(1);
-    expect(replaced).toEqual([]);
+    expect(calls.filter(c => c.kind === 'setBuffer')).toEqual([]);
     vi.useRealTimers();
   });
 });
@@ -560,7 +598,7 @@ describe('inspectorFiddleShard — parse error indicators', () => {
     expect(ids).not.toContain('value-parse-error');
   });
 
-  it('on parse failure, replace is called with a toolbarActions list containing parse-error action', async () => {
+  it('on parse failure, setOptions is called with a toolbarActions list containing parse-error action', async () => {
     vi.useFakeTimers();
     const { ctx, registered } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -568,23 +606,23 @@ describe('inspectorFiddleShard — parse error indicators', () => {
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     valueDesc.onContentChange!('{ invalid json');
     vi.advanceTimersByTime(200);
 
-    const last = replaced[replaced.length - 1];
-    const ids = (last?.toolbarActions ?? []).map((a: any) => a.id);
+    const last = calls[calls.length - 1];
+    const ids = (last?.toolbarActions ?? []).map((a: ToolbarAction) => a.id);
     expect(ids).toContain('value-parse-error');
-    const action = last.toolbarActions.find((a: any) => a.id === 'value-parse-error');
+    const action = last.toolbarActions!.find((a: ToolbarAction) => a.id === 'value-parse-error')!;
     expect(action.disabled).toBe(true);
     expect(action.accent).toBe(true);
     expect(action.label).toMatch(/⚠/);
     vi.useRealTimers();
   });
 
-  it('on parse recovery, replace is called with a toolbarActions list NOT containing parse-error action', async () => {
+  it('on parse recovery, setOptions is called with a toolbarActions list NOT containing parse-error action', async () => {
     vi.useFakeTimers();
     const { ctx, registered } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -592,16 +630,16 @@ describe('inspectorFiddleShard — parse error indicators', () => {
     const valueDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    valueDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    valueDesc.bind?.(channel);
 
     valueDesc.onContentChange!('{ broken');
     vi.advanceTimersByTime(200);
     valueDesc.onContentChange!('{"ok":1}');
     vi.advanceTimersByTime(200);
 
-    const last = replaced[replaced.length - 1];
-    const ids = (last?.toolbarActions ?? []).map((a: any) => a.id);
+    const last = calls[calls.length - 1];
+    const ids = (last?.toolbarActions ?? []).map((a: ToolbarAction) => a.id);
     expect(ids).not.toContain('value-parse-error');
     vi.useRealTimers();
   });
@@ -614,14 +652,14 @@ describe('inspectorFiddleShard — parse error indicators', () => {
     const metaDesc = registered.find(r =>
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.meta',
     )!.descriptor as EditorDocumentContribution;
-    const replaced: any[] = [];
-    metaDesc.bind?.((next) => replaced.push(next));
+    const { channel, calls } = fakeChannel();
+    metaDesc.bind?.(channel);
 
     metaDesc.onContentChange!('{ broken meta');
     vi.advanceTimersByTime(200);
 
-    const last = replaced[replaced.length - 1];
-    const ids = (last?.toolbarActions ?? []).map((a: any) => a.id);
+    const last = calls[calls.length - 1];
+    const ids = (last?.toolbarActions ?? []).map((a: ToolbarAction) => a.id);
     expect(ids).toContain('meta-parse-error');
     vi.useRealTimers();
   });

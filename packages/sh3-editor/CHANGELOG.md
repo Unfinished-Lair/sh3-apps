@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.16.0 — 2026-05-23 — Breaking: `EditorDocumentContribution.bind` channel
+
+### Changed (BREAKING)
+
+- `EditorDocumentContribution.bind` now receives an `EditorDocumentChannel` (verb methods `setBuffer` / `openPath` / `setOptions`) instead of a single `replace(patch)` callback. The old `EditorReplacePatch` type is **removed**.
+  - Mirrors the `EditorEditChannel` shape introduced in 0.15.0.
+  - Each verb has one job and a name that honestly describes its blast radius — `setBuffer` clears history, `openPath` is async + path-mode-only, `setOptions` never touches the buffer.
+  - **Migration:** `replace({ content })` → `channel.setBuffer(content)`. `replace({ path })` → `channel.openPath(path)`. `replace({ language, prefs, ... })` → `channel.setOptions({ language, prefs, ... })`. Combined patches split into multiple verb calls.
+  - Internal behavior (cursor reset, history clear, dirty reconciliation, async path read, flush-on-swap) is preserved 1:1.
+- `EditorApi.updateContent` deprecation message now points at the new channel verb.
+
+### Internal
+
+- `applyCommonReplace` renamed to `applyOptionsPatch`; signature now takes `EditorOptionsPatch` directly. `makeContentReplace` / `makePathReplace` → `makeContentChannel` / `makePathChannel`.
+
 ## 0.15.0 — 2026-05-21 — `EditorEditContribution`: structured byte-offset edits from external shards
 
 ### Fixed

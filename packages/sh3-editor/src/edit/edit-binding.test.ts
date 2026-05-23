@@ -148,7 +148,7 @@ function makeEditContext(descriptors: EditorEditContribution[] = []) {
       pointId === EDITOR_EDIT_POINT ? (descriptors as unknown as T[]) : [],
     register: <T>(_p: string, _d: T) => () => {},
     onChange: (_p: string, _cb: () => void) => () => {},
-    onAnyChange: (_cb: () => void) => () => {},
+    onAnyChange: (_cb: (pointId: string) => void) => () => {},
     listPoints: () => [EDITOR_EDIT_POINT],
   };
   return { registry, internals, contributions };

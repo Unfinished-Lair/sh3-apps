@@ -239,8 +239,9 @@ export interface EditorApi {
    */
   closeDocument(id: string): void;
   /**
-   * @deprecated since 0.10.0 — call the `replace` callback handed to your
-   *   `EditorDocumentContribution.bind(replace)` hook with `{ content }`.
+   * @deprecated since 0.10.0 — call `setBuffer(content)` on the
+   *   `EditorDocumentChannel` handed to your
+   *   `EditorDocumentContribution.bind(channel)` hook.
    */
   updateContent(id: string, content: string, cursorStart: number, cursorEnd: number): void;
   markClean(id: string): void;

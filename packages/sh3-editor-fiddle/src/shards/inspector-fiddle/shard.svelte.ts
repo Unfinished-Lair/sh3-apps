@@ -25,8 +25,8 @@ import type {
   InspectorMeta,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import type {
+  EditorDocumentChannel,
   EditorDocumentContribution,
-  EditorReplacePatch,
 } from '@unfinished-lair/sh3-editor/contributions';
 
 // SH3 runtime resolves bare specifiers via an importmap that does NOT
@@ -129,8 +129,8 @@ export const inspectorFiddleShard: SourceShard & {
     });
 
     // ---- 3. Editor handles (populated by bind) -------------------------
-    let valueReplace: ((next: EditorReplacePatch) => void) | null = null;
-    let metaReplace:  ((next: EditorReplacePatch) => void) | null = null;
+    let valueChannel: EditorDocumentChannel | null = null;
+    let metaChannel:  EditorDocumentChannel | null = null;
 
     let lastValueErrorPushed: string | null = null;
     let lastMetaErrorPushed:  string | null = null;
@@ -162,23 +162,23 @@ export const inspectorFiddleShard: SourceShard & {
     }
 
     function pushValueToolbar() {
-      if (!valueReplace) return;
+      if (!valueChannel) return;
       const current = state.valueParseError;
       if (current === lastValueErrorPushed) return;
       lastValueErrorPushed = current;
       const actions: ToolbarAction[] = [];
       if (current) actions.push(valueErrorAction(current));
-      valueReplace({ toolbarActions: actions });
+      valueChannel.setOptions({ toolbarActions: actions });
     }
 
     function pushMetaToolbar() {
-      if (!metaReplace) return;
+      if (!metaChannel) return;
       const current = state.metaParseError;
       if (current === lastMetaErrorPushed) return;
       lastMetaErrorPushed = current;
       const actions: ToolbarAction[] = [];
       if (current) actions.push(metaErrorAction(current));
-      metaReplace({ toolbarActions: actions });
+      metaChannel.setOptions({ toolbarActions: actions });
     }
 
     let inspectorHandle: InspectorBindHandle | null = null;
@@ -225,9 +225,9 @@ export const inspectorFiddleShard: SourceShard & {
         language: 'json',
         initialContent: STARTER_VALUE_TEXT,
       },
-      bind(replace) {
-        valueReplace = replace;
-        return () => { valueReplace = null; };
+      bind(channel) {
+        valueChannel = channel;
+        return () => { valueChannel = null; };
       },
       onContentChange(content) {
         if (suppressNextEditorParse) {
@@ -263,9 +263,9 @@ export const inspectorFiddleShard: SourceShard & {
         language: 'json',
         initialContent: STARTER_META_TEXT,
       },
-      bind(replace) {
-        metaReplace = replace;
-        return () => { metaReplace = null; };
+      bind(channel) {
+        metaChannel = channel;
+        return () => { metaChannel = null; };
       },
       onContentChange(content) {
         metaParser.feed(content);
@@ -283,10 +283,10 @@ export const inspectorFiddleShard: SourceShard & {
         return !state.inspectorTouched;
       },
       onAction() {
-        if (!valueReplace) return;
+        if (!valueChannel) return;
         const text = JSON.stringify(state.liveValue, null, 2);
         suppressNextEditorParse = true;
-        valueReplace({ content: text });
+        valueChannel.setBuffer(text);
         state.inspectorTouched = false;
         refreshSnapshot();
       },
@@ -354,10 +354,10 @@ export const inspectorFiddleShard: SourceShard & {
         }
         state.inspectorTouched = true;
         refreshSnapshot();
-        if (state.liveSync && valueReplace) {
+        if (state.liveSync && valueChannel) {
           const text = JSON.stringify(value, null, 2);
           suppressNextEditorParse = true;
-          valueReplace({ content: text });
+          valueChannel.setBuffer(text);
           state.inspectorTouched = false;
           refreshSnapshot();
         }

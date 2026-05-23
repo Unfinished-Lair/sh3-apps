@@ -67,20 +67,63 @@ export interface EditorContentSeed extends EditorDocumentSeedCommon {
 
 export type EditorDocumentSeed = EditorPathSeed | EditorContentSeed;
 
-/** Swappable subset for `bind(replace)`. Mode is fixed at mount; field set
- *  matches whichever variant the contribution registered with.
- *  - Content mode: any common field plus `content` / `filePath`.
- *  - Path mode: any common field plus `path`. Replacing `path` flushes
- *    pending dirty writes (to the old path), reads the new path, clears
- *    history. Replacing `content` in path mode pokes the local buffer
- *    without writing — useful for previews / transforms.
+/** Patch for view-level options. Never touches the buffer; pass any subset
+ *  of the fields you want to change. Each field replaces (does not merge)
+ *  except `prefs`, which is shallow-merged into the current prefs to keep
+ *  individual gear-popover changes additive.
  *
- *  NOTE: replace({ content }) clears the slot's history. Do not mix it
- *  with EditorEditChannel.submit / applyTransientEdit against the same
- *  slot — pick one channel per concern. See edit/contributions.ts. */
-export type EditorReplacePatch =
-  | (Partial<Omit<EditorContentSeed, 'kind'>> & { content?: string })
-  | (Partial<Omit<EditorPathSeed, 'kind'>> & { content?: string });
+ *  In path mode, `filePath` is normally managed by `openPath(...)` — setting
+ *  it via `setOptions(...)` only overrides the toolbar chip until the next
+ *  `openPath` overwrites it. In content mode, the contributor owns
+ *  `filePath` entirely (informational only — editor never reads/writes it). */
+export type EditorOptionsPatch = Partial<{
+  language: string | null;
+  filePath: string | null;
+  matchingConfig: MatchingConfig;
+  prefs: UserPrefs;
+  fontSize: number;
+  showSettings: boolean;
+  toolbarActions: ToolbarAction[];
+  highlight: (text: string, language: string) => string;
+  render: (text: string, language: string | null) => string;
+  transform: (text: string, language: string | null) => string;
+  startInPreview: boolean;
+}>;
+
+/** Slot-scoped channel handed to a contributor at bind time. Mirrors
+ *  EditorEditChannel's verb-based shape. The contributor stores the channel
+ *  reference and calls verbs to mutate the live binding.
+ *
+ *  History semantics:
+ *   - setBuffer clears history (the buffer's authored timeline is being
+ *     replaced).
+ *   - openPath clears history (the file changed; cross-file undo would
+ *     be meaningless).
+ *   - setOptions never touches history.
+ *
+ *  Do not mix `setBuffer(...)` with `EditorEditChannel.submit(...)` against
+ *  the same slot — setBuffer clears history. Pick one channel per concern.
+ *  See edit/contributions.ts. */
+export interface EditorDocumentChannel {
+  /** Replace buffer in place.
+   *  - content mode: this IS a new document — clears history, resets
+   *    cursor to 0, fires onContentChange and onDirtyChange(false).
+   *  - path mode: transient buffer poke — does NOT write to disk.
+   *    Resets cursor to 0, clears history, recomputes dirty against
+   *    state.lastPersisted (dirty becomes true if content diverges from
+   *    the disk snapshot). Used by transform/render pipelines.
+   *  Same-value calls are silent (no events fire). */
+  setBuffer(content: string): void;
+
+  /** Path mode only. Switch this binding to a different file path. Flushes
+   *  any pending dirty buffer to the OLD path, then reads the new path,
+   *  clears history, resets cursor and dirty. No-op in content mode and
+   *  when called with the currently-bound path. */
+  openPath(path: string): void;
+
+  /** Patch view-level options. See EditorOptionsPatch for the field set. */
+  setOptions(patch: EditorOptionsPatch): void;
+}
 
 /** Descriptor registered under EDITOR_DOCUMENT_POINT. One descriptor binds
  *  one editor slot keyed by `slotId`. */
@@ -89,15 +132,15 @@ export interface EditorDocumentContribution {
   slotId: string;
 
   /** Initial state. Read once when the editor view mounts at `slotId`.
-   *  Later changes flow through `bind`/`replace`. */
+   *  Later changes flow through `bind`/the channel. */
   seed: EditorDocumentSeed;
 
   /** Push channel for swaps. The editor calls `bind` exactly once at mount
-   *  with a `replace` closure scoped to that mount. The contributor stores
-   *  the closure and calls it whenever it wants to swap fields on the live
-   *  document. The returned disposer (if any) is invoked on slot unmount;
-   *  the contributor should drop its `replace` reference there. */
-  bind?(replace: (next: EditorReplacePatch) => void): (() => void) | void;
+   *  with a fresh `EditorDocumentChannel` scoped to that mount. The
+   *  contributor stores the channel reference and calls its verbs to mutate
+   *  the live binding. The returned disposer (if any) is invoked on slot
+   *  unmount; the contributor should drop its channel reference there. */
+  bind?(channel: EditorDocumentChannel): (() => void) | void;
 
   /** Editor → contributor: user edit committed. Fires in both modes. */
   onContentChange?(content: string): void;

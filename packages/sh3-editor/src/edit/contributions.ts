@@ -39,8 +39,8 @@ export interface EditorEditChannel {
    *  on success, false if the slot has no live editor instance bound.
    *  Throws on overlapping or out-of-range edits.
    *
-   *  Do not mix submit/applyTransientEdit with EditorReplacePatch.content
-   *  against the same slot — replace({ content }) clears history. */
+   *  Do not mix submit/applyTransientEdit with EditorDocumentChannel.setBuffer
+   *  against the same slot — setBuffer clears history. */
   submit(cmd: EditorEditCommand): boolean;
 
   /** Apply edits as a transient preview — no history push, no dirty

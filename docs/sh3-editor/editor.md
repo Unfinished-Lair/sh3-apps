@@ -28,22 +28,25 @@ In your shard's `activate(ctx)`:
 ```ts
 import {
   EDITOR_DOCUMENT_POINT,
+  type EditorDocumentChannel,
   type EditorDocumentContribution,
 } from '@unfinished-lair/sh3-editor/contributions';
 
 let currentNote = loadInitialNote();
+let docChannel: EditorDocumentChannel | null = null;
 
 const binding: EditorDocumentContribution = {
-  slotId: 'scribe-main',                        // matches your initialLayout slot
+  slotId: 'scribe-main',                          // matches your initialLayout slot
   seed: {
+    kind: 'content',
     content: currentNote.text,
     language: 'markdown',
     filePath: currentNote.path,
     matchingConfig: { indentType: 'indent', indentUnit: 2 },
   },
-  bind(replace) {
-    handleToReplace = replace;                  // stash for later swaps (§2.1)
-    return () => { handleToReplace = null; };
+  bind(channel) {
+    docChannel = channel;                          // stash for later swaps (§2.1)
+    return () => { docChannel = null; };
   },
   onContentChange(content) {
     currentNote.text = content;
@@ -65,7 +68,8 @@ in the active app's layout), it walks `ctx.contributions.list(EDITOR_DOCUMENT_PO
 picks the descriptor whose `slotId` matches, and:
 
 - builds the slot's `RegistryEntry` from `seed`,
-- calls `bind(replace)` once with a fresh closure scoped to that mount,
+- calls `bind(channel)` once with a fresh `EditorDocumentChannel` scoped
+  to that mount,
 - subscribes the `onContentChange` / `onDirtyChange` / `onSave` /
   `onPrefsChange` callbacks to the matching slot's events.
 
@@ -74,13 +78,13 @@ unsubscribes every forwarder.
 
 ### 2.1 Swapping the document
 
-Call the `replace` you stashed inside `bind`:
+Use the channel verbs you stashed inside `bind`:
 
 ```ts
 function openNote(next: Note) {
   currentNote = next;
-  handleToReplace?.({
-    content: next.text,
+  docChannel?.setBuffer(next.text);
+  docChannel?.setOptions({
     filePath: next.path,
     language: detectLanguage(next.path),
   });
@@ -89,19 +93,38 @@ function openNote(next: Note) {
 
 Behavior:
 
-- `replace({ content })` clears the slot's history (cross-doc undo would
-  be meaningless), resets cursor and dirty state, and fires
-  `onContentChange` + `onDirtyChange(false)`. Same-content replaces are
-  silent.
-- `replace({ filePath, language, matchingConfig, prefs, fontSize,
-  showSettings, toolbarActions, highlight })` updates fields on the live
-  entry without mutating the buffer. No content events fire.
-- The Svelte component is **not** remounted — cursor / scroll / textarea
-  identity survive across swaps.
+- `setBuffer(content)` replaces the buffer in place.
+  - Content mode: clears the slot's history (cross-doc undo would be
+    meaningless), resets cursor and dirty state, and fires
+    `onContentChange` + `onDirtyChange(false)`. Same-content calls are
+    silent.
+  - Path mode: pokes the buffer **without writing to disk** — used by
+    transform / render pipelines. Clears history, resets cursor, and
+    recomputes dirty against `state.lastPersisted`. Same-content calls
+    are silent.
+- `openPath(path)` — **path mode only.** Flushes any pending dirty buffer
+  to the OLD path, then reads the new path, clears history, resets cursor
+  and dirty. No-op in content mode and when the path matches the
+  currently-bound path.
+- `setOptions({ language, filePath, matchingConfig, prefs, fontSize,
+  showSettings, toolbarActions, highlight, render, transform,
+  startInPreview })` — updates view-level options without touching the
+  buffer. Each field replaces (does not merge) except `prefs`, which
+  shallow-merges into the current prefs.
+- The Svelte component is **not** remounted across any of these — cursor
+  / scroll / textarea identity survive across all channel verbs.
 
 If you need to gate a swap on dirty state, mirror the dirty flag via
-`onDirtyChange` and check it before calling `replace`. The editor itself
-performs no "unsaved changes?" UX — that's the contributor's call.
+`onDirtyChange` and check it before calling `setBuffer` / `openPath`. The
+editor itself performs no "unsaved changes?" UX — that's the contributor's
+call.
+
+Pick the right channel per concern:
+- `EditorDocumentChannel.setBuffer` for whole-buffer swaps that should
+  **not** be undoable (preview overlays, document loads).
+- `EditorEditChannel.submit` (from `@unfinished-lair/sh3-editor/edit/contributions`)
+  for structured edits that **should** appear on the editor's undo stack
+  and flip dirty. Do not mix them against the same slot.
 
 ### 2.2 `EditorDocumentSeed` fields
 
@@ -158,8 +181,8 @@ to filter for. Multi-pane editors register one descriptor per pane.
 
 | Callback | Fires when |
 |---|---|
-| `onContentChange(content)` | An edit (or a `replace({ content })`) commits a new buffer value. |
-| `onDirtyChange(dirty)` | Dirty flag flips after a user edit or after `replace({ content })` resets it. |
+| `onContentChange(content)` | An edit (or a `setBuffer(content)`) commits a new buffer value. |
+| `onDirtyChange(dirty)` | Dirty flag flips after a user edit or after `setBuffer(content)` resets it. |
 | `onSave()` | User presses Ctrl/Cmd+S with focus on the editor textarea. The editor does no I/O. |
 | `onPrefsChange(prefs)` | User changes an indent or brace-style pref via the settings gear. |
 
@@ -213,7 +236,7 @@ All shortcuts fire only when the editor textarea holds keyboard focus; the edito
 ## 8. Toolbar actions
 
 `toolbarActions` on the descriptor's `seed` (or replaced via
-`replace({ toolbarActions })`) render as buttons above the gutter. The
+`channel.setOptions({ toolbarActions })`) render as buttons above the gutter. The
 editor automatically appends a built-in settings gear (id
 `sh3-editor:settings`, group `_editor_builtin`) when `showSettings` is
 truthy and `MatchingConfig` exposes sub-options.

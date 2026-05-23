@@ -18,6 +18,7 @@ function makeContext(descriptors: InspectorInstanceContribution[] = []) {
         : [],
     register: <T>(_pointId: string, _desc: T) => () => {},
     onChange: (_pointId: string, _cb: () => void) => () => {},
+    onAnyChange: (_cb: (pointId: string) => void) => () => {},
     listPoints: () => [INSPECTOR_INSTANCE_POINT],
   };
   return { registry, internals, contributions };

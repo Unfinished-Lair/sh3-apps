@@ -92,9 +92,12 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
 }
 
 const PORT_TYPE_TO_FIELD: Record<string, FieldDescriptor['type']> = {
-  number: 'number',
+  number:  'number',
   boolean: 'boolean',
-  string: 'string',
+  string:  'string',
+  record:  'json',
+  array:   'json',
+  doc:     'doc',
 };
 
 export function buildConfigFields(

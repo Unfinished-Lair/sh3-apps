@@ -231,4 +231,28 @@ describe('buildConfigFields', () => {
     const fields = buildConfigFields(t, { color: '#ff0000' }, new Set());
     expect(fields[0].rendererHint).toBe('color');
   });
+
+  it('record port → json field', () => {
+    const template: NodeTemplate = {
+      type: 'demo',
+      category: 'Demo',
+      label: 'Demo',
+      ports: [{ id: 'config', direction: 'input', dataType: 'record', label: 'Config' }],
+      defaultConfig: {},
+    };
+    const fields = buildConfigFields(template, {}, new Set());
+    expect(fields).toEqual([{ key: 'config', label: 'Config', type: 'json', disabled: false }]);
+  });
+
+  it('doc port → doc field', () => {
+    const template: NodeTemplate = {
+      type: 'demo',
+      category: 'Demo',
+      label: 'Demo',
+      ports: [{ id: 'document', direction: 'input', dataType: 'doc', label: 'Document' }],
+      defaultConfig: {},
+    };
+    const fields = buildConfigFields(template, {}, new Set());
+    expect(fields).toEqual([{ key: 'document', label: 'Document', type: 'doc', disabled: false }]);
+  });
 });

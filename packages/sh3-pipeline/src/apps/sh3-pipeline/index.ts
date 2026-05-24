@@ -6,45 +6,36 @@ export const app: SourceApp = {
     icon: 'git-merge',
     label: 'Pipeline',
     requiredShards: ['sh3-pipeline', 'sh3-editor'],
-    layoutVersion: 4,
+    layoutVersion: 5,
     menus: [
       { id: 'file',     label: 'File' },
       { id: 'pipeline', label: 'Pipeline' },
     ],
   },
-  initialLayout: 
-  [
-    {
-      name: 'main',
-      variants:
+  initialLayout: {
+    type: 'split',
+    direction: 'vertical',
+    sizes: [40, 1, 140],
+    fixed: [true, false, false],
+    pinned: ['px', 'fr', 'px'],
+    children: [
+      { type: 'slot', slotId: 'toolbar', viewId: 'sh3-pipeline:toolbar' },
       {
-        "default": 
-        {
-          docked: 
-          {
-            type: 'split',
-            direction: 'vertical',
-            sizes: [40, 1, 140],
-            fixed: [true, false, false],
-            pinned: ['px', 'fr', 'px'],
-            children: [
-              { type: 'slot', slotId: 'toolbar', viewId: 'sh3-pipeline:toolbar' },
-              {
-                type: 'split',
-                direction: 'horizontal',
-                sizes: [1, 300],
-                pinned: ['fr', 'px'],
-                children: [
-                  { type: 'slot', slotId: 'graph',     viewId: 'sh3-editor:graph', role:'body'          },
-                  { type: 'slot', slotId: 'inspector', viewId: 'sh3-editor:inspector', role: 'inspector'},
-                ],
-              },
-              { type: 'tabs', tabs: [ {label: 'Logs', slotId: 'log', viewId: 'diagnostic:logs'}], activeTab: 0},
-            ],
-          },
-          floats: []
-        }
-      }
-    }
-  ]
+        type: 'split',
+        direction: 'horizontal',
+        sizes: [1, 300],
+        pinned: ['fr', 'px'],
+        children: [
+          { type: 'slot', slotId: 'graph',     viewId: 'sh3-editor:graph',     role: 'body' },
+          { type: 'slot', slotId: 'inspector', viewId: 'sh3-editor:inspector', role: 'inspector' },
+        ],
+      },
+      {
+        type: 'tabs',
+        role: 'sidebar',
+        tabs: [{ label: 'Logs', slotId: 'log', viewId: 'diagnostic:logs' }],
+        activeTab: 0,
+      },
+    ],
+  },
 };

@@ -74,10 +74,10 @@
       },
       "versions": [
         {
-          "version": "0.14.1+502",
+          "version": "0.16.0+506",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-editor-0.14.1+502.sh3pkg",
-          "integrity": "sha384-WM6LBJ7F54RkHyhmpqonQQw5cidlKuwQLLmD7iXcC4URkkPRgghV69RorHSmbBIb"
+          "archiveUrl": "bundles/sh3-editor-0.16.0+506.sh3pkg",
+          "integrity": "sha384-gGjYWMXSV850uetJ87c052R/5h5+3BCtoFO8S4E6Um7T25RhMK2Ud6tWfgzQ4wKx"
         }
       ]
     },
@@ -94,10 +94,10 @@
       },
       "versions": [
         {
-          "version": "0.4.0+446",
+          "version": "0.4.0+506",
           "contractVersion": "1",
-          "archiveUrl": "bundles/inspector-fiddle-app-0.4.0+446.sh3pkg",
-          "integrity": "sha384-qAfvV8zFPdA9WVS0nNcin62cq3CO1nC8n1AZ3QP40Kb2bPcyRXf+z9T/qf0t9t0f",
+          "archiveUrl": "bundles/inspector-fiddle-app-0.4.0+506.sh3pkg",
+          "integrity": "sha384-pRXTtZgZsRtrMWQjbm0YAo3JJx7S9bVwEE/kBJj8TU93Iha+ngI2IIf5OLFvOpvt",
           "requires": [
             {
               "id": "sh3-editor",
@@ -180,10 +180,10 @@
       },
       "versions": [
         {
-          "version": "0.2.0+456",
+          "version": "0.2.0+506",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-pipeline-0.2.0+456.sh3pkg",
-          "integrity": "sha384-4zsEv6Jv8qbD4BuhbCI6lBiOkVY0+PBKsXhUVEn6IsJz/4HJVWSMLNHzNRvfZgdJ",
+          "archiveUrl": "bundles/sh3-pipeline-0.2.0+506.sh3pkg",
+          "integrity": "sha384-WCq9JoF6fDoZ9GuBzKIQdHN5C4K6ttUOHDuvoTEojUoaORXvzURSeXYk++BDgPmt",
           "requires": [
             {
               "id": "sh3-editor",

@@ -14,10 +14,10 @@
       },
       "versions": [
         {
-          "version": "0.8.0+499",
+          "version": "0.9.0+508",
           "contractVersion": "1",
-          "archiveUrl": "bundles/ai-0.8.0+499.sh3pkg",
-          "integrity": "sha384-0GumKwR0kY6Y1OBsweClOzeGpnQ8IPypBnxPROJYtcFnefYVDcJFzcQgDlsJ03aH"
+          "archiveUrl": "bundles/ai-0.9.0+508.sh3pkg",
+          "integrity": "sha384-/w6I+EFW+CpV7kM5K5qoGnEXWuK2llDLWI5XgxM1TpdcAZDLln9j5Etj8W51i0pN"
         }
       ]
     },
@@ -131,7 +131,7 @@
       "id": "llm-providers",
       "type": "shard",
       "label": "LLM Providers",
-      "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini as sh3-ai.providers, plus per-provider settings views; replaces sh3-deepseek-shell and sh3-gemini-shell",
+      "description": "Unified LLM provider shard for SH3 — registers DeepSeek + Gemini + Claude as sh3-ai.providers, plus per-provider settings views",
       "author": {
         "name": "@unfinished-lair"
       },
@@ -140,10 +140,10 @@
       },
       "versions": [
         {
-          "version": "0.3.0+472",
+          "version": "0.4.0+508",
           "contractVersion": "1",
-          "archiveUrl": "bundles/llm-providers-0.3.0+472.sh3pkg",
-          "integrity": "sha384-IxdNWfZQiBMHwkkpIifyKFBqYObupgfN0bdhGVSvV5wX07WTdhUZMV2bMdkE43sY"
+          "archiveUrl": "bundles/llm-providers-0.4.0+508.sh3pkg",
+          "integrity": "sha384-V/PSBgtRU6z0NWsliobo6pi4BrBy/KCP9zJCNgXr0H23JqP8sPowaN1zeqzuaKAs"
         }
       ]
     },

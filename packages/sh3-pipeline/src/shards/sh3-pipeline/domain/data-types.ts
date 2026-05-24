@@ -25,8 +25,9 @@ export const PORT_COLORS: Record<DataType, string> = {
 
 export function dataTypeFromJsonSchema(schema: unknown): DataType {
   if (!schema || typeof schema !== 'object') return 'unknown';
-  const t = (schema as { type?: string }).type;
-  switch (t) {
+  const s = schema as { type?: string; format?: string };
+  if (s.format === 'sh3-document') return 'doc';
+  switch (s.type) {
     case 'string':  return 'string';
     case 'number':
     case 'integer': return 'number';

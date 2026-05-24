@@ -11,7 +11,11 @@ export default defineConfig({
       fileName: 'index',
     },
     rollupOptions: {
-      external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
+      external: [
+        'sh3-core', /^sh3-core\//,
+        '@unfinished-lair/sh3-editor', /^@unfinished-lair\/sh3-editor\//,
+        'svelte', /^svelte\//,
+      ],
     },
   },
   test: {

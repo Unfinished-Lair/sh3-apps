@@ -21,7 +21,11 @@ export default defineConfig({
     },
     outDir: 'dist/artifact',
     rollupOptions: {
-      external: ['sh3-core', /^sh3-core\//, 'svelte', /^svelte\//],
+      external: [
+        'sh3-core', /^sh3-core\//,
+        '@unfinished-lair/sh3-editor', /^@unfinished-lair\/sh3-editor\//,
+        'svelte', /^svelte\//,
+      ],
     },
   },
 });

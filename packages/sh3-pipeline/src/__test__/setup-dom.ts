@@ -16,9 +16,9 @@ if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class RO {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    observe(_target: Element): void {}
+    unobserve(_target: Element): void {}
+    disconnect(): void {}
   }
-  (globalThis as { ResizeObserver?: typeof RO }).ResizeObserver = RO;
+  (globalThis as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver = RO as unknown as typeof ResizeObserver;
 }

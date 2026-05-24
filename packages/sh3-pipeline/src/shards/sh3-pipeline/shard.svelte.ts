@@ -21,6 +21,11 @@ import type {
   DocPickerContribution,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import { DOC_PICKER_POINT } from '@unfinished-lair/sh3-editor/inspector/contributions';
+import {
+  HELP_TABS_CONTRIBUTION_POINT_ID,
+  type HelpTabContribution,
+} from '@unfinished-lair/sh3-editor/help/contributions';
+import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
 import RunLogPanel from './RunLogPanel.svelte';
 import { buildControlGraphDomain } from './domain/build';
@@ -188,6 +193,26 @@ export const shard: SourceShard = {
       id: 'sh3-pipeline:doc-picker',
       picker: ctx.documentPicker,
       priority: 100,
+    });
+
+    // Help tab "Pipeline Nodes". Registered at boot so users can open Help
+    // (F1) from any app and find the pipeline node reference. Reads
+    // domain.getTemplates() at each mount — always reflects the live catalog.
+    ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
+      id: 'sh3-pipeline:help-tab:nodes',
+      label: 'Pipeline Nodes',
+      priority: 100,
+      mount(container, tabCtx) {
+        if (!domainRef) {
+          container.textContent = 'Pipeline catalog not initialized.';
+          return { unmount() { container.textContent = ''; } };
+        }
+        const cmp = mount(PipelineNodesHelpTab, {
+          target: container,
+          props: { tabCtx, domain: domainRef },
+        });
+        return { unmount() { unmount(cmp); } };
+      },
     });
 
     // (Slot-keyed graph + inspector contributions and toolbar actions are

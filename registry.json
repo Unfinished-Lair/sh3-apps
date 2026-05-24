@@ -74,10 +74,10 @@
       },
       "versions": [
         {
-          "version": "0.16.0+506",
+          "version": "0.16.1+526",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-editor-0.16.0+506.sh3pkg",
-          "integrity": "sha384-gGjYWMXSV850uetJ87c052R/5h5+3BCtoFO8S4E6Um7T25RhMK2Ud6tWfgzQ4wKx"
+          "archiveUrl": "bundles/sh3-editor-0.16.1+526.sh3pkg",
+          "integrity": "sha384-foVuPPbZzsvXMw/W6j9LKergxX+n0HeTN2POOFtpdBcY1DevQuXq9XHgn9q7HUmY"
         }
       ]
     },
@@ -180,10 +180,10 @@
       },
       "versions": [
         {
-          "version": "0.2.0+507",
+          "version": "0.2.1+526",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-pipeline-0.2.0+507.sh3pkg",
-          "integrity": "sha384-3t1ttJd6Q2CbcQLpnzQIUmz+fuJn8O4re2o9LcDprET4kwfv0yhXprz0SJVd9GmU",
+          "archiveUrl": "bundles/sh3-pipeline-0.2.1+526.sh3pkg",
+          "integrity": "sha384-od7H8/UuuIqDRgMCm3o08HtLzeOwmxG1AjouskmBNBpW2bEXZ2yooSOxzqkYAGfo",
           "requires": [
             {
               "id": "sh3-editor",

@@ -26,6 +26,10 @@ export function fieldsToInspectorMeta(fields: FieldDescriptor[]): InspectorMeta 
             m.widget = { type: 'select', options: f.options };
           }
           break;
+        case 'json':
+        case 'doc':
+          m.type = f.type;
+          break;
         // 'boolean' — no widget type today; walker renders a checkbox.
       }
     }

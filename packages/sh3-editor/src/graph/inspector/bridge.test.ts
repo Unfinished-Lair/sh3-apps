@@ -43,6 +43,18 @@ describe('fieldsToInspectorMeta', () => {
     const meta = fieldsToInspectorMeta(fs);
     expect(meta.fields?.a.label).toBe('Alpha');
   });
+
+  it('json field type → meta.type "json"', () => {
+    const fs: FieldDescriptor[] = [{ key: 'cfg', label: 'Cfg', type: 'json' }];
+    const meta = fieldsToInspectorMeta(fs);
+    expect(meta.fields?.cfg).toEqual({ label: 'Cfg', type: 'json' });
+  });
+
+  it('doc field type → meta.type "doc"', () => {
+    const fs: FieldDescriptor[] = [{ key: 'document', label: 'Document', type: 'doc' }];
+    const meta = fieldsToInspectorMeta(fs);
+    expect(meta.fields?.document).toEqual({ label: 'Document', type: 'doc' });
+  });
 });
 
 describe('makeNodeConfigOverride', () => {

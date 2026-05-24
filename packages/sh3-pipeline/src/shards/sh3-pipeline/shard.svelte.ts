@@ -18,7 +18,9 @@ import type {
 import type {
   InspectorInstanceContribution,
   InspectorBindHandle,
+  DocPickerContribution,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
+import { DOC_PICKER_POINT } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import PipelineToolbar from './PipelineToolbar.svelte';
 import RunLogPanel from './RunLogPanel.svelte';
 import { buildControlGraphDomain } from './domain/build';
@@ -177,6 +179,16 @@ export const shard: SourceShard = {
       factory: () => domain,
     };
     ctx.contributions.register<GraphDomainContribution>(GRAPH_DOMAIN_POINT, domainContribution);
+
+    // Doc-picker provider. Registered at register() (not onAppActivate)
+    // because doc-typed ports may exist in other apps' inspector slots
+    // that use sh3-editor's DocWidget; the picker should be discoverable
+    // whenever the pipeline shard is loaded, not only when its app is open.
+    ctx.contributions.register<DocPickerContribution>(DOC_PICKER_POINT, {
+      id: 'sh3-pipeline:doc-picker',
+      picker: ctx.documentPicker,
+      priority: 100,
+    });
 
     // (Slot-keyed graph + inspector contributions and toolbar actions are
     // registered in onAppActivate — they only matter while the pipeline app

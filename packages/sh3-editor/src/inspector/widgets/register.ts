@@ -1,5 +1,10 @@
 import type { ShardContext } from 'sh3-core';
-import { INSPECTOR_RENDERER_POINT, type InspectorRenderer } from '../contributions';
+import {
+  INSPECTOR_RENDERER_POINT,
+  DOC_PICKER_POINT,
+  type InspectorRenderer,
+  type DocPickerContribution,
+} from '../contributions';
 // Widget components.
 import StringWidget      from './StringWidget.svelte';
 import TextWidget        from './TextWidget.svelte';
@@ -11,6 +16,9 @@ import SegmentedWidget   from './SegmentedWidget.svelte';
 import IconToggleWidget  from './IconToggleWidget.svelte';
 import SelectWidget      from './SelectWidget.svelte';
 import FileWidget        from './FileWidget.svelte';
+import JsonWidget        from './JsonWidget.svelte';
+import DocWidget         from './DocWidget.svelte';
+import { setDocPickerLister } from './doc-picker-registry';
 
 const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
   { id: 'sh3-editor:widget:string',       type: 'string',       component: StringWidget      as any },
@@ -23,11 +31,16 @@ const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
   { id: 'sh3-editor:widget:icon-toggle',  type: 'icon-toggle',  component: IconToggleWidget  as any },
   { id: 'sh3-editor:widget:select',       type: 'select',       component: SelectWidget      as any },
   { id: 'sh3-editor:widget:file',         type: 'file',         component: FileWidget        as any },
+  { id: 'sh3-editor:widget:json',         type: 'json',         component: JsonWidget        as any },
+  { id: 'sh3-editor:widget:doc',          type: 'doc',          component: DocWidget         as any },
 ];
 
-/** Registers all 10 built-in widget renderers at priority 10. Returns a
- *  disposer that unregisters them in reverse order. */
+/** Registers all built-in widget renderers at priority 10 and wires the
+ *  doc-picker lister from ctx.contributions. Returns a disposer that
+ *  unregisters every contribution in reverse order and clears the lister. */
 export function registerBuiltinWidgets(ctx: ShardContext): () => void {
+  setDocPickerLister(() => ctx.contributions.list<DocPickerContribution>(DOC_PICKER_POINT));
+
   const disposers: Array<() => void> = [];
   for (const w of BUILTINS) {
     disposers.push(
@@ -39,5 +52,6 @@ export function registerBuiltinWidgets(ctx: ShardContext): () => void {
   }
   return () => {
     for (let i = disposers.length - 1; i >= 0; i--) disposers[i]();
+    setDocPickerLister(null);
   };
 }

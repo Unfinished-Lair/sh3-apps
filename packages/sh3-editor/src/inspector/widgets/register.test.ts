@@ -15,6 +15,7 @@ function mockCtx(captured: Captured[]) {
         captured.push({ pointId, contribution: contribution as unknown as InspectorRenderer });
         return () => {};
       },
+      list: () => [],
     },
   };
 }
@@ -43,6 +44,7 @@ describe('registerBuiltinWidgets', () => {
           disposes.push(0);
           return () => { disposes[idx] = 1; };
         },
+        list: () => [],
       },
     };
     const dispose = registerBuiltinWidgets(ctx as any);
@@ -55,7 +57,7 @@ describe('registerBuiltinWidgets', () => {
     registerBuiltinWidgets(mockCtx(captured) as any);
     const tags = captured.map((c) => c.contribution.type).sort();
     expect(tags).toEqual([
-      'file', 'icon-toggle', 'number', 'range', 'segmented',
+      'doc', 'file', 'icon-toggle', 'json', 'number', 'range', 'segmented',
       'select', 'slider', 'slider-group', 'string', 'text',
     ]);
   });

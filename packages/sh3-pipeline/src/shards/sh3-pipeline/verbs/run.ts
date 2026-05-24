@@ -17,6 +17,7 @@ export interface RunPipelineOptions {
   signal: AbortSignal;
   log: (entry: RunLogEntry) => void;
   invokeVerb: RunContext['invokeVerb'];
+  writeDocument: RunContext['writeDocument'];
   loadSubGraph: (docId: string) => Promise<PipelineDocument>;
   handlers: HandlerRegistry;
   /** Test hook: called whenever a sub-graph context is constructed. */
@@ -41,6 +42,7 @@ export async function runPipelineDocument(
       log: opts.log,
       invokeVerb: opts.invokeVerb,
       runSubGraph: async (id, inp) => runSubGraph(id, inp),
+      writeDocument: opts.writeDocument,
     });
     opts.onChildContextCreated?.(child);
     const childGraph = projectAsset(childDoc.asset);
@@ -55,6 +57,7 @@ export async function runPipelineDocument(
     log: opts.log,
     invokeVerb: opts.invokeVerb,
     runSubGraph,
+    writeDocument: opts.writeDocument,
   });
 
   return runGraph({ graph: runner, ctx, handlers: opts.handlers });

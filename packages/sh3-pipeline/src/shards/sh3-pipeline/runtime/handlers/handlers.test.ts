@@ -13,6 +13,7 @@ function ctxStub(overrides: Partial<RunContext> = {}): RunContext {
     log: () => {},
     invokeVerb: async () => ({ result: undefined, scrollback: [] }),
     runSubGraph: async () => ({ outputs: {} }),
+    writeDocument: async () => {},
     ...overrides,
   };
 }

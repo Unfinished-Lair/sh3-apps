@@ -35,6 +35,16 @@ export interface RunContext {
     docId: string,
     inputs: Record<string, unknown>,
   ) => Promise<{ outputs: Record<string, unknown> }>;
+  /**
+   * Cross-shard document write, plumbed from the owning shard's
+   * `ctx.browse.writeTo`. Throws `documents:write capability missing`
+   * if the shard does not declare the capability.
+   */
+  writeDocument: (
+    targetShard: string,
+    path: string,
+    content: string | ArrayBuffer,
+  ) => Promise<void>;
 }
 
 export interface PipelineInterface {

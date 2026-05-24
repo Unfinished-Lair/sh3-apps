@@ -8,6 +8,7 @@ export interface RunContextDeps {
   log: (entry: RunLogEntry) => void;
   invokeVerb: RunContext['invokeVerb'];
   runSubGraph: RunContext['runSubGraph'];
+  writeDocument: RunContext['writeDocument'];
 }
 
 export function createRunContext(deps: RunContextDeps): RunContext {
@@ -20,5 +21,6 @@ export function createRunContext(deps: RunContextDeps): RunContext {
     log: deps.log,
     invokeVerb: deps.invokeVerb,
     runSubGraph: deps.runSubGraph,
+    writeDocument: deps.writeDocument,
   };
 }

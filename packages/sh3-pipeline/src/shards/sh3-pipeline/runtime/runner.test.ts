@@ -13,6 +13,7 @@ function makeCtx(overrides: Partial<Parameters<typeof createRunContext>[0]> = {}
     log: () => {},
     invokeVerb: async () => ({ result: undefined, scrollback: [] }),
     runSubGraph: async () => ({ outputs: {} }),
+    writeDocument: async () => {},
     ...overrides,
   });
 }

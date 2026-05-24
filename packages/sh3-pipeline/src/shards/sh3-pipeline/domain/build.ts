@@ -6,6 +6,7 @@ import type {
   PortRef,
 } from '@unfinished-lair/sh3-editor/graph/types';
 import { structuralTemplates } from '../templates/structural';
+import { documentTemplates } from '../templates/document';
 import { verbsToTemplates, type VerbDescriptor } from '../templates/verb-adapter';
 import { hybridConnectRule } from './connect-rule';
 import { VISUALS, VERB_VISUAL } from './visuals';
@@ -70,7 +71,7 @@ export function buildControlGraphDomain(ctx: CtxLike, _host: GraphDomainHost): G
   return makeDomain({
     id: 'sh3-pipeline:control-graph',
     label: 'Control Graph',
-    templates: [...structuralTemplates, ...verbTemplates],
+    templates: [...structuralTemplates, ...documentTemplates, ...verbTemplates],
     visuals: visualMap,
     defaultVisual: (type) => ({ ...VERB_VISUAL, label: type, borderColor: '#888888' }),
     canConnect: hybridConnectRule,

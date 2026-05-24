@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GraphAsset } from '@unfinished-lair/sh3-editor/graph/types';
 import { runPipelineDocument } from './run';
 import { structuralHandlers } from '../runtime/handlers/structural';
+import { makeDocumentWriteHandler } from '../runtime/handlers/document';
 import { DOMAIN_ID, PIPELINE_DOC_VERSION, type PipelineDocument } from '../document/format';
 import type { NodeHandler, HandlerRegistry } from '../runtime/handlers';
 
@@ -65,6 +66,7 @@ describe('runPipelineDocument — passthrough', () => {
       signal: new AbortController().signal,
       log: () => {},
       invokeVerb: async () => ({ result: undefined, scrollback: [] }),
+      writeDocument: async () => {},
       loadSubGraph: async () => doc,
       handlers,
     });
@@ -129,6 +131,7 @@ describe('runPipelineDocument — sub-graph fork', () => {
       signal: new AbortController().signal,
       log: () => {},
       invokeVerb: async () => ({ result: undefined, scrollback: [] }),
+      writeDocument: async () => {},
       loadSubGraph: async () => child,
       handlers: customHandlers,
       onChildContextCreated: (childCtx) => {
@@ -138,5 +141,92 @@ describe('runPipelineDocument — sub-graph fork', () => {
 
     expect(observedChildVarsSize).toBe(0);
     expect(result.outputs.final).toBe('kitten');
+  });
+});
+
+describe('runPipelineDocument — document.write', () => {
+  it('fans out an array input into one writeDocument call per item', async () => {
+    type WriteCall = { shard: string; path: string; content: string | ArrayBuffer };
+    const writes: WriteCall[] = [];
+
+    const doc: PipelineDocument = {
+      version: PIPELINE_DOC_VERSION,
+      domainId: DOMAIN_ID,
+      interface: {
+        inputs: [{ name: 'items', dataType: 'array' }],
+        outputs: [],
+      },
+      asset: {
+        ...emptyAsset(),
+        nodes: [
+          {
+            id: 's',
+            type: 'start',
+            config: { params: [{ name: 'items', dataType: 'array' }] },
+            position: { x: 0, y: 0 },
+            ports: [
+              { id: 's_control', label: 'control', direction: 'output', dataType: 'control' },
+              { id: 's_items',   label: 'items',   direction: 'output', dataType: 'array'   },
+            ],
+          },
+          {
+            id: 'w',
+            type: 'document.write',
+            config: {
+              targetShard: 'sh3-text',
+              pathTemplate: 'out/{name}.json',
+              format: 'json',
+            },
+            position: { x: 0, y: 0 },
+            ports: [
+              { id: 'w_control-in',  label: 'control', direction: 'input',  dataType: 'control' },
+              { id: 'w_data',        label: 'data',    direction: 'input',  dataType: 'unknown' },
+              { id: 'w_control-out', label: 'control', direction: 'output', dataType: 'control' },
+              { id: 'w_paths',       label: 'paths',   direction: 'output', dataType: 'array'   },
+            ],
+          },
+          {
+            id: 'e',
+            type: 'end',
+            config: { returns: [] },
+            position: { x: 0, y: 0 },
+            ports: [{ id: 'e_control', label: 'control', direction: 'input', dataType: 'control' }],
+          },
+        ],
+        edges: [
+          { id: 'c1', sourceNodeId: 's', sourcePortId: 's_control',     targetNodeId: 'w', targetPortId: 'w_control-in'  },
+          { id: 'd1', sourceNodeId: 's', sourcePortId: 's_items',       targetNodeId: 'w', targetPortId: 'w_data'        },
+          { id: 'c2', sourceNodeId: 'w', sourcePortId: 'w_control-out', targetNodeId: 'e', targetPortId: 'e_control'     },
+        ],
+      },
+    };
+
+    const customHandlers: HandlerRegistry = {
+      exact: new Map([
+        ...structuralHandlers.exact,
+        ['document.write', makeDocumentWriteHandler()],
+      ]),
+      prefixed: structuralHandlers.prefixed,
+    };
+
+    await runPipelineDocument({
+      doc,
+      docId: 'sh3-pipeline:test.pipeline.json',
+      tenant: 't',
+      inputs: { items: [{ name: 'alpha' }, { name: 'beta' }] },
+      signal: new AbortController().signal,
+      log: () => {},
+      invokeVerb: async () => ({ result: undefined, scrollback: [] }),
+      writeDocument: async (shard, path, content) => {
+        writes.push({ shard, path, content });
+      },
+      loadSubGraph: async () => doc,
+      handlers: customHandlers,
+    });
+
+    expect(writes.map((w) => `${w.shard}:${w.path}`)).toEqual([
+      'sh3-text:out/alpha.json',
+      'sh3-text:out/beta.json',
+    ]);
   });
 });

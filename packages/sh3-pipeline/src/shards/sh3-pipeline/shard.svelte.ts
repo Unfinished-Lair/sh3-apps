@@ -30,6 +30,7 @@ import { runPipelineDocument } from './verbs/run';
 import { rebuildCatalog } from './verbs/rebuild';
 import { openPipelineApp } from './verbs/open';
 import { structuralHandlers } from './runtime/handlers/structural';
+import { makeDocumentWriteHandler } from './runtime/handlers/document';
 import { makeVerbHandler } from './runtime/handlers/verb';
 import type { PipelineDocument } from './document/format';
 import { load as loadDoc, save as saveDoc, emptyDocument } from './document/store';
@@ -52,7 +53,10 @@ let domainRef: ReturnType<typeof buildControlGraphDomain> | null = null;
 let graphController: GraphController | null = null;
 
 const handlers = {
-  exact: structuralHandlers.exact,
+  exact: new Map([
+    ...structuralHandlers.exact,
+    ['document.write', makeDocumentWriteHandler()],
+  ]),
   prefixed: [{ prefix: 'verb:', handler: makeVerbHandler() }],
 };
 
@@ -87,6 +91,12 @@ async function runActiveAsset(ctx: ShardContext, state: PipelineState): Promise<
       signal: state.abortController.signal,
       log: (e) => { state.log.push(e); consoleLog(e); },
       invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
+      writeDocument: async (targetShard, path, content) => {
+        if (!ctx.browse?.writeTo) {
+          throw new Error('document.write: documents:write capability missing');
+        }
+        await ctx.browse.writeTo(targetShard, path, content);
+      },
       loadSubGraph: (id) => loadDoc(ctx, id),
       handlers,
     });
@@ -298,6 +308,12 @@ export const shard: SourceShard = {
             vctx.scrollback.push({ kind: 'status', text: e.message, level: e.level, ts: e.ts });
           },
           invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
+          writeDocument: async (targetShard, path, content) => {
+            if (!ctx.browse?.writeTo) {
+              throw new Error('document.write: documents:write capability missing');
+            }
+            await ctx.browse.writeTo(targetShard, path, content);
+          },
           loadSubGraph: (id) => loadDoc(ctx, id),
           handlers,
         });

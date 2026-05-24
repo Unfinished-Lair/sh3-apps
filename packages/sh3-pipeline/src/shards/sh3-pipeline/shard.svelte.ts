@@ -20,11 +20,7 @@ import type {
   InspectorBindHandle,
   DocPickerContribution,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
-import { DOC_PICKER_POINT } from '@unfinished-lair/sh3-editor/inspector/contributions';
-import {
-  HELP_TABS_CONTRIBUTION_POINT_ID,
-  type HelpTabContribution,
-} from '@unfinished-lair/sh3-editor/help/contributions';
+import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
 import RunLogPanel from './RunLogPanel.svelte';
@@ -47,6 +43,8 @@ import {
 
 const GRAPH_VIEW_POINT = 'sh3-editor.graph-view';
 const INSPECTOR_INSTANCE_POINT = 'sh3-editor.inspectorInstance';
+const DOC_PICKER_POINT = 'sh3-editor.docPicker';
+const HELP_TABS_POINT = 'sh3-editor:help.tabs';
 const GRAPH_SLOT_ID = 'graph';
 const INSPECTOR_SLOT_ID = 'inspector';
 
@@ -198,7 +196,7 @@ export const shard: SourceShard = {
     // Help tab "Pipeline Nodes". Registered at boot so users can open Help
     // (F1) from any app and find the pipeline node reference. Reads
     // domain.getTemplates() at each mount — always reflects the live catalog.
-    ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
+    ctx.contributions.register<HelpTabContribution>(HELP_TABS_POINT, {
       id: 'sh3-pipeline:help-tab:nodes',
       label: 'Pipeline Nodes',
       priority: 100,

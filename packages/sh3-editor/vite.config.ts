@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { svelteTesting } from '@testing-library/svelte/vite';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), svelteTesting()],
   build: {
     lib: {
       entry: 'src/index.ts',
@@ -20,6 +21,8 @@ export default defineConfig({
     ],
     environmentMatchGlobs: [
       ['src/preview/**', 'jsdom'],
+      ['src/inspector/widgets/**', 'jsdom'],
     ],
+    setupFiles: ['src/__test__/setup-dom.ts'],
   },
 });

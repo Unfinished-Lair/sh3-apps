@@ -88,3 +88,21 @@ export interface InspectorInstanceContribution {
    *  inspector: walker commits, custom-renderer push, undo/redo movements. */
   onValueChange?(value: unknown): void;
 }
+
+import type { DocumentPickerApi } from 'sh3-core';
+
+/** Contribution point id for doc-picker providers. The built-in DocWidget
+ *  (since 0.16.1) reads from this registry at click time and uses the
+ *  highest-priority entry (lowest priority number) to open the picker.
+ *  Doc-hosting shards register one entry passing their ctx.documentPicker. */
+export const DOC_PICKER_POINT = 'sh3-editor.docPicker';
+
+/** Shape of a contribution registered under DOC_PICKER_POINT. */
+export interface DocPickerContribution {
+  /** Stable, shard-prefixed id (e.g. 'sh3-pipeline:doc-picker'). */
+  id: string;
+  /** Picker instance — typically the registering shard's ctx.documentPicker. */
+  picker: DocumentPickerApi;
+  /** Lower wins. Default 100. Ties broken by registration order (first wins). */
+  priority?: number;
+}

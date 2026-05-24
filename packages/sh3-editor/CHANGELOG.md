@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.16.1 — 2026-05-24 — Typed-port field auto-fields + doc-picker contribution
+
+### Added
+
+- `FieldDescriptor['type']` now accepts `'json'` and `'doc'` in addition to the existing `'string' | 'number' | 'boolean' | 'select'`.
+- `PORT_TYPE_TO_FIELD` (graph state bridge) auto-generates inspector fields for `record` / `array` / `doc` dataType ports. Previously these were silently dropped; nodes with object-typed input ports could be wired but never seeded with a literal value.
+- `JsonWidget` (`meta.type: 'json'`) — JSON textarea renderer for record / array values. Commits on blur via `JSON.parse`; parse errors set a red-border visual and do not commit.
+- `DocWidget` (`meta.type: 'doc'`) — chip + Browse + Clear renderer for SH3 document handles (`{shardId, path}`). Browse consults the new `DOC_PICKER_POINT` registry and uses the highest-priority registered picker. When no picker is registered, Browse renders disabled.
+- New contribution point `DOC_PICKER_POINT = 'sh3-editor.docPicker'` (subpath `./inspector/contributions`) accepting `DocPickerContribution { id; picker: DocumentPickerApi; priority? }`. Lets doc-hosting shards expose their `ctx.documentPicker` to the editor's DocWidget.
+
+### Internal
+
+- `fieldsToInspectorMeta` gained `json` / `doc` switch arms — passes the field type through as `meta.type` so the new widgets dispatch.
+- Two new built-in widget registrations (`sh3-editor:widget:json`, `sh3-editor:widget:doc`) at priority 10.
+
 ## 0.16.0 — 2026-05-23 — Breaking: `EditorDocumentContribution.bind` channel
 
 ### Changed (BREAKING)

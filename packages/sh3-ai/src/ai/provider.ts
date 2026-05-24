@@ -15,7 +15,7 @@ export interface ChatMessage {
 
 export type ChatChunk =
   | { type: 'token'; text: string }
-  | { type: 'reasoning'; text: string }
+  | { type: 'reasoning'; text: string; providerData?: unknown }
   | { type: 'tool-call'; id: string; name: string; arguments: unknown }
   | {
       type: 'done';
@@ -43,10 +43,17 @@ export interface ChatOptions {
   toolCalls?: ToolCallSpec[];
   toolResults?: ToolResult[];
   /** Chain-of-thought emitted by the prior round on reasoning models that
-   *  require it to be echoed back (DeepSeek `deepseek-reasoner`: the
-   *  `reasoning_content` field). Provider attaches it to the assistant turn
-   *  carrying `toolCalls`; ignored on non-reasoning models. */
-  reasoningContent?: string;
+   *  require it to be echoed back. Two shapes are accepted:
+   *    - `string` — DeepSeek-style flat text (echoed verbatim as
+   *      `reasoning_content` on the assistant turn carrying `toolCalls`).
+   *    - `{ text, providerBlocks? }` — providers that ship signed reasoning
+   *      blocks (Anthropic extended thinking) stash opaque per-block
+   *      metadata in `providerBlocks`. The dispatch loop accumulates these
+   *      from `ChatChunk.reasoning.providerData` and replays them on the
+   *      next round so the provider can reconstruct its native block shape.
+   *  Provider attaches it to the assistant turn carrying `toolCalls`;
+   *  ignored on non-reasoning models. */
+  reasoningContent?: string | { text: string; providerBlocks?: unknown[] };
   /** User's system instruction. Shared across all providers. Each provider
    *  injects it into its native wire shape (Gemini: `systemInstruction.parts`;
    *  OpenAI-compat: prepended `role:'system'` message). Empty/undefined → no

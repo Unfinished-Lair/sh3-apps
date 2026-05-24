@@ -319,6 +319,144 @@ describe('dispatchLoop', () => {
     expect(seenOptions[1]?.reasoningContent).toBe('I should call a.b');
   });
 
+  it('accumulates providerData blocks and forwards them in the structured reasoningContent', async () => {
+    const tool = fakeTool('a.b', async () => 'ok');
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake',
+      chain: () => ['m1'],
+      capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'reasoning', text: 'I should ' };
+          yield { type: 'reasoning', text: 'call a.b' };
+          yield { type: 'reasoning', text: '', providerData: { sig: 'abc', text: 'I should call a.b' } };
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: {} };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'token', text: 'done' };
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false,
+      isReady: () => true,
+    };
+    const sb = fakeScrollback();
+    const conv = new ConversationState();
+    const scope: ResolvedScope = { id: 's', whitelist: ['a.*'], blacklist: [] };
+
+    await dispatchLoop({
+      prompt: 'go',
+      catalog: [tool],
+      scope,
+      conversation: conv,
+      provider,
+      model: 'm1',
+      signal: new AbortController().signal,
+      transcript: makeTranscript(sb),
+    });
+
+    expect(seenOptions[1]?.reasoningContent).toEqual({
+      text: 'I should call a.b',
+      providerBlocks: [{ sig: 'abc', text: 'I should call a.b' }],
+    });
+  });
+
+  it('falls back to string reasoningContent when no providerData is emitted', async () => {
+    // Regression test: DeepSeek emits reasoning chunks without providerData;
+    // dispatch must still send the legacy string shape so the DeepSeek
+    // client's existing branch keeps working unchanged.
+    const tool = fakeTool('a.b', async () => 'ok');
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake',
+      chain: () => ['m1'],
+      capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'reasoning', text: 'plain text' };
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: {} };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'token', text: 'done' };
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false,
+      isReady: () => true,
+    };
+    const sb = fakeScrollback();
+    const conv = new ConversationState();
+    const scope: ResolvedScope = { id: 's', whitelist: ['a.*'], blacklist: [] };
+
+    await dispatchLoop({
+      prompt: 'go',
+      catalog: [tool],
+      scope,
+      conversation: conv,
+      provider,
+      model: 'm1',
+      signal: new AbortController().signal,
+      transcript: makeTranscript(sb),
+    });
+
+    expect(seenOptions[1]?.reasoningContent).toBe('plain text');
+  });
+
+  it('calls transcript.reasoning when showReasoning is true (default)', async () => {
+    const calls: string[] = [];
+    const transcript = makeTranscript(fakeScrollback());
+    transcript.reasoning = (t) => { calls.push(t); };
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake', chain: () => ['m1'], capabilities: { tools: true },
+      chat: async function* () {
+        yield { type: 'reasoning', text: 'hello' };
+        yield { type: 'token', text: 'done' };
+        yield { type: 'done', finishReason: 'stop' };
+      },
+      isAuthFailure: () => false, isReady: () => true,
+    };
+    await dispatchLoop({
+      prompt: 'go', catalog: [], scope: { id: 's', whitelist: [], blacklist: [] },
+      conversation: new ConversationState(), provider, model: 'm1',
+      signal: new AbortController().signal, transcript,
+    });
+    expect(calls).toEqual(['hello']);
+  });
+
+  it('does NOT call transcript.reasoning when showReasoning is false (still accumulates for echo)', async () => {
+    const calls: string[] = [];
+    const transcript = makeTranscript(fakeScrollback());
+    transcript.reasoning = (t) => { calls.push(t); };
+    const seenOptions: Array<ChatOptions | undefined> = [];
+    const tool = fakeTool('a.b', async () => 'ok');
+    const provider: AiProvider = {
+      id: 'fake', label: 'fake', chain: () => ['m1'], capabilities: { tools: true },
+      chat: async function* (_msg, _model, _signal, opts) {
+        seenOptions.push(opts);
+        if (seenOptions.length === 1) {
+          yield { type: 'reasoning', text: 'silently' };
+          yield { type: 'tool-call', id: 'c1', name: 'a.b', arguments: {} };
+          yield { type: 'done', finishReason: 'tool-calls' };
+        } else {
+          yield { type: 'done', finishReason: 'stop' };
+        }
+      },
+      isAuthFailure: () => false, isReady: () => true,
+    };
+    await dispatchLoop({
+      prompt: 'go', catalog: [tool],
+      scope: { id: 's', whitelist: ['a.*'], blacklist: [] },
+      conversation: new ConversationState(), provider, model: 'm1',
+      signal: new AbortController().signal, transcript,
+      showReasoning: false,
+    });
+    expect(calls).toEqual([]);                                     // gated
+    expect(seenOptions[1]?.reasoningContent).toBe('silently');     // still echoed
+  });
+
   it('forwards systemInstruction to the provider on every round', async () => {
     const tool = fakeTool('a.b', async () => 'ok');
     const seenOptions: Array<ChatOptions | undefined> = [];

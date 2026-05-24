@@ -61,6 +61,7 @@ export const shard: SourceShard = {
     views: [
       { id: 'deepseek:settings', label: 'DeepSeek Settings', standalone: true },
       { id: 'gemini:settings', label: 'Gemini Settings', standalone: true },
+      { id: 'claude:settings', label: 'Claude Settings', standalone: true },
     ],
   },
 

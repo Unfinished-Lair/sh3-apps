@@ -186,6 +186,10 @@ export const shard: SourceShard = {
          *  Shared across providers so a single setting follows the user
          *  regardless of which provider the conversation runs against. */
         temperature: number | null;
+        /** When true, reasoning chunks (Claude extended thinking,
+         *  DeepSeek reasoning_content) render in the shell scrollback
+         *  inside a collapsed "Thinking…" disclosure. */
+        showReasoning: boolean;
       };
     }>({
       user: {
@@ -197,6 +201,7 @@ export const shard: SourceShard = {
         systemInstruction: '',
         idleTimeoutMs: 60_000,
         temperature: null,
+        showReasoning: true,
       },
     });
 
@@ -674,6 +679,7 @@ export const shard: SourceShard = {
         getSystemInstruction: () => state.user.systemInstruction || undefined,
         getIdleTimeoutMs: () => state.user.idleTimeoutMs,
         getTemperature: () => state.user.temperature,
+        getShowReasoning: () => state.user.showReasoning,
       }),
     );
 

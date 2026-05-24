@@ -3,11 +3,14 @@
   import type { CardSegment } from './ResponseCard.types';
 
   interface Props {
-    /** Preferred — ordered list of text + tool-call segments. */
+    /** Preferred — ordered list of text + reasoning + tool-call segments. */
     segments?: CardSegment[];
     /** Backward-compat: when no segments are passed, this is treated as
      *  a single text segment. The chat-only path still uses this. */
     markdown?: string;
+    /** Backward-compat: chat-only reasoning rendered as a top-level
+     *  collapsible above the text. Tool dispatch path uses segments. */
+    reasoningMarkdown?: string;
     model: string | null;
     locked: boolean;
     __streamState?: 'streaming' | 'complete' | 'error';
@@ -17,6 +20,7 @@
   let {
     segments,
     markdown,
+    reasoningMarkdown,
     model,
     locked,
     __streamState = 'streaming',
@@ -24,11 +28,21 @@
 
   const renderedSegments = $derived(
     (segments ?? (markdown != null ? [{ kind: 'text' as const, markdown }] : []))
-      .map((seg) =>
-        seg.kind === 'text'
-          ? { kind: 'text' as const, html: marked.parse(seg.markdown ?? '', { async: false }) as string }
-          : seg,
-      ),
+      .map((seg) => {
+        if (seg.kind === 'text') {
+          return { kind: 'text' as const, html: marked.parse(seg.markdown ?? '', { async: false }) as string };
+        }
+        if (seg.kind === 'reasoning') {
+          return { kind: 'reasoning' as const, html: marked.parse(seg.markdown ?? '', { async: false }) as string };
+        }
+        return seg;
+      }),
+  );
+
+  const reasoningHtml = $derived(
+    reasoningMarkdown && reasoningMarkdown.length > 0
+      ? marked.parse(reasoningMarkdown, { async: false }) as string
+      : null,
   );
 </script>
 
@@ -39,9 +53,20 @@
     </div>
   {/if}
   <div class="ai-card-body">
+    {#if reasoningHtml}
+      <details class="ai-reasoning">
+        <summary>Thinking…</summary>
+        <div class="ai-reasoning-body">{@html reasoningHtml}</div>
+      </details>
+    {/if}
     {#each renderedSegments as seg, i (i)}
       {#if seg.kind === 'text'}
         <div class="ai-text">{@html seg.html}</div>
+      {:else if seg.kind === 'reasoning'}
+        <details class="ai-reasoning">
+          <summary>Thinking…</summary>
+          <div class="ai-reasoning-body">{@html seg.html}</div>
+        </details>
       {:else}
         <div class="ai-tool" class:ai-tool-error={seg.error}>
           <div class="ai-tool-head">
@@ -141,5 +166,28 @@
   .ai-card-stream-indicator {
     opacity: 0.5;
     font-size: 0.85em;
+  }
+  .ai-reasoning {
+    margin: 0.25em 0;
+    padding: 0.25em 0.5em;
+    font-size: 0.9em;
+    background: var(--sh3-code-bg, rgba(0, 0, 0, 0.08));
+    border-left: 2px solid var(--sh3-fg-dim, #888);
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+  .ai-reasoning > summary {
+    cursor: pointer;
+    font-family: var(--sh3-mono, monospace);
+    font-size: 0.85em;
+    opacity: 0.75;
+  }
+  .ai-reasoning-body {
+    margin-top: 0.3em;
+    font-style: italic;
+    opacity: 0.9;
+  }
+  .ai-reasoning-body :global(p) {
+    margin: 0.2em 0;
   }
 </style>

@@ -39,6 +39,10 @@ export interface AiModeDeps {
    *  `ChatOptions.temperature` on every chat call. `null` / `undefined`
    *  → API default. */
   getTemperature?: () => number | null | undefined;
+  /** Live read of the user's Show Reasoning toggle. Forwarded via
+   *  `DispatchLoopOptions.showReasoning` and consumed by the chat-only
+   *  path's reasoning branch. `undefined` → default true. */
+  getShowReasoning?: () => boolean;
 }
 
 export function makeAiModeDescriptor(deps: AiModeDeps): ShellModeDescriptor {
@@ -85,11 +89,12 @@ function makeAiDispatch(deps: AiModeDeps) {
     const systemInstruction = deps.getSystemInstruction?.();
     const idleTimeoutMs = deps.getIdleTimeoutMs?.();
     const temperature = deps.getTemperature?.() ?? null;
+    const showReasoning = deps.getShowReasoning?.() ?? true;
     const catalog = deps.getCatalog?.() ?? [];
     if (catalog.length > 0) {
       await runToolDispatch(
         provider, conversation, catalog, deps.getScope!(),
-        input, output, systemInstruction, idleTimeoutMs, temperature,
+        input, output, systemInstruction, idleTimeoutMs, temperature, showReasoning,
       );
       if (deps.onTurnComplete) {
         try { await deps.onTurnComplete(); } catch { /* non-fatal */ }
@@ -114,7 +119,7 @@ function makeAiDispatch(deps: AiModeDeps) {
     });
 
     await runChatTurn(
-      provider, conversation, chain, input.signal, handle, systemInstruction, idleTimeoutMs, temperature,
+      provider, conversation, chain, input.signal, handle, systemInstruction, idleTimeoutMs, temperature, showReasoning,
     );
 
     if (deps.onTurnComplete) {
@@ -139,6 +144,7 @@ async function runToolDispatch(
   systemInstruction: string | undefined,
   idleTimeoutMs: number | undefined,
   temperature: number | null,
+  showReasoning: boolean,
 ): Promise<void> {
   const chain = conversation.lockedModel ? [conversation.lockedModel] : provider.chain();
   if (chain.length === 0) {
@@ -163,6 +169,7 @@ async function runToolDispatch(
       systemInstruction,
       idleTimeoutMs,
       temperature,
+      showReasoning,
     });
   } catch (err) {
     transcript.error(err);
@@ -180,11 +187,13 @@ async function runChatTurn(
   systemInstruction: string | undefined,
   idleTimeoutMs: number | undefined,
   temperature: number | null,
+  showReasoning: boolean,
 ): Promise<void> {
   const attempts: { model: string; error: string }[] = [];
 
   for (const model of chain) {
     let markdown = '';
+    let reasoningMarkdown = '';
     let firstToken = true;
     let succeeded = false;
 
@@ -204,6 +213,11 @@ async function runChatTurn(
           }
           markdown += chunk.text;
           handle.append({ markdown });
+        } else if (chunk.type === 'reasoning') {
+          if (showReasoning && chunk.text.length > 0) {
+            reasoningMarkdown += chunk.text;
+            handle.append({ reasoningMarkdown });
+          }
         } else if (chunk.type === 'done') {
           handle.complete();
           conversation.appendAssistant(markdown, model);

@@ -26,13 +26,18 @@ export interface DispatchLoopOptions {
   /** Forwarded to the provider via `ChatOptions.temperature` on every
    *  round. `null` / `undefined` → API default. */
   temperature?: number | null;
+  /** Whether to surface reasoning chunks via `transcript.reasoning`.
+   *  When false, reasoning chunks are still accumulated for the next-round
+   *  echo (DeepSeek `reasoning_content`, Claude signed thinking blocks)
+   *  but not rendered. Defaults to true. */
+  showReasoning?: boolean;
 }
 
 export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
   const {
     prompt, catalog, scope, conversation, provider, model, signal,
     transcript, maxRounds = 16, maxResultBytes, systemInstruction,
-    idleTimeoutMs, temperature,
+    idleTimeoutMs, temperature, showReasoning = true,
   } = opts;
   const tools: ToolSpec[] | undefined = catalog.length > 0
     ? catalog.map((t) => ({
@@ -44,7 +49,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
   let toolCalls: ToolCallSpec[] | undefined;
   let toolResults: ToolResult[] | undefined;
-  let reasoningContent: string | undefined;
+  let reasoningContent: string | { text: string; providerBlocks?: unknown[] } | undefined;
   let round = 0;
 
   while (!signal.aborted) {
@@ -55,6 +60,7 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     let assistantText = '';
     let assistantReasoning = '';
+    const assistantReasoningBlocks: unknown[] = [];
     const pendingCalls: ToolCallSpec[] = [];
     let finishReason: 'stop' | 'tool-calls' | 'length' | 'error' | undefined;
 
@@ -67,6 +73,12 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
         transcript.token(chunk.text);
       } else if (chunk.type === 'reasoning') {
         assistantReasoning += chunk.text;
+        if (chunk.providerData !== undefined) {
+          assistantReasoningBlocks.push(chunk.providerData);
+        }
+        if (showReasoning && chunk.text.length > 0) {
+          transcript.reasoning(chunk.text);
+        }
       } else if (chunk.type === 'tool-call') {
         pendingCalls.push({ id: chunk.id, name: chunk.name, arguments: chunk.arguments });
         transcript.toolCall({
@@ -92,7 +104,9 @@ export async function dispatchLoop(opts: DispatchLoopOptions): Promise<void> {
 
     toolCalls = [...pendingCalls];
     toolResults = [];
-    reasoningContent = assistantReasoning.length > 0 ? assistantReasoning : undefined;
+    reasoningContent = assistantReasoningBlocks.length > 0
+      ? { text: assistantReasoning, providerBlocks: assistantReasoningBlocks }
+      : (assistantReasoning.length > 0 ? assistantReasoning : undefined);
     for (const call of pendingCalls) {
       if (signal.aborted) break;
 

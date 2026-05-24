@@ -4,6 +4,7 @@
       systemInstruction: string;
       titleStrategy: 'first-message' | 'llm-summarize';
       idleTimeoutMs: number;
+      showReasoning: boolean;
     };
   }
 
@@ -125,6 +126,25 @@
       <span class:current={i === idleIndex}>{stop.label}</span>
     {/each}
   </div>
+
+  <hr />
+
+  <h2>Show reasoning</h2>
+  <p class="note">
+    Display the model's chain-of-thought in the shell scrollback inside a
+    collapsed "Thinking…" disclosure. Applies to providers that emit
+    reasoning (Claude extended thinking, DeepSeek
+    <code>reasoning_content</code>). When off, the reasoning is still
+    accumulated internally so tool-use continuation works — it's just not
+    rendered.
+  </p>
+  <label class="checkbox-row">
+    <input
+      type="checkbox"
+      bind:checked={user.showReasoning}
+    />
+    <span>Show reasoning</span>
+  </label>
 </section>
 
 <style>
@@ -215,5 +235,11 @@
   .idle-ticks .current {
     color: var(--sh3-fg, inherit);
     font-weight: 600;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
   }
 </style>

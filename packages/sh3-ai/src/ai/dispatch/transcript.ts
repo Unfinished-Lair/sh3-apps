@@ -46,6 +46,10 @@ export interface Transcript {
   toolResult(result: { id: string; resultPreview: string; error?: boolean }): void;
   /** Loop-level status entry (warn / error). NOT used for tool activity. */
   status(level: 'info' | 'warn' | 'error', text: string): void;
+  /** Streaming reasoning chunk (Claude extended thinking, DeepSeek
+   *  reasoning_content). Implementations decide how to surface it; the
+   *  dispatch loop gates this call on the user's Show Reasoning toggle. */
+  reasoning(text: string): void;
   /** Truncate a value for inline display. */
   preview(value: unknown): string;
   /** The dispatch turn finished cleanly. */
@@ -108,6 +112,15 @@ export function makeTranscript(
       activeStream = null;
       scrollback.push({ kind: 'status', text, level, ts: Date.now() });
     },
+    reasoning(text) {
+      activeStream = null;
+      scrollback.push({
+        kind: 'status',
+        level: 'info',
+        text: `⌄ ${text}`,
+        ts: Date.now(),
+      });
+    },
     preview: makePreview(previewMax),
     complete() {},
     error() {},
@@ -168,6 +181,16 @@ export function makeOutputTranscript(
           segments[i] = { ...seg, resultPreview, error };
           break;
         }
+      }
+      push();
+    },
+    reasoning(text) {
+      const tail = segments[segments.length - 1];
+      if (tail && tail.kind === 'reasoning') {
+        const merged: CardSegment = { kind: 'reasoning', markdown: tail.markdown + text };
+        segments[segments.length - 1] = merged;
+      } else {
+        segments.push({ kind: 'reasoning', markdown: text });
       }
       push();
     },

@@ -146,27 +146,32 @@ async function saveActive(ctx: ShardContext, state: PipelineState): Promise<void
   state.log.push({ ts: Date.now(), nodeId: null, level: 'info', message: `Saved ${state.docId}` });
 }
 
-/** Strip the shard prefix from a docId for display. */
-function docIdToPath(docId: string): string {
-  return docId.startsWith('sh3-pipeline:') ? docId.slice('sh3-pipeline:'.length) : docId;
-}
-
-/** Build a docId from a bare path (defaults to this shard's namespace). */
-function pathToDocId(path: string): string {
-  return path.includes(':') ? path : `sh3-pipeline:${path}`;
+/** Build a docId from the SaverValue returned by ctx.documentPicker.save().
+ *  sh3-core's DocumentFilePicker emits `<shardId>/<rest>` for save (see
+ *  _DocumentBrowser.svelte commit), not the boundId-relative path that
+ *  open() returns alongside its shardId. Split at the first '/' so the
+ *  docId carries the picker's chosen target shard, not always this one. */
+function saverPathToDocId(saver: string): string | null {
+  const trimmed = saver.trim();
+  const slash = trimmed.indexOf('/');
+  if (slash <= 0 || slash === trimmed.length - 1) return null;
+  return `${trimmed.slice(0, slash)}:${trimmed.slice(slash + 1)}`;
 }
 
 async function saveAsViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
-  const path = await ctx.documentPicker.save();
-  if (!path) return;
-  const docId = pathToDocId(path.trim());
+  const saver = await ctx.documentPicker.save();
+  if (!saver) return;
+  const docId = saverPathToDocId(saver);
+  if (!docId) {
+    state.log.push({ ts: Date.now(), nodeId: null, level: 'error', message: `Save As: invalid picker path ${saver}` });
+    return;
+  }
   await saveDoc(ctx, docId, { ...emptyDocument(), asset: state.asset });
   state.docId = docId;
   state.log.push({ ts: Date.now(), nodeId: null, level: 'info', message: `Saved as ${docId}` });
 }
 
-async function openActiveFromPath(ctx: ShardContext, state: PipelineState, path: string): Promise<void> {
-  const docId = pathToDocId(path);
+async function openActiveFromDocId(ctx: ShardContext, state: PipelineState, docId: string): Promise<void> {
   try {
     const doc = await loadDoc(ctx, docId);
     state.docId = docId;
@@ -184,7 +189,7 @@ async function openActiveFromPath(ctx: ShardContext, state: PipelineState, path:
 async function openActiveViaPicker(ctx: ShardContext, state: PipelineState): Promise<void> {
   const picked = await ctx.documentPicker.open();
   if (!picked) return;
-  await openActiveFromPath(ctx, state, picked.path);
+  await openActiveFromDocId(ctx, state, `${picked.shardId}:${picked.path}`);
 }
 
 function newDoc(state: PipelineState): void {

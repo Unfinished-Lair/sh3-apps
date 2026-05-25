@@ -108,6 +108,18 @@ export const structuralTemplates: NodeTemplate[] = [
     label: 'Record',
     ports: [port('record', 'output', 'record')],
     defaultConfig: { keys: [] as string[] },
+    configSchema: [{ key: 'keys', label: 'Fields', type: 'string-list' }],
+    computePorts: (config) => {
+      const out: GraphAssetPort[] = [port('record', 'output', 'record')];
+      const keys = Array.isArray(config.keys) ? (config.keys as unknown[]) : [];
+      const seen = new Set<string>();
+      for (const k of keys) {
+        if (typeof k !== 'string' || k.length === 0 || seen.has(k)) continue;
+        seen.add(k);
+        out.push(port(k, 'input', 'unknown', k));
+      }
+      return out;
+    },
   },
   {
     type: 'record.get',

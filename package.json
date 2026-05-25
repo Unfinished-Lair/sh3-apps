@@ -11,7 +11,6 @@
     "sh3-core": "file:../sh3/packages/sh3-core"
   },
   "devDependencies": {
-    "fflate": "^0.8.0",
-    "sh3-core": "^0.26.0"
+    "fflate": "^0.8.0"
   }
 }

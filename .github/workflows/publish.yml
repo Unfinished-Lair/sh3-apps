@@ -21,10 +21,18 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout sh3-apps
         uses: actions/checkout@v4
         with:
+          path: sh3-apps
           fetch-depth: 0
+
+      - name: Checkout sh3 (private sibling repo)
+        uses: actions/checkout@v4
+        with:
+          repository: Unfinished-Lair/sh3
+          path: sh3
+          token: ${{ secrets.SH3_REPO_TOKEN }}
 
       - name: Checkout gh-pages into _pages
         uses: actions/checkout@v4
@@ -46,13 +54,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - name: Build sh3-core from sibling checkout
+        working-directory: sh3
+        run: |
+          npm install
+          npm run build -w sh3-core
+
+      - name: Install sh3-apps dependencies
+        working-directory: sh3-apps
         run: npm install
 
       - name: Run tests for publish script
+        working-directory: sh3-apps
         run: npm run test:publish
 
       - name: Build all package artifacts
+        working-directory: sh3-apps
         run: |
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
@@ -70,6 +87,7 @@ jobs:
 
       - name: Run publish script
         id: publish
+        working-directory: sh3-apps
         run: |
           node .github/scripts/publish.mjs > publish-output.txt
           head -1 publish-output.txt > publish-result.json
@@ -82,6 +100,7 @@ jobs:
 
       - name: Parse publish result
         id: parse
+        working-directory: sh3-apps
         run: |
           REGISTRY_PUBLISHED=$(jq -r '.registryPublished | join(",")' publish-result.json)
           echo "registry_published=$REGISTRY_PUBLISHED" >> "$GITHUB_OUTPUT"

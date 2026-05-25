@@ -18,19 +18,6 @@ function port(
   return { id, direction, dataType, label: label ?? id };
 }
 
-/**
- * Templates of verb nodes whose `computePorts` switches shape between
- * runtime and prefetch modes — i.e., verbs that satisfy isPickerableVerb at
- * the moment their template was last built. syncInspector consults this set
- * to decide whether to surface the mode-toggle toolbar action. Replaces the
- * old per-node `config.pickerable` boolean.
- */
-const pickerableTypes = new Set<string>();
-
-export function isPickerableTemplateType(type: string): boolean {
-  return pickerableTypes.has(type);
-}
-
 export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemplate[] {
   return verbs.map((v) => buildVerbTemplate(v));
 }
@@ -38,11 +25,8 @@ export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemp
 function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
   const runtimePortBuild = buildRuntimePortBuild(v);
   const pickerable = isPickerableVerb(v);
-  const type = `verb:${v.shardId}:${v.name}`;
-  if (pickerable) pickerableTypes.add(type);
-
   const template: NodeTemplate = {
-    type,
+    type: `verb:${v.shardId}:${v.name}`,
     category: 'Verbs',
     label: v.name,
     ports: runtimePortBuild.ports,

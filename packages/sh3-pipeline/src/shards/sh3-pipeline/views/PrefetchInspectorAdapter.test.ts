@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import PrefetchInspectorAdapter from './PrefetchInspectorAdapter.svelte';
 import type { PrefetchConfig } from '../domain/types';
 
@@ -34,6 +34,15 @@ function prefetchValue(): Record<string, unknown> {
   };
 }
 
+function runtimeVerbValue(): Record<string, unknown> {
+  return {
+    mode: 'runtime',
+    shardId: 'workspace-mgr',
+    name: 'workspaces.list',
+    summary: 'List workspaces',
+  };
+}
+
 describe('PrefetchInspectorAdapter', () => {
   beforeEach(() => {
     toggleMock.mockClear();
@@ -45,13 +54,28 @@ describe('PrefetchInspectorAdapter', () => {
     const { getByText } = render(PrefetchInspectorAdapter, {
       props: { value: prefetchValue(), meta: {} },
     });
-    // PrefetchInspector renders the verb name in its header
     expect(getByText('workspaces.list')).toBeTruthy();
   });
 
-  it('renders the empty fallback when value has no prefetch block', () => {
+  it('renders a "Switch to Prefetch mode" button for any runtime verb', () => {
+    const { getByRole } = render(PrefetchInspectorAdapter, {
+      props: { value: runtimeVerbValue(), meta: {} },
+    });
+    const btn = getByRole('button', { name: /switch to prefetch mode/i });
+    expect(btn).toBeTruthy();
+  });
+
+  it('clicking the Switch button calls toggleSelectedNodeMode', async () => {
+    const { getByRole } = render(PrefetchInspectorAdapter, {
+      props: { value: runtimeVerbValue(), meta: {} },
+    });
+    await fireEvent.click(getByRole('button', { name: /switch to prefetch mode/i }));
+    expect(toggleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the empty fallback when value has no mode field', () => {
     const { getByText } = render(PrefetchInspectorAdapter, {
-      props: { value: { mode: 'runtime' }, meta: {} },
+      props: { value: { foo: 'bar' }, meta: {} },
     });
     expect(getByText(/no prefetch config/i)).toBeTruthy();
   });

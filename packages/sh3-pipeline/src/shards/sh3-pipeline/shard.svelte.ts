@@ -27,10 +27,7 @@ import {
   unbindPrefetchActions,
   setSelectedPrefetchNodeId,
   maybeAutoPrefetch,
-  toggleSelectedNodeMode,
 } from './runtime/prefetch-actions';
-import { isPickerableTemplateType } from './templates/verb-adapter';
-import type { ToolbarAction } from '@unfinished-lair/sh3-editor';
 import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
@@ -446,54 +443,24 @@ export const shard: SourceShard = {
         const binding = ctrl.getSelectedInspectorBinding();
         if (!binding) {
           setSelectedPrefetchNodeId(null);
-          handle.replace({ value: null, meta: {}, toolbarActions: [] });
+          handle.replace({ value: null, meta: {} });
           return;
         }
         const value = binding.value;
-        const v = value as { mode?: string; shardId?: string; name?: string };
-        const isPrefetch = v.mode === 'prefetch';
-
-        // Derive pickerability from verb-adapter's side-table, which it
-        // populates whenever a template is built. This replaces the old
-        // per-node config.pickerable boolean and decouples from any
-        // domainRef state — the toolbar shows iff the verb has an
-        // array-of-records output schema, full stop.
-        const templateType =
-          typeof v.shardId === 'string' && typeof v.name === 'string'
-            ? `verb:${v.shardId}:${v.name}`
-            : null;
-        const isPickerableVerb = templateType !== null && isPickerableTemplateType(templateType);
-        const isRuntimePickerable = isPickerableVerb && v.mode === 'runtime';
-
-        // Selected-id tracking covers both modes so the toolbar action and
-        // PrefetchInspector commits both resolve the right node. Single-id
-        // is the only case the inspector renders for; multi/edge selections
-        // wipe the tracker.
+        const v = value as { mode?: string };
+        // Route any verb node (runtime OR prefetch) through the dedicated
+        // adapter. The adapter renders the picker UI in prefetch mode and
+        // a "Switch to Prefetch mode" entry-point button in runtime mode.
+        // No pickerable gating — the adapter shows the button by default;
+        // users decide whether prefetch makes sense for a given verb.
+        const isVerbNode = v.mode === 'runtime' || v.mode === 'prefetch';
         const singleId = selectedIds && selectedIds.length === 1 ? selectedIds[0] : null;
-        setSelectedPrefetchNodeId(isPrefetch || isRuntimePickerable ? singleId : null);
+        setSelectedPrefetchNodeId(isVerbNode ? singleId : null);
 
-        // Route only PREFETCH-mode nodes through the dedicated renderer —
-        // it owns the picker UI (value-field, selection, refresh, …).
-        // Pickerable runtime verbs keep the default walker so the user sees
-        // the regular config fields, and we surface the mode toggle as a
-        // toolbar action above the inspector body.
-        const meta = isPrefetch
+        const meta = isVerbNode
           ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
           : binding.meta;
-        const toolbarActions: ToolbarAction[] = isRuntimePickerable
-          ? [{
-              id: 'sh3-pipeline:toggle-prefetch',
-              label: 'Switch to Prefetch mode',
-              onAction: () => toggleSelectedNodeMode(),
-            }]
-          : isPrefetch
-            ? [{
-                id: 'sh3-pipeline:toggle-runtime',
-                label: 'Switch to Runtime mode',
-                onAction: () => toggleSelectedNodeMode(),
-              }]
-            : [];
-        handle.replace({ value, meta, toolbarActions });
+        handle.replace({ value, meta });
       });
     }
 

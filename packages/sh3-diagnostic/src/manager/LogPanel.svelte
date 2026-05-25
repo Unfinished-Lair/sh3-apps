@@ -4,7 +4,9 @@
    *
    * Filter by level, autoscroll-to-bottom toggle, clear, and save-to-doc.
    * Save writes plain text to the diagnostic shard's own document zone via
-   * diagnosticContext.docs (which is just ctx.documents).
+   * diagnosticContext.docs (a DocumentHandle property on ShardContext in
+   * sh3-core 0.26+). Paths passed to the handle are scope-rooted —
+   * <boundId>/<rest> — so we prefix the file name with docs.boundId.
    */
 
   import { sh3 } from 'sh3-core';
@@ -56,7 +58,8 @@
         sh3.toast.notify('Log save unavailable — diagnostic not activated.', { level: 'error' });
         return;
       }
-      const path = logFileName();
+      // sh3-core 0.26: every doc path is scope-rooted (<boundId>/<rest>).
+      const path = `${docs.boundId}/${logFileName()}`;
       await docs.writeText(path, serializeLog(logBuffer));
       sh3.toast.notify(`Saved ${path}`, { level: 'success' });
     } catch (err) {

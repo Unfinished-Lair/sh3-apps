@@ -21,6 +21,9 @@ import { installLogCapture } from './log/capture.svelte';
  * Module-level context captured during register(). Leaf views import this
  * to route HTTP through ctx.fetch (Tauri-safe transport) and to write into
  * the shard's own document zone via docs.
+ *
+ * `docs` is a DocumentHandle (property on ShardContext in sh3-core 0.26+).
+ * All paths used with it must be scope-rooted: `<docs.boundId>/<rest>`.
  */
 export let diagnosticContext: {
   fetch: ShardContext['fetch'];

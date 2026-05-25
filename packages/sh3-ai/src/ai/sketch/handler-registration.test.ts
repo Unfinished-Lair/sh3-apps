@@ -38,10 +38,9 @@ describe('sh3-ai file-handler registration', () => {
       registerView: vi.fn(),
       registerVerb: vi.fn(),
       actions: { register: vi.fn(() => () => {}) },
-      documents: {} as any,
+      documents: { readText: vi.fn(), writeText: vi.fn(), grants: { browse: true, write: true }, boundId: 'ai' } as any,
       documentPicker: { open: vi.fn(), save: vi.fn() } as any,
       fetch: vi.fn(),
-      browse: { readFrom: vi.fn() },
       sh3: { listVerbs: vi.fn(() => []), runVerb: vi.fn(), runAction: vi.fn() },
       dispatch: vi.fn(),
     } as unknown as ShardContext;

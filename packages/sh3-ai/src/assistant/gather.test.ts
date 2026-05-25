@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { gatherContexts, type GatherDeps } from './gather';
 import type { SelectedEntry } from './picker';
 import type { ContextSource } from 'sh3-core';
+import { PermissionError } from 'sh3-core';
 
 interface StubField {
   shardId: string;
@@ -15,7 +16,9 @@ interface StubField {
 function makeDeps(opts: {
   fields?: StubField[];
   sources?: ContextSource[];
-  readFrom?: (shardId: string, path: string) => unknown;
+  /** Now keyed by scope-rooted path (`<shardId>/<rest>`). */
+  readDocument?: (rootedPath: string) => unknown;
+  canBrowseDocuments?: boolean;
 }): { deps: GatherDeps; toasts: string[] } {
   const toasts: string[] = [];
   const fields = opts.fields ?? [];
@@ -39,13 +42,16 @@ function makeDeps(opts: {
           label: f.label,
           kind: f.kind,
           readonly: false,
-          source: 'test',
+          // FieldView.source is a literal union in sh3-core 0.26; pick the
+          // closest match for test stubs.
+          source: 'contributed' as const,
         })) as ReturnType<GatherDeps['fields']['list']>,
     },
     sources: () => sources,
-    readDocument: opts.readFrom
-      ? async (shardId, path) => opts.readFrom!(shardId, path)
+    readDocument: opts.readDocument
+      ? async (rootedPath) => opts.readDocument!(rootedPath)
       : undefined,
+    canBrowseDocuments: opts.canBrowseDocuments ?? (opts.readDocument ? true : false),
     toast: (msg) => toasts.push(msg),
   };
   return { deps, toasts };
@@ -104,12 +110,16 @@ describe('gatherContexts', () => {
     expect(out[0].kind).toBe('text');
   });
 
-  it('gathers a document entry via readDocument and infers kind from extension', async () => {
-    const { deps } = makeDeps({ readFrom: () => '# Hello' });
+  it('gathers a document entry via readDocument(rootedPath) and infers kind from extension', async () => {
+    const reads: string[] = [];
+    const { deps } = makeDeps({
+      readDocument: (p) => { reads.push(p); return '# Hello'; },
+    });
     const selected: SelectedEntry[] = [
       { kind: 'document', shardId: 'sh3-server', path: 'docs/README.md' },
     ];
     const out = await gatherContexts(selected, deps);
+    expect(reads).toEqual(['sh3-server/docs/README.md']);
     expect(out).toEqual([
       {
         origin: 'document',
@@ -122,7 +132,7 @@ describe('gatherContexts', () => {
   });
 
   it('infers document kind json for .json files', async () => {
-    const { deps } = makeDeps({ readFrom: () => '{"a":1}' });
+    const { deps } = makeDeps({ readDocument: () => '{"a":1}' });
     const out = await gatherContexts(
       [{ kind: 'document', shardId: 's', path: 'data.json' }],
       deps,
@@ -131,7 +141,7 @@ describe('gatherContexts', () => {
   });
 
   it('infers document kind text for unknown extensions', async () => {
-    const { deps } = makeDeps({ readFrom: () => 'plain' });
+    const { deps } = makeDeps({ readDocument: () => 'plain' });
     const out = await gatherContexts(
       [{ kind: 'document', shardId: 's', path: 'notes.unknown' }],
       deps,
@@ -144,7 +154,7 @@ describe('gatherContexts', () => {
     const { deps } = makeDeps({
       fields: [{ shardId: 'sh3-editor', fieldId: 'title', label: 'Title', kind: 'string', value: 'A' }],
       sources: [source],
-      readFrom: () => 'C',
+      readDocument: () => 'C',
     });
     const selected: SelectedEntry[] = [
       { kind: 'field', addr: { shardId: 'sh3-editor', fieldId: 'title' } },
@@ -189,7 +199,7 @@ describe('gatherContexts', () => {
 
   it('omits a document entry when readDocument rejects and toasts the error', async () => {
     const { deps, toasts } = makeDeps({
-      readFrom: () => { throw new Error('not found'); },
+      readDocument: () => { throw new Error('not found'); },
     });
     const out = await gatherContexts(
       [{ kind: 'document', shardId: 's', path: 'missing.md' }],
@@ -200,15 +210,30 @@ describe('gatherContexts', () => {
     expect(toasts[0]).toContain('not found');
   });
 
-  it('omits a document entry when readDocument is not available (capability missing)', async () => {
-    const { deps, toasts } = makeDeps({}); // no readFrom
+  it('omits a document entry when documents:browse is missing (no readDocument)', async () => {
+    const { deps, toasts } = makeDeps({}); // no readDocument
     const out = await gatherContexts(
       [{ kind: 'document', shardId: 's', path: 'r.md' }],
       deps,
     );
     expect(out).toEqual([]);
     expect(toasts.length).toBe(1);
-    expect(toasts[0]).toContain('documents:read');
+    expect(toasts[0]).toContain('documents:browse');
+  });
+
+  it('reports PermissionError as a browse-not-granted toast', async () => {
+    const { deps, toasts } = makeDeps({
+      readDocument: () => {
+        throw new PermissionError('boundary', 's/r.md');
+      },
+    });
+    const out = await gatherContexts(
+      [{ kind: 'document', shardId: 's', path: 'r.md' }],
+      deps,
+    );
+    expect(out).toEqual([]);
+    expect(toasts.length).toBe(1);
+    expect(toasts[0]).toContain('documents:browse');
   });
 
   it('continues gathering siblings after one entry errors', async () => {

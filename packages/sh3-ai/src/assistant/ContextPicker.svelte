@@ -30,7 +30,10 @@
   let allFields = $state<FieldView[]>([]);
   let allSources = $state<ContextSource[]>([]);
 
-  const browseAvailable = typeof ctx.browse?.readFrom === 'function';
+  // sh3-core 0.26: documents handle always exists; gate on the grants
+  // snapshot. `browse` is granted by `documents:browse` or implied by
+  // `documents:write`.
+  const browseAvailable = ctx.documents.grants.browse;
 
   function refreshFields(): void {
     allFields = ctx.sh3.fields.list();
@@ -82,8 +85,8 @@
 
   async function addDocument(): Promise<void> {
     dropdownOpen = false;
-    if (!ctx.browse?.readFrom) {
-      sh3.toast.notify('AI context: documents:read not granted.', { level: 'warn' });
+    if (!ctx.documents.grants.browse) {
+      sh3.toast.notify('AI context: documents:browse not granted.', { level: 'warn' });
       return;
     }
     const picked = await ctx.documentPicker.open();
@@ -201,12 +204,15 @@
         }
         value = await src.get();
       } else if (entry.kind === 'document') {
-        if (!ctx.browse?.readFrom) {
-          previewCache.set(key, { state: 'error', message: 'documents:read not granted' });
+        if (!ctx.documents.grants.browse) {
+          previewCache.set(key, { state: 'error', message: 'documents:browse not granted' });
           expanded = new Set(expanded);
           return;
         }
-        value = await ctx.browse.readFrom(entry.shardId, entry.path);
+        // sh3-core 0.26: paths into other shards' namespaces are addressed
+        // directly through the unified handle, scope-rooted as
+        // `<shardId>/<rest>`.
+        value = await ctx.documents.readText(`${entry.shardId}/${entry.path}`);
       } else {
         return; // fields handled synchronously above
       }

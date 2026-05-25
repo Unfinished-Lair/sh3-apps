@@ -165,7 +165,9 @@ export const shard: SourceShard = {
       { id: SKETCH_VIEW_ID, label: 'AI Sketch', standalone: true },
       { id: ASSISTANT_EDIT_VIEW_ID, label: 'AI Edit', standalone: false },
     ],
-    permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    // sh3-core 0.26 collapsed documents:read into documents:browse; write
+    // implies browse but we keep both declared for readability.
+    permissions: ['documents:browse', 'documents:write'],
   },
 
   async register(ctx: ShardContext) {
@@ -236,26 +238,16 @@ export const shard: SourceShard = {
       const mm = String(now.getMinutes()).padStart(2, '0');
       const suggestedName = `sketch-${y}-${m}-${d}-${hh}${mm}`;
 
+      // sh3-core 0.26: picker.save returns a scope-rooted path
+      // (`<shardId>/<rest>`) that can be passed directly to the
+      // DocumentHandle. No splitting required.
       const path = await ctx.documentPicker.save({ suggestedName });
       if (!path) return;
-
-      const slashIdx = path.indexOf('/');
-      if (slashIdx <= 0) {
-        sh3.toast.notify(`AI Sketch: invalid save path '${path}'.`, { level: 'error' });
-        return;
-      }
-      const shardId = path.slice(0, slashIdx);
-      const relPath = path.slice(slashIdx + 1);
-
-      if (typeof ctx.browse?.writeTo !== 'function') {
-        sh3.toast.notify('AI Sketch: documents:write not granted.', { level: 'warn' });
-        return;
-      }
 
       const body = withMarker(snap.html, snap.mode);
 
       try {
-        await ctx.browse.writeTo(shardId, relPath, body);
+        await ctx.documents.writeText(path, body);
         sh3.toast.notify(`Saved AI Sketch as ${path}.`, { level: 'info' });
       } catch (err) {
         sh3.toast.notify(
@@ -272,13 +264,12 @@ export const shard: SourceShard = {
         sh3.toast.notify('AI Sketch: pick a file, not a folder.', { level: 'warn' });
         return;
       }
-      if (!ctx.browse) {
-        sh3.toast.notify('AI Sketch: documents:browse not granted.', { level: 'warn' });
-        return;
-      }
-      await loadIntoSketch(result.shardId, result.path, {
+      // Picker yields `{ shardId, path }` where path is shard-relative;
+      // recompose into the scope-rooted path the handle wants.
+      const rootedPath = `${result.shardId}/${result.path}`;
+      await loadIntoSketch(rootedPath, {
         state: sketchState,
-        browse: ctx.browse,
+        documents: ctx.documents,
         focusOrOpenSketch,
       });
     }
@@ -307,20 +298,13 @@ export const shard: SourceShard = {
       open: {
         type: 'view',
         open: async (file) => {
-          const slashIdx = file.path.indexOf('/');
-          if (slashIdx <= 0) {
-            sh3.toast.notify(`AI Sketch: invalid path '${file.path}'.`, { level: 'error' });
-            return;
-          }
-          if (!ctx.browse) {
-            sh3.toast.notify('AI Sketch: documents:browse not granted.', { level: 'warn' });
-            return;
-          }
-          await loadIntoSketch(
-            file.path.slice(0, slashIdx),
-            file.path.slice(slashIdx + 1),
-            { state: sketchState, browse: ctx.browse, focusOrOpenSketch },
-          );
+          // file.path is already scope-rooted (`<shardId>/<rest>`) in
+          // sh3-core 0.26; pass through to loadIntoSketch unchanged.
+          await loadIntoSketch(file.path, {
+            state: sketchState,
+            documents: ctx.documents,
+            focusOrOpenSketch,
+          });
         },
       },
       priority: 0,

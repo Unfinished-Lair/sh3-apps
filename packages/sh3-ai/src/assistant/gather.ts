@@ -1,5 +1,6 @@
 import type { FieldAddress, FieldKind, FieldView } from 'sh3-core';
 import type { ContextSource } from 'sh3-core';
+import { PermissionError } from 'sh3-core';
 import type { ContextEntry, ContextKind } from './prompt';
 import type { SelectedEntry } from './picker';
 
@@ -9,8 +10,18 @@ export interface GatherDeps {
     list(opts?: { shardId?: string; slotId?: string; kind?: FieldKind }): FieldView[];
   };
   sources(): ContextSource[];
-  /** Undefined when `documents:read` was not granted (or `ctx.browse.readFrom` is absent). */
-  readDocument?: (shardId: string, path: string) => Promise<unknown>;
+  /**
+   * Read a document by scope-rooted path (`<shardId>/<rest>`). In sh3-core 0.26
+   * cross-shard reads go through `ctx.documents.readText` directly; addresses
+   * outside the handle's grants throw `PermissionError`.
+   *
+   * Optional — when omitted, document entries surface a soft warning toast.
+   * Callers that hold `documents:browse` (or `documents:write`) should always
+   * pass this in.
+   */
+  readDocument?: (rootedPath: string) => Promise<unknown>;
+  /** Whether the underlying handle was granted browse (or implied via write). */
+  canBrowseDocuments?: boolean;
   toast(message: string): void;
 }
 
@@ -24,7 +35,12 @@ export async function gatherContexts(
       const gathered = await gatherOne(entry, deps);
       if (gathered !== null) out.push(gathered);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message =
+        err instanceof PermissionError
+          ? 'documents:browse not granted for this path'
+          : err instanceof Error
+            ? err.message
+            : String(err);
       deps.toast(`AI context: ${describeEntry(entry)} failed: ${message}`);
     }
   }
@@ -69,10 +85,14 @@ async function gatherOne(
   }
 
   // entry.kind === 'document'
-  if (!deps.readDocument) {
-    throw new Error('documents:read not granted');
+  if (!deps.readDocument || deps.canBrowseDocuments === false) {
+    // The shard manifest didn't request browse (or read access is otherwise
+    // unavailable). Surface as a soft warning rather than a throw so other
+    // entries continue.
+    throw new Error('documents:browse not granted');
   }
-  const value = await deps.readDocument(entry.shardId, entry.path);
+  const rootedPath = `${entry.shardId}/${entry.path}`;
+  const value = await deps.readDocument(rootedPath);
   if (value == null) return null;
   return {
     origin: 'document',

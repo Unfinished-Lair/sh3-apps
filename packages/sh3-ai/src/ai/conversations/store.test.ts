@@ -9,7 +9,12 @@ import { ConversationStore } from './store';
 import type { ConversationDocument } from './types';
 import { serializeConversation } from './serialize';
 
-/** Minimal in-memory fake DocumentHandle covering the surface ConversationStore uses. */
+const BOUND = 'ai';
+const ROOT = `${BOUND}/conversations/`;
+
+/** Minimal in-memory fake DocumentHandle covering the surface ConversationStore uses.
+ *  Paths are scope-rooted (`<boundId>/<rest>`) per sh3-core 0.26 — see the DIR/path
+ *  composition in store.ts. */
 function fakeHandle() {
   const docs = new Map<string, string>();
   const watchers = new Set<(c: DocumentChange) => void>();
@@ -18,9 +23,11 @@ function fakeHandle() {
   };
   const handle: Pick<
     DocumentHandle,
-    'list' | 'readText' | 'writeText' | 'delete' | 'rename' | 'exists' | 'watch' | 'autosave'
+    'boundId' | 'grants' | 'list' | 'readText' | 'writeText' | 'delete' | 'rename' | 'exists' | 'watch' | 'autosave'
   > & { _docs: Map<string, string> } = {
     _docs: docs,
+    boundId: BOUND,
+    grants: { browse: false, write: false },
     async list(): Promise<DocumentMeta[]> {
       return [...docs.entries()].map(([path, content]) => ({
         path, size: content.length, lastModified: 0,
@@ -32,17 +39,17 @@ function fakeHandle() {
     async writeText(path: string, content: string) {
       const had = docs.has(path);
       docs.set(path, content);
-      fireWatch({ type: had ? 'update' : 'create', path, tenantId: 't', shardId: 'ai' });
+      fireWatch({ type: had ? 'update' : 'create', path, scope: 't' });
     },
     async delete(path: string) {
-      if (docs.delete(path)) fireWatch({ type: 'delete', path, tenantId: 't', shardId: 'ai' });
+      if (docs.delete(path)) fireWatch({ type: 'delete', path, scope: 't' });
     },
     async rename(oldPath: string, newPath: string) {
       const c = docs.get(oldPath);
       if (c === undefined) throw new Error('missing');
       docs.delete(oldPath);
       docs.set(newPath, c);
-      fireWatch({ type: 'rename', path: newPath, oldPath, tenantId: 't', shardId: 'ai' });
+      fireWatch({ type: 'rename', path: newPath, oldPath, scope: 't' });
     },
     async exists(path: string) {
       return docs.has(path);
@@ -71,11 +78,11 @@ describe('ConversationStore', () => {
   it('list() returns summaries sorted by updatedAt desc', async () => {
     const handle = fakeHandle();
     const store = new ConversationStore(handle as unknown as DocumentHandle);
-    handle._docs.set('conversations/a.json', serializeConversation({
+    handle._docs.set(`${ROOT}a.json`, serializeConversation({
       id: 'a', version: 1, title: 'old', createdAt: 0, updatedAt: 100,
       providerId: null, model: null, messages: [], toolCalls: [], toolResults: [],
     }));
-    handle._docs.set('conversations/b.json', serializeConversation({
+    handle._docs.set(`${ROOT}b.json`, serializeConversation({
       id: 'b', version: 1, title: 'new', createdAt: 0, updatedAt: 500,
       providerId: 'gemini', model: 'gemini-2.5-flash',
       messages: [{ role: 'user', content: 'q' }], toolCalls: [], toolResults: [],
@@ -88,8 +95,8 @@ describe('ConversationStore', () => {
   it('list() skips entries that fail to parse', async () => {
     const handle = fakeHandle();
     const store = new ConversationStore(handle as unknown as DocumentHandle);
-    handle._docs.set('conversations/bad.json', '{not json');
-    handle._docs.set('conversations/good.json', serializeConversation({
+    handle._docs.set(`${ROOT}bad.json`, '{not json');
+    handle._docs.set(`${ROOT}good.json`, serializeConversation({
       id: 'good', version: 1, title: 't', createdAt: 0, updatedAt: 0,
       providerId: null, model: null, messages: [], toolCalls: [], toolResults: [],
     }));
@@ -100,7 +107,7 @@ describe('ConversationStore', () => {
   it('list() ignores files outside conversations/ namespace', async () => {
     const handle = fakeHandle();
     const store = new ConversationStore(handle as unknown as DocumentHandle);
-    handle._docs.set('other/file.json', '{}');
+    handle._docs.set(`${BOUND}/other/file.json`, '{}');
     expect(await store.list()).toEqual([]);
   });
 
@@ -111,7 +118,7 @@ describe('ConversationStore', () => {
       id: 'x', version: 1, title: 't', createdAt: 0, updatedAt: 0,
       providerId: null, model: null, messages: [], toolCalls: [], toolResults: [],
     };
-    handle._docs.set('conversations/x.json', serializeConversation(doc));
+    handle._docs.set(`${ROOT}x.json`, serializeConversation(doc));
     expect(await store.load('x')).toEqual(doc);
   });
 
@@ -129,7 +136,7 @@ describe('ConversationStore', () => {
     expect(doc.version).toBe(1);
     expect(doc.title).toBe('');
     expect(doc.messages).toEqual([]);
-    expect(handle._docs.has(`conversations/${doc.id}.json`)).toBe(true);
+    expect(handle._docs.has(`${ROOT}${doc.id}.json`)).toBe(true);
   });
 
   it('create(seed) merges seed into defaults', async () => {
@@ -146,7 +153,7 @@ describe('ConversationStore', () => {
     const store = new ConversationStore(handle as unknown as DocumentHandle);
     const doc = await store.create();
     await store.delete(doc.id);
-    expect(handle._docs.has(`conversations/${doc.id}.json`)).toBe(false);
+    expect(handle._docs.has(`${ROOT}${doc.id}.json`)).toBe(false);
   });
 
   it('rename() updates title + bumps updatedAt; doc id unchanged', async () => {

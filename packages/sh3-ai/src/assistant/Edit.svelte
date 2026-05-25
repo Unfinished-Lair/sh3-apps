@@ -36,15 +36,19 @@
   let abortCtrl: AbortController | null = null;
 
   function makeGatherDeps(): GatherDeps {
+    // sh3-core 0.26: `ctx.documents` is the pre-minted DocumentHandle and
+    // always exists. Cross-shard reads are gated by `grants.browse` (granted
+    // by `documents:browse` or implied by `documents:write`); when missing,
+    // gather emits a toast and skips the document entry.
+    const canBrowse = ctx.documents.grants.browse;
     return {
       fields: {
         get: (a) => ctx.sh3.fields.get(a),
         list: (opts) => ctx.sh3.fields.list(opts),
       },
       sources: () => ctx.contributions.list(CONTEXT_SOURCE_POINT_ID),
-      readDocument: ctx.browse?.readFrom
-        ? (shardId, path) => ctx.browse!.readFrom!(shardId, path)
-        : undefined,
+      readDocument: canBrowse ? (rootedPath) => ctx.documents.readText(rootedPath) : undefined,
+      canBrowseDocuments: canBrowse,
       toast: (msg) => sh3.toast.notify(msg, { level: 'warn' }),
     };
   }

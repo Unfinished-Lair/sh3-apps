@@ -37,8 +37,10 @@ export interface RunContext {
   ) => Promise<{ outputs: Record<string, unknown> }>;
   /**
    * Cross-shard document write, plumbed from the owning shard's
-   * `ctx.browse.writeTo`. Throws `documents:write capability missing`
-   * if the shard does not declare the capability.
+   * `ctx.documents.writeText` / `writeBinary` with a scope-rooted
+   * `<targetShard>/<path>`. Surfaces sh3-core's `PermissionError`
+   * (kind: 'write-without-grant') when the shard does not declare
+   * `documents:write`.
    */
   writeDocument: (
     targetShard: string,

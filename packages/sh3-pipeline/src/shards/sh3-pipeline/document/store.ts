@@ -42,13 +42,11 @@ export function emptyDocument(): PipelineDocument {
 
 export async function load(ctx: ShardContext, docId: string): Promise<PipelineDocument> {
   const { shardId, path } = splitDocId(docId);
-  const readFrom = ctx.browse?.readFrom;
-  if (!readFrom) throw new Error('documents:read capability missing');
-  const content = await readFrom(shardId, path);
+  // sh3-core 0.26 coalesced doc API: ctx.documents is a DocumentHandle
+  // property; paths are scope-rooted as `<boundId>/<rest>`. Permission
+  // failures throw PermissionError synchronously — no capability probe.
+  const content = await ctx.documents.readText(`${shardId}/${path}`);
   if (content === null) throw new Error(`Document not found: ${docId}`);
-  if (typeof content !== 'string') {
-    throw new Error(`Expected text document at ${docId}, got binary`);
-  }
   const parsed = JSON.parse(content) as PipelineDocument;
   if (parsed.version !== PIPELINE_DOC_VERSION) {
     throw new Error(
@@ -85,11 +83,10 @@ export async function save(
   doc: PipelineDocument,
 ): Promise<void> {
   const { shardId, path } = splitDocId(docId);
-  const writeTo = ctx.browse?.writeTo;
-  if (!writeTo) throw new Error('documents:write capability missing');
   const next: PipelineDocument = {
     ...doc,
     interface: deriveInterface(doc.asset),
   };
-  await writeTo(shardId, path, JSON.stringify(next, null, 2));
+  // sh3-core 0.26: scope-rooted path; missing grant raises PermissionError.
+  await ctx.documents.writeText(`${shardId}/${path}`, JSON.stringify(next, null, 2));
 }

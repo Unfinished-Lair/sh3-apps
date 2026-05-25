@@ -117,10 +117,15 @@ async function runActiveAsset(ctx: ShardContext, state: PipelineState): Promise<
       log: (e) => { state.log.push(e); consoleLog(e); },
       invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
       writeDocument: async (targetShard, path, content) => {
-        if (!ctx.browse?.writeTo) {
-          throw new Error('document.write: documents:write capability missing');
+        // sh3-core 0.26: scope-rooted path; binary vs text routed by content type.
+        // Cross-shard writes still go through ctx.documents (the relaxed handle
+        // honours documents:write across boundIds in the active scope).
+        const full = `${targetShard}/${path}`;
+        if (typeof content === 'string') {
+          await ctx.documents.writeText(full, content);
+        } else {
+          await ctx.documents.writeBinary(full, content);
         }
-        await ctx.browse.writeTo(targetShard, path, content);
       },
       loadSubGraph: (id) => loadDoc(ctx, id),
       handlers,
@@ -198,7 +203,10 @@ export const shard: SourceShard = {
       { id: 'sh3-pipeline:toolbar', label: 'Pipeline Toolbar' },
       { id: 'sh3-pipeline:log',     label: 'Pipeline Log' },
     ],
-    permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    // sh3-core 0.26: documents:read folded into documents:browse; documents:write implies browse.
+    // Kept both for clarity — this shard reads & writes across boundIds (verb nodes
+    // load sub-graphs from other shards; document.write fans out to arbitrary targetShard).
+    permissions: ['documents:browse', 'documents:write'],
   },
 
   register(ctx: ShardContext) {
@@ -334,10 +342,13 @@ export const shard: SourceShard = {
           },
           invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
           writeDocument: async (targetShard, path, content) => {
-            if (!ctx.browse?.writeTo) {
-              throw new Error('document.write: documents:write capability missing');
+            // sh3-core 0.26 coalesced doc API — see runActiveAsset above.
+            const full = `${targetShard}/${path}`;
+            if (typeof content === 'string') {
+              await ctx.documents.writeText(full, content);
+            } else {
+              await ctx.documents.writeBinary(full, content);
             }
-            await ctx.browse.writeTo(targetShard, path, content);
           },
           loadSubGraph: (id) => loadDoc(ctx, id),
           handlers,

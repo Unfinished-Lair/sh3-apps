@@ -18,6 +18,19 @@ function port(
   return { id, direction, dataType, label: label ?? id };
 }
 
+/**
+ * Templates of verb nodes whose `computePorts` switches shape between
+ * runtime and prefetch modes — i.e., verbs that satisfy isPickerableVerb at
+ * the moment their template was last built. syncInspector consults this set
+ * to decide whether to surface the mode-toggle toolbar action. Replaces the
+ * old per-node `config.pickerable` boolean.
+ */
+const pickerableTypes = new Set<string>();
+
+export function isPickerableTemplateType(type: string): boolean {
+  return pickerableTypes.has(type);
+}
+
 export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemplate[] {
   return verbs.map((v) => buildVerbTemplate(v));
 }
@@ -25,13 +38,11 @@ export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemp
 function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
   const runtimePortBuild = buildRuntimePortBuild(v);
   const pickerable = isPickerableVerb(v);
+  const type = `verb:${v.shardId}:${v.name}`;
+  if (pickerable) pickerableTypes.add(type);
 
-  // computePorts is the runtime tell for "this verb supports prefetch mode."
-  // Non-pickerable verbs omit it so consumers (syncInspector → toolbar action)
-  // can derive pickerability from the template alone instead of carrying a
-  // redundant `pickerable: boolean` field on every node's config.
   const template: NodeTemplate = {
-    type: `verb:${v.shardId}:${v.name}`,
+    type,
     category: 'Verbs',
     label: v.name,
     ports: runtimePortBuild.ports,

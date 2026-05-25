@@ -29,6 +29,7 @@ import {
   maybeAutoPrefetch,
   toggleSelectedNodeMode,
 } from './runtime/prefetch-actions';
+import { isPickerableTemplateType } from './templates/verb-adapter';
 import type { ToolbarAction } from '@unfinished-lair/sh3-editor';
 import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
@@ -452,18 +453,16 @@ export const shard: SourceShard = {
         const v = value as { mode?: string; shardId?: string; name?: string };
         const isPrefetch = v.mode === 'prefetch';
 
-        // Derive pickerability from the template, not from a config field:
-        // verb-adapter only attaches computePorts to verbs whose output
-        // schema is array-of-records, so its presence is the canonical
-        // "supports prefetch mode" signal.
+        // Derive pickerability from verb-adapter's side-table, which it
+        // populates whenever a template is built. This replaces the old
+        // per-node config.pickerable boolean and decouples from any
+        // domainRef state — the toolbar shows iff the verb has an
+        // array-of-records output schema, full stop.
         const templateType =
           typeof v.shardId === 'string' && typeof v.name === 'string'
             ? `verb:${v.shardId}:${v.name}`
             : null;
-        const template = templateType
-          ? domainRef?.getTemplates().find((t) => t.type === templateType)
-          : null;
-        const isPickerableVerb = Boolean(template?.computePorts);
+        const isPickerableVerb = templateType !== null && isPickerableTemplateType(templateType);
         const isRuntimePickerable = isPickerableVerb && v.mode === 'runtime';
 
         // Selected-id tracking covers both modes so the toolbar action and

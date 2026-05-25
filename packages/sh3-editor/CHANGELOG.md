@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.2 — 2026-05-25 — Dynamic ports + string-list field type
+
+### Added
+
+- `NodeTemplate.computePorts?: (config) => GraphAssetPort[]` — optional hook letting a node's port set depend on its config. When present, replaces the static `ports` array at instantiation and on every config commit. Threw exceptions fall back to `ports` with a console warning.
+- `effectivePorts(template, config)` resolver — single helper used by every internal port-read site. Exported from `src/graph/domain/effective-ports.ts`.
+- `FieldDescriptor['type']` and `ConfigFieldDef['type']` now accept `'string-list'` in addition to the existing values.
+- `StringListWidget` (`meta.type: 'string-list'`) — inspector renderer for `string[]` config values. Wraps the new `StringList` primitive.
+- `StringList` primitive in `src/primitives/widgets/StringList.svelte` — shaped to sh3-core's widget contract (CommitOnlyEvents<string[]>, standard label/helper/error/disabled/invalid/size props) so a future absorption into sh3-core is a flat move.
+
+### Changed
+
+- Palette-drop (`Graph.svelte` `insertNodeFromTemplate`) now materializes a new node's ports via `effectivePorts(template, defaultConfig)` instead of cloning `template.ports`. Static templates render identically; dynamic templates get their config-driven port shape from the start.
+- `buildConfigFields` walks `effectivePorts(template, config)` instead of `template.ports`. Dynamic input ports get inspector rows just like static ones.
+- `makeSetNodeConfigCommand` recomputes ports via `computePorts` on apply and revert; edges touching ports that no longer exist drop silently inside the same history command (one atomic undo step). Templates without `computePorts` are unaffected.
+
+### Internal
+
+- One new built-in widget registration (`sh3-editor:widget:string-list`) at priority 10.
+- New vitest `environmentMatchGlobs` entry for `src/primitives/widgets/**`.
+
 ## 0.16.1 — 2026-05-24 — Typed-port field auto-fields + doc-picker contribution
 
 ### Added

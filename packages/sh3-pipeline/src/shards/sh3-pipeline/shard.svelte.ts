@@ -424,6 +424,12 @@ export const shard: SourceShard = {
     // sites (the graph bind callback and the inspector bind callback) run
     // inside reactive scopes (their parent $effects); subscribing to graph
     // state from there causes effect_update_depth_exceeded loops.
+    //
+    // The same constraint applies to maybeAutoPrefetch — it reads
+    // state.asset.nodes, so any invocation reachable from the descriptor's
+    // bind callback must also be wrapped in `untrack`, or every
+    // `state.asset = …` write reschedules the GraphHost effect and tears
+    // down the controller. See autoPrefetchUntracked below.
     function syncInspector(): void {
       if (!inspectorHandle || !graphController) return;
       const ctrl = graphController;
@@ -452,6 +458,8 @@ export const shard: SourceShard = {
       });
     }
 
+    const autoPrefetchUntracked = (): void => { untrack(() => { maybeAutoPrefetch(); }); };
+
     const graphDescriptor: GraphViewDescriptor = {
       slotId: GRAPH_SLOT_ID,
       domainId: 'sh3-pipeline:control-graph',
@@ -468,10 +476,10 @@ export const shard: SourceShard = {
           // populates without user action. onSelectionChange fires after
           // node drops; the maybeAutoPrefetch guard (list === null) makes
           // the call idempotent on selection-only changes.
-          maybeAutoPrefetch();
+          autoPrefetchUntracked();
         });
         syncInspector();
-        maybeAutoPrefetch();
+        autoPrefetchUntracked();
       },
     };
     ctx.contributions.register<GraphViewDescriptor>(GRAPH_VIEW_POINT, graphDescriptor);

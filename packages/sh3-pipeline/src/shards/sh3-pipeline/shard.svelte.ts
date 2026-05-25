@@ -435,7 +435,7 @@ export const shard: SourceShard = {
     // bind callback must also be wrapped in `untrack`, or every
     // `state.asset = …` write reschedules the GraphHost effect and tears
     // down the controller. See autoPrefetchUntracked below.
-    function syncInspector(): void {
+    function syncInspector(selectedIds?: ReadonlyArray<string>): void {
       if (!inspectorHandle || !graphController) return;
       const ctrl = graphController;
       const handle = inspectorHandle;
@@ -451,15 +451,14 @@ export const shard: SourceShard = {
           const routeToPrefetchAdapter =
             v.mode === 'prefetch' || (v.mode === 'runtime' && v.pickerable === true);
           if (routeToPrefetchAdapter) {
-            const valuePrefetch = (value as { prefetch?: unknown }).prefetch;
-            const selected = ctrl.getAsset().nodes.find((n) => {
-              if (n.config === value) return true;
-              const nodePrefetch = (n.config as { prefetch?: unknown }).prefetch;
-              // Guard against both-undefined: would match every non-prefetch
-              // node when looking up a runtime-pickerable selection.
-              return valuePrefetch !== undefined && nodePrefetch === valuePrefetch;
-            });
-            setSelectedPrefetchNodeId(selected?.id ?? null);
+            // The onSelectionChange callback gives us the node id directly;
+            // prefer it over reference-matching against ctrl.getAsset(), whose
+            // shallow config copies break `n.config === value` identity for
+            // runtime nodes (the previous fallback only matched prefetch
+            // configs by prefetch-block reference, so runtime-pickerable
+            // selections got no id and toggleSelectedNodeMode no-opped).
+            const singleId = selectedIds && selectedIds.length === 1 ? selectedIds[0] : null;
+            setSelectedPrefetchNodeId(singleId);
           } else {
             setSelectedPrefetchNodeId(null);
           }
@@ -485,9 +484,9 @@ export const shard: SourceShard = {
       },
       bind: (ctrl) => {
         graphController = ctrl;
-        bindPrefetchActions(ctx, ctrl);
-        ctrl.onSelectionChange(() => {
-          syncInspector();
+        bindPrefetchActions(ctx, ctrl, domainRef);
+        ctrl.onSelectionChange((ids) => {
+          syncInspector(ids as ReadonlyArray<string>);
           // Newly-dropped prefetch nodes fire one auto-fetch so the picker
           // populates without user action. onSelectionChange fires after
           // node drops; the maybeAutoPrefetch guard (list === null) makes

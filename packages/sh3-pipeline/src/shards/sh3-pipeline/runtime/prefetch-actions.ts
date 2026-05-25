@@ -1,5 +1,7 @@
 import type { ShardContext } from 'sh3-core';
-import type { GraphAsset } from '@unfinished-lair/sh3-editor/graph/types';
+import type {
+  GraphAsset, GraphAssetPort, GraphDomain, NodeTemplate,
+} from '@unfinished-lair/sh3-editor/graph/types';
 import type { GraphController } from '@unfinished-lair/sh3-editor/graph/contributions';
 import type { PrefetchConfig } from '../domain/types';
 import { getActiveState, type PipelineState } from '../state.svelte';
@@ -53,16 +55,23 @@ export function maybeAutoPrefetch(): void {
 
 let activeCtx: ShardContext | null = null;
 let activeController: GraphController | null = null;
+let activeDomain: GraphDomain | null = null;
 let selectedNodeId: string | null = null;
 
-export function bindPrefetchActions(ctx: ShardContext, ctrl: GraphController | null): void {
+export function bindPrefetchActions(
+  ctx: ShardContext,
+  ctrl: GraphController | null,
+  domain: GraphDomain | null = null,
+): void {
   activeCtx = ctx;
   activeController = ctrl;
+  activeDomain = domain;
 }
 
 export function unbindPrefetchActions(): void {
   activeCtx = null;
   activeController = null;
+  activeDomain = null;
   selectedNodeId = null;
 }
 
@@ -156,24 +165,64 @@ export function toggleNodeMode(state: PipelineState, nodeId: string): void {
     (e) => e.sourceNodeId !== nodeId && e.targetNodeId !== nodeId,
   );
 
-  const cfg = node.config as { shardId?: string; name?: string };
-  const nextConfig = isPrefetch
-    ? { mode: 'runtime', shardId: cfg.shardId, name: cfg.name }
+  // Preserve all template-derived fields (pickerable, summary, hasInputSchema,
+  // outputPortIds…) so the inspector keeps routing through PrefetchAdapter
+  // after the round-trip and so toggling back to runtime restores the full
+  // verb-node shape. We only flip `mode` and add/remove the prefetch block.
+  const baseConfig = { ...(node.config as Record<string, unknown>) };
+  delete baseConfig.prefetch;
+  const nextConfig: Record<string, unknown> = isPrefetch
+    ? { ...baseConfig, mode: 'runtime' }
     : {
+        ...baseConfig,
         mode: 'prefetch',
-        shardId: cfg.shardId,
-        name: cfg.name,
         prefetch: {
           args: {}, valueField: null, list: null,
           selectedRowKey: null, lastSelectedRow: null, lastError: null,
         },
       };
 
+  // Recompute ports from the template so the node visually swaps between
+  // runtime (control-in + structured inputs + result outputs) and prefetch
+  // (no inputs + value/record outputs). Without this the asset retains the
+  // pre-toggle port shape and the canvas still shows old ports.
+  const ports = computePortsForType(node.type, nextConfig, nodeId) ?? node.ports;
+
   const nodes = state.asset.nodes.map((n) =>
-    n.id === nodeId ? { ...n, config: nextConfig as Record<string, unknown> } : n,
+    n.id === nodeId ? { ...n, config: nextConfig, ports } : n,
   );
   state.asset = { ...state.asset, nodes, edges };
   pushAssetToController(state.asset);
+
+  // setAsset routes through makeReplaceAssetCommand, which clears selection
+  // silently (no emitSelection). Without this select() the inspector never
+  // hears the swap — it keeps the pre-toggle entry value and the user sees
+  // stale UI until they manually click another node and back.
+  if (activeController) {
+    try { activeController.select([nodeId]); } catch { /* */ }
+  }
+}
+
+function computePortsForType(
+  type: string,
+  config: Record<string, unknown>,
+  nodeId: string,
+): GraphAssetPort[] | null {
+  if (!activeDomain) return null;
+  const template: NodeTemplate | undefined = activeDomain
+    .getTemplates()
+    .find((t) => t.type === type);
+  if (!template) return null;
+  let resolved: GraphAssetPort[];
+  try {
+    resolved = template.computePorts
+      ? template.computePorts(config)
+      : template.ports;
+    if (!Array.isArray(resolved)) resolved = template.ports;
+  } catch {
+    resolved = template.ports;
+  }
+  return resolved.map((p) => ({ ...p, id: `${nodeId}_${p.id}` }));
 }
 
 function pushAssetToController(asset: GraphAsset): void {

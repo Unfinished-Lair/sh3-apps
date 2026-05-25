@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Toggle Prefetch entry-point. After the 0.3.1 dual-template collapse there was no way to flip a runtime-mode verb node into prefetch mode: the only Toggle lived inside `PrefetchInspector`, which renders only when the node is *already* in prefetch mode — chicken-and-egg. `PrefetchInspectorAdapter` now renders a `Switch to Prefetch mode` button when the selected node is a pickerable verb in runtime mode, and `syncInspector` routes pickerable runtime values through the adapter so the button is reachable.
+
+### Changed
+
+- Verb templates emit `defaultConfig.pickerable: boolean` (sourced from `isPickerableVerb`). The flag is consumed by the inspector dispatch in `shard.svelte.ts` to decide whether to route a runtime-mode verb selection through the prefetch adapter.
+
 ## 0.3.1 — 2026-05-25 — record.build dynamic ports + prefetch dual-template collapse
 
 ### Fixed

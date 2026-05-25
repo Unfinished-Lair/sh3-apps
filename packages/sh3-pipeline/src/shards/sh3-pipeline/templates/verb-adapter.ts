@@ -38,6 +38,7 @@ function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
       summary: v.summary ?? '',
       hasInputSchema: runtimePortBuild.hasInputSchema,
       outputPortIds: runtimePortBuild.outputPortIds,
+      pickerable,
     },
     computePorts: (config) => {
       if (pickerable && config?.mode === 'prefetch') return buildPrefetchPorts(v);

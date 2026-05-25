@@ -141,6 +141,38 @@ describe('verbsToTemplates', () => {
         outputPortIds: [],
       });
     });
+
+    it('pickerable verb (array-of-object output) → pickerable:true in defaultConfig', () => {
+      const t = verbsToTemplates([{
+        shardId: 'workspace-mgr',
+        name: 'workspaces.list',
+        summary: 'List workspaces',
+        schema: {
+          output: {
+            type: 'array',
+            items: { type: 'object', properties: { id: { type: 'string' } } },
+          },
+        },
+      }])[0];
+      expect(t.defaultConfig).toMatchObject({ pickerable: true });
+    });
+
+    it('non-pickerable verb (no schema) → pickerable:false in defaultConfig', () => {
+      const t = verbsToTemplates([{ shardId: 'ai', name: 'ai:ask', summary: 'Ask' }])[0];
+      expect(t.defaultConfig).toMatchObject({ pickerable: false });
+    });
+
+    it('non-pickerable verb (object output) → pickerable:false in defaultConfig', () => {
+      const t = verbsToTemplates([{
+        shardId: 'demo',
+        name: 'demo:do',
+        summary: 'Do',
+        schema: {
+          output: { type: 'object', properties: { answer: { type: 'string' } } },
+        },
+      }])[0];
+      expect(t.defaultConfig).toMatchObject({ pickerable: false });
+    });
   });
 });
 

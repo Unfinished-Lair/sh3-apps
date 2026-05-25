@@ -443,16 +443,27 @@ export const shard: SourceShard = {
         const binding = ctrl.getSelectedInspectorBinding();
         if (binding) {
           const value = binding.value;
-          const isPrefetch = (value as { mode?: string }).mode === 'prefetch';
-          if (isPrefetch) {
-            const selected = ctrl.getAsset().nodes.find(
-              (n) => n.config === value || (n.config as { prefetch?: unknown }).prefetch === (value as { prefetch?: unknown }).prefetch,
-            );
+          const v = value as { mode?: string; pickerable?: boolean };
+          // Route through the prefetch adapter when the node is in prefetch
+          // mode OR is a pickerable verb in runtime mode — the runtime case
+          // needs the adapter to surface the "Switch to Prefetch mode" entry
+          // point (toggle button only lives there).
+          const routeToPrefetchAdapter =
+            v.mode === 'prefetch' || (v.mode === 'runtime' && v.pickerable === true);
+          if (routeToPrefetchAdapter) {
+            const valuePrefetch = (value as { prefetch?: unknown }).prefetch;
+            const selected = ctrl.getAsset().nodes.find((n) => {
+              if (n.config === value) return true;
+              const nodePrefetch = (n.config as { prefetch?: unknown }).prefetch;
+              // Guard against both-undefined: would match every non-prefetch
+              // node when looking up a runtime-pickerable selection.
+              return valuePrefetch !== undefined && nodePrefetch === valuePrefetch;
+            });
             setSelectedPrefetchNodeId(selected?.id ?? null);
           } else {
             setSelectedPrefetchNodeId(null);
           }
-          const meta = isPrefetch
+          const meta = routeToPrefetchAdapter
             ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
             : binding.meta;
           handle.replace({ value, meta });

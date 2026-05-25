@@ -14,6 +14,13 @@
   const cfg = $derived(
     ((value as { prefetch?: PrefetchConfig } | null)?.prefetch ?? null) as PrefetchConfig | null,
   );
+  // Runtime-mode pickerable verb: the entry-point that lets the user flip
+  // into prefetch mode. Without it the Toggle button (which lives inside
+  // PrefetchInspector below) is unreachable — chicken-and-egg.
+  const isRuntimePickerable = $derived(
+    (value as { mode?: string; pickerable?: boolean } | null)?.mode === 'runtime' &&
+      (value as { pickerable?: boolean } | null)?.pickerable === true,
+  );
   const refreshing = $derived(isSelectedPrefetchRefreshing());
 </script>
 
@@ -25,6 +32,13 @@
     onToggleMode={() => toggleSelectedNodeMode()}
     {refreshing}
   />
+{:else if isRuntimePickerable}
+  <div class="enter-prefetch">
+    <p class="hint">This verb returns a list. Switch to Prefetch mode to pick a row at design time.</p>
+    <button type="button" onclick={() => toggleSelectedNodeMode()}>
+      Switch to Prefetch mode
+    </button>
+  </div>
 {:else}
   <p class="empty">No prefetch config on the selected node.</p>
 {/if}
@@ -34,5 +48,19 @@
     padding: 12px;
     color: var(--shell-fg-muted);
     font-size: 0.85em;
+  }
+  .enter-prefetch {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .enter-prefetch .hint {
+    margin: 0;
+    color: var(--shell-fg-muted);
+    font-size: 0.85em;
+  }
+  .enter-prefetch button {
+    align-self: flex-start;
   }
 </style>

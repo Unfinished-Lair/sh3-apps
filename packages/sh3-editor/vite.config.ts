@@ -22,6 +22,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['src/preview/**', 'jsdom'],
       ['src/inspector/widgets/**', 'jsdom'],
+      ['src/primitives/widgets/**', 'jsdom'],
     ],
     setupFiles: ['src/__test__/setup-dom.ts'],
   },

@@ -18,8 +18,13 @@ export interface NodeTemplate {
   type: string;
   category: string;
   label: string;
-  /** Canonical port shape; gets cloned per-node at template-instantiation time. */
+  /** Canonical/static port shape. Used when computePorts is absent and as
+   *  the palette/preview shape (templates have no config in the palette). */
   ports: GraphAssetPort[];
+  /** Optional: when present, replaces `ports` once the node has config.
+   *  Must be pure and synchronous — called at instantiation and on every
+   *  config commit. Throwing falls back to `ports` (a warning is logged). */
+  computePorts?: (config: Record<string, unknown>) => GraphAssetPort[];
   defaultConfig: Record<string, unknown>;
   configSchema?: ConfigFieldDef[];
 }
@@ -27,7 +32,7 @@ export interface NodeTemplate {
 export interface ConfigFieldDef {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'select';
+  type: 'string' | 'number' | 'boolean' | 'select' | 'string-list';
   options?: { value: string; label: string }[];
   /** Dispatch hint for the inspector bridge — mapped to InspectorMeta.type. */
   rendererHint?: string;

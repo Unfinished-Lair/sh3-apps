@@ -629,7 +629,12 @@
   .graph-canvas { position: relative; width: 100%; height: 100%; overflow: hidden;
                   background-color: var(--sh3-surface-0, #161616);
                   outline: none; }
-  .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  /* overflow: visible overrides the SVG UA default of overflow:hidden, which
+     would clip edge paths whose endpoints fall outside the SVG's intrinsic
+     user-coordinate viewport (i.e. graph coords <0 or beyond canvas size).
+     The visible-frame clip is still enforced by .graph-canvas one level up. */
+  .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%;
+                  overflow: visible; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
   /* pointer-events:none lets clicks/drags inside the viewport's transformed
      bounds fall through to .graph-canvas (for pan + empty-click + palette

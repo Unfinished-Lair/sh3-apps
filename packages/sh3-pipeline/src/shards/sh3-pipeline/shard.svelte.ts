@@ -27,7 +27,9 @@ import {
   unbindPrefetchActions,
   setSelectedPrefetchNodeId,
   maybeAutoPrefetch,
+  toggleSelectedNodeMode,
 } from './runtime/prefetch-actions';
+import type { ToolbarAction } from '@unfinished-lair/sh3-editor';
 import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
@@ -441,35 +443,46 @@ export const shard: SourceShard = {
       const handle = inspectorHandle;
       untrack(() => {
         const binding = ctrl.getSelectedInspectorBinding();
-        if (binding) {
-          const value = binding.value;
-          const v = value as { mode?: string; pickerable?: boolean };
-          // Route through the prefetch adapter when the node is in prefetch
-          // mode OR is a pickerable verb in runtime mode — the runtime case
-          // needs the adapter to surface the "Switch to Prefetch mode" entry
-          // point (toggle button only lives there).
-          const routeToPrefetchAdapter =
-            v.mode === 'prefetch' || (v.mode === 'runtime' && v.pickerable === true);
-          if (routeToPrefetchAdapter) {
-            // The onSelectionChange callback gives us the node id directly;
-            // prefer it over reference-matching against ctrl.getAsset(), whose
-            // shallow config copies break `n.config === value` identity for
-            // runtime nodes (the previous fallback only matched prefetch
-            // configs by prefetch-block reference, so runtime-pickerable
-            // selections got no id and toggleSelectedNodeMode no-opped).
-            const singleId = selectedIds && selectedIds.length === 1 ? selectedIds[0] : null;
-            setSelectedPrefetchNodeId(singleId);
-          } else {
-            setSelectedPrefetchNodeId(null);
-          }
-          const meta = routeToPrefetchAdapter
-            ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
-            : binding.meta;
-          handle.replace({ value, meta });
-        } else {
+        if (!binding) {
           setSelectedPrefetchNodeId(null);
-          handle.replace({ value: null, meta: {} });
+          handle.replace({ value: null, meta: {}, toolbarActions: [] });
+          return;
         }
+        const value = binding.value;
+        const v = value as { mode?: string; pickerable?: boolean };
+        const isPrefetch = v.mode === 'prefetch';
+        const isRuntimePickerable = v.mode === 'runtime' && v.pickerable === true;
+
+        // Selected-id tracking covers both modes so the toolbar action and
+        // PrefetchInspector commits both resolve the right node. Single-id
+        // is the only case the inspector renders for; multi/edge selections
+        // wipe the tracker.
+        const singleId = selectedIds && selectedIds.length === 1 ? selectedIds[0] : null;
+        setSelectedPrefetchNodeId(isPrefetch || isRuntimePickerable ? singleId : null);
+
+        // Route only PREFETCH-mode nodes through the dedicated renderer —
+        // it owns the picker UI (value-field, selection, refresh, …).
+        // Runtime-pickerable nodes keep the default walker so the user sees
+        // the regular config fields, and we surface the mode toggle as a
+        // toolbar action above the inspector body instead of replacing the
+        // body with an entry-point button.
+        const meta = isPrefetch
+          ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
+          : binding.meta;
+        const toolbarActions: ToolbarAction[] = isRuntimePickerable
+          ? [{
+              id: 'sh3-pipeline:toggle-prefetch',
+              label: 'Switch to Prefetch mode',
+              onAction: () => toggleSelectedNodeMode(),
+            }]
+          : isPrefetch
+            ? [{
+                id: 'sh3-pipeline:toggle-runtime',
+                label: 'Switch to Runtime mode',
+                onAction: () => toggleSelectedNodeMode(),
+              }]
+            : [];
+        handle.replace({ value, meta, toolbarActions });
       });
     }
 

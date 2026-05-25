@@ -166,19 +166,31 @@ export function toggleNodeMode(state: PipelineState, nodeId: string): void {
   );
 
   // Preserve all template-derived fields (pickerable, summary, hasInputSchema,
-  // outputPortIds…) so the inspector keeps routing through PrefetchAdapter
-  // after the round-trip and so toggling back to runtime restores the full
-  // verb-node shape. We only flip `mode` and add/remove the prefetch block.
+  // outputPortIds…) so the inspector keeps routing correctly after the
+  // round-trip and so toggling back to runtime restores the full verb-node
+  // shape. We only flip `mode` and add/remove the prefetch block.
   const baseConfig = { ...(node.config as Record<string, unknown>) };
   delete baseConfig.prefetch;
+  const identifier = baseConfig as { shardId?: string; name?: string; summary?: string };
   const nextConfig: Record<string, unknown> = isPrefetch
     ? { ...baseConfig, mode: 'runtime' }
     : {
         ...baseConfig,
         mode: 'prefetch',
+        // PrefetchConfig (the block) carries shardId/name/summary because
+        // runPrefetch reads them from cfg, not from the surrounding node
+        // config. Omitting them was the cause of the
+        // "unknown shard: undefined" refresh error.
         prefetch: {
-          args: {}, valueField: null, list: null,
-          selectedRowKey: null, lastSelectedRow: null, lastError: null,
+          shardId: identifier.shardId ?? '',
+          name: identifier.name ?? '',
+          summary: identifier.summary ?? '',
+          args: {},
+          valueField: null,
+          list: null,
+          selectedRowKey: null,
+          lastSelectedRow: null,
+          lastError: null,
         },
       };
 

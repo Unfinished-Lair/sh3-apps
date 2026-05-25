@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@unfinished-lair/sh3-editor": "^0.16.1",
+    "@unfinished-lair/sh3-editor": "^0.16.2",
     "sh3-core": "^0.25.0"
   },
   "devDependencies": {

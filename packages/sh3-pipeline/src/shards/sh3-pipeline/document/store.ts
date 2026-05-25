@@ -58,7 +58,25 @@ export async function load(ctx: ShardContext, docId: string): Promise<PipelineDo
   if (parsed.domainId !== DOMAIN_ID) {
     throw new Error(`Document domainId ${parsed.domainId} does not match ${DOMAIN_ID}`);
   }
+  applyPrefetchSuffixFixup(parsed);
   return parsed;
+}
+
+/**
+ * In-place migration: any pipeline node whose `type` ends in `:prefetch`
+ * (a relic of the 0.3.0 catalog-doubling workaround) has the suffix
+ * stripped and `config.mode = 'prefetch'` set. Idempotent — re-running on
+ * a normalized doc is a no-op.
+ */
+export function applyPrefetchSuffixFixup(doc: PipelineDocument): void {
+  const SUFFIX = ':prefetch';
+  for (const n of doc.asset.nodes) {
+    if (typeof n.type === 'string' && n.type.endsWith(SUFFIX)) {
+      n.type = n.type.slice(0, -SUFFIX.length);
+      if (!n.config) n.config = {};
+      if (n.config.mode !== 'prefetch') n.config.mode = 'prefetch';
+    }
+  }
 }
 
 export async function save(

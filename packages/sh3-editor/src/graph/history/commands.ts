@@ -1,5 +1,6 @@
-import type { GraphAsset, GraphAssetEdge, GraphAssetNode } from '../asset/types';
-import type { GraphDomain } from '../domain/types';
+import type { GraphAsset, GraphAssetEdge, GraphAssetNode, GraphAssetPort } from '../asset/types';
+import type { GraphDomain, NodeTemplate } from '../domain/types';
+import { effectivePorts } from '../domain/effective-ports';
 import type { EdgeState, GraphState, NodeId, NodeState, PortDefinition } from '../state/types';
 import { graphAssetToState, graphStateToAsset, buildConfigFields } from '../state/bridge';
 
@@ -164,19 +165,76 @@ export function makeSetNodeConfigCommand(
     cursor[path[path.length - 1] as any] = value;
     return { ...n, config: newConfig };
   }
+
+  function recomputePorts(
+    written: NodeState,
+    tmpl: NodeTemplate,
+  ): { ports: PortDefinition[]; shortIdSet: Set<string> } | null {
+    if (!tmpl.computePorts) return null;
+    let raw: GraphAssetPort[];
+    try {
+      raw = effectivePorts(tmpl, written.config);
+      if (!Array.isArray(raw)) throw new Error('computePorts returned non-array');
+    } catch (err) {
+      console.warn('computePorts threw in set-node-config; keeping previous ports', err);
+      return null;
+    }
+    const seen = new Set<string>();
+    const newPorts: PortDefinition[] = [];
+    for (const p of raw) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      newPorts.push({ ...p, id: `${nodeId}_${p.id}`, shortId: p.id });
+    }
+    return { ports: newPorts, shortIdSet: seen };
+  }
+
+  let savedPorts: PortDefinition[] | null = null;
+  let droppedEdges: EdgeState[] = [];
+
   return {
     meta: { kind: 'set-node-config' },
     apply() {
       const n = state.nodes.get(nodeId);
       if (!n) return;
-      state.nodes.set(nodeId, withWrite(n, after));
+      const written = withWrite(n, after);
+      const tmpl = dom.getTemplates().find((t) => t.type === n.type);
+      const recomputed = tmpl ? recomputePorts(written, tmpl) : null;
+
+      if (recomputed) {
+        savedPorts = n.ports;
+        droppedEdges = [];
+        for (const e of [...state.edges.values()]) {
+          let drop = false;
+          if (e.sourceNodeId === nodeId && !recomputed.shortIdSet.has(e.sourcePortId)) drop = true;
+          if (e.targetNodeId === nodeId && !recomputed.shortIdSet.has(e.targetPortId)) drop = true;
+          if (drop) {
+            droppedEdges.push(e);
+            state.edges.delete(e.id);
+            state.selection.delete(e.id);
+          }
+        }
+        state.nodes.set(nodeId, { ...written, ports: recomputed.ports });
+      } else {
+        savedPorts = null;
+        droppedEdges = [];
+        state.nodes.set(nodeId, written);
+      }
       recomputeNodeFields(state, dom, nodeId);
       state.revision++;
     },
     revert() {
       const n = state.nodes.get(nodeId);
       if (!n) return;
-      state.nodes.set(nodeId, withWrite(n, before));
+      const reverted = withWrite(n, before);
+      if (savedPorts) {
+        state.nodes.set(nodeId, { ...reverted, ports: savedPorts });
+        for (const e of droppedEdges) state.edges.set(e.id, { ...e });
+        savedPorts = null;
+        droppedEdges = [];
+      } else {
+        state.nodes.set(nodeId, reverted);
+      }
       recomputeNodeFields(state, dom, nodeId);
       state.revision++;
     },

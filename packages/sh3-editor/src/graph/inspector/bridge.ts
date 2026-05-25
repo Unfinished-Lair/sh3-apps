@@ -30,6 +30,9 @@ export function fieldsToInspectorMeta(fields: FieldDescriptor[]): InspectorMeta 
         case 'doc':
           m.type = f.type;
           break;
+        case 'string-list':
+          m.type = 'string-list';
+          break;
         // 'boolean' — no widget type today; walker renders a checkbox.
       }
     }

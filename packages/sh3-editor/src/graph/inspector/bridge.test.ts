@@ -55,6 +55,13 @@ describe('fieldsToInspectorMeta', () => {
     const meta = fieldsToInspectorMeta(fs);
     expect(meta.fields?.document).toEqual({ label: 'Document', type: 'doc' });
   });
+
+  it("'string-list' field maps to 'string-list' meta type", () => {
+    const meta = fieldsToInspectorMeta([
+      { key: 'fields', label: 'Fields', type: 'string-list' },
+    ]);
+    expect(meta.fields?.fields?.type).toBe('string-list');
+  });
 });
 
 describe('makeNodeConfigOverride', () => {

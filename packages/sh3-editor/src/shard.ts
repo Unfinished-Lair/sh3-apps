@@ -80,7 +80,7 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
       { id: 'sh3-editor:graph-node-picker', label: 'Graph Node Picker', standalone: true },
     ],
-    permissions: ['documents:browse', 'documents:read'],
+    permissions: ['documents:browse'],
   },
 
   register(ctx: ShardContext) {
@@ -347,9 +347,12 @@ export const shard: SourceShard = {
     // initial state comes from DEFAULT_EDITOR_PREFS; the readJson resolves
     // shortly after and updates in place via hydrateEditorPrefs (no subscriber
     // notification). Save-on-change is wired via subscribeEditorPrefs.
+    // Path is scope-rooted (sh3-core 0.26) — boundId is the editor shard id
+    // here since register() runs standalone, before any onAppActivate rotation.
+    const prefsPath = `${ctx.documents.boundId}/editor-prefs.json`;
     void (async () => {
       try {
-        const blob = await ctx.documents.readJson('editor-prefs.json');
+        const blob = await ctx.documents.readJson(prefsPath);
         if (blob !== null) hydrateEditorPrefs(blob);
       } catch {
         // Corrupt or unreadable — stay at defaults silently.
@@ -357,7 +360,7 @@ export const shard: SourceShard = {
     })();
 
     unsubscribeEditorPrefs = subscribeEditorPrefs((prefs) => {
-      void ctx.documents.writeJson('editor-prefs.json', prefs).catch(() => {
+      void ctx.documents.writeJson(prefsPath, prefs).catch(() => {
         // Persistence is best-effort; in-memory value is authoritative for the session.
       });
     });

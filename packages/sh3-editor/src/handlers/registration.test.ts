@@ -26,6 +26,12 @@ describe('sh3-editor file-handler registration', () => {
       state: vi.fn(() => ({ user: { colorPickerPalettes: [] } })),
       registerView: vi.fn(),
       actions: { register: vi.fn(() => () => {}) },
+      documents: {
+        boundId: 'sh3-editor',
+        grants: { browse: true, write: false },
+        readJson: vi.fn(async () => null),
+        writeJson: vi.fn(async () => {}),
+      },
     } as unknown as ShardContext;
 
     await shard.register!(ctx);

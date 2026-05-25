@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { FileRef, ShardContext } from 'sh3-core';
+import { PermissionError, type FileRef, type ShardContext } from 'sh3-core';
 import { EDITOR_DOCUMENT_POINT } from '../contributions';
 
 vi.mock('sh3-core', async () => {
@@ -21,10 +21,16 @@ vi.mock('sh3-core', async () => {
 import { sh3 } from 'sh3-core';
 import { openInFloat } from './openInFloat';
 
-function makeCtx(readResult: string | null = 'hello'): ShardContext {
+function makeCtx(readResult: string | null | Error = 'hello'): ShardContext {
+  const readText = vi.fn(async (_path: string) => {
+    if (readResult instanceof Error) throw readResult;
+    return readResult;
+  });
   return {
-    browse: {
-      readFrom: vi.fn(async () => readResult),
+    documents: {
+      boundId: 'sh3-editor',
+      grants: { browse: true, write: false },
+      readText,
     },
     contributions: {
       register: vi.fn(() => () => {}),
@@ -35,11 +41,11 @@ function makeCtx(readResult: string | null = 'hello'): ShardContext {
 beforeEach(() => vi.clearAllMocks());
 
 describe('openInFloat', () => {
-  it('reads via ctx.browse.readFrom(shardId, relPath) using the <shardId>/<rest> path convention', async () => {
+  it('reads via ctx.documents.readText(scope-rooted path)', async () => {
     const ctx = makeCtx('# hi');
     const file: FileRef = { path: 'notes/sub/readme.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
-    expect(ctx.browse!.readFrom).toHaveBeenCalledWith('notes', 'sub/readme.md');
+    expect(ctx.documents.readText).toHaveBeenCalledWith('notes/sub/readme.md');
   });
 
   it('opens a float for the editor view and registers the seeded contribution with the minted slotId', async () => {
@@ -59,7 +65,7 @@ describe('openInFloat', () => {
     );
   });
 
-  it('toasts and bails when readFrom returns null', async () => {
+  it('toasts and bails when readText returns null', async () => {
     const ctx = makeCtx(null);
     const file: FileRef = { path: 'notes/missing.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
@@ -70,13 +76,14 @@ describe('openInFloat', () => {
     expect(sh3.float.open).not.toHaveBeenCalled();
   });
 
-  it('toasts when ctx.browse.readFrom is undefined (permission gate)', async () => {
-    const ctx = { browse: {}, contributions: { register: vi.fn() } } as unknown as ShardContext;
+  it('toasts when readText throws PermissionError (missing documents:browse)', async () => {
+    const ctx = makeCtx(new PermissionError('boundary', 'notes/readme.md'));
     const file: FileRef = { path: 'notes/readme.md', tenantId: 't', binary: false };
     await openInFloat(ctx, file);
     expect(sh3.toast.notify).toHaveBeenCalledWith(
       expect.stringContaining('cannot read'),
       expect.objectContaining({ level: 'warn' }),
     );
+    expect(sh3.float.open).not.toHaveBeenCalled();
   });
 });

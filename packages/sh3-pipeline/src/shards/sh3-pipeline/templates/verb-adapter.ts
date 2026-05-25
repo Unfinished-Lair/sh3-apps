@@ -1,5 +1,6 @@
 import type { NodeTemplate, GraphAssetPort } from '@unfinished-lair/sh3-editor/graph/types';
 import { dataTypeFromJsonSchema, type DataType } from '../domain/data-types';
+import { isPickerableVerb, buildPrefetchTemplate } from './prefetch-template';
 
 export interface VerbDescriptor {
   shardId: string;
@@ -18,29 +19,35 @@ function port(
 }
 
 export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemplate[] {
-  return verbs.map((v) => {
-    const { ports: inputPorts, hasInputSchema } = buildInputPorts(v);
-    const { ports: outputPorts, outputPortIds } = buildOutputPorts(v);
-    return {
-      type: `verb:${v.shardId}:${v.name}`,
-      category: 'Verbs',
-      // Use the verb's name as the node label — concise, deterministic, fits
-      // on one line. The full summary lives in defaultConfig.summary so a
-      // future inspector or tooltip can surface it without breaking layout.
-      label: v.name,
-      ports: [...inputPorts, ...outputPorts],
-      defaultConfig: {
-        shardId: v.shardId,
-        name: v.name,
-        summary: v.summary ?? '',
-        // Per-node schema awareness — the runtime handler reads these to
-        // decide structured-vs-positional dispatch and output mapping.
-        // outputPortIds === null means "no output schema, use fallback ports".
-        hasInputSchema,
-        outputPortIds,
-      },
-    };
+  return verbs.flatMap((v) => {
+    const runtime = buildRuntimeTemplate(v);
+    return isPickerableVerb(v) ? [runtime, buildPrefetchTemplate(v)] : [runtime];
   });
+}
+
+function buildRuntimeTemplate(v: VerbDescriptor): NodeTemplate {
+  const { ports: inputPorts, hasInputSchema } = buildInputPorts(v);
+  const { ports: outputPorts, outputPortIds } = buildOutputPorts(v);
+  return {
+    type: `verb:${v.shardId}:${v.name}`,
+    category: 'Verbs',
+    // Use the verb's name as the node label — concise, deterministic, fits
+    // on one line. The full summary lives in defaultConfig.summary so a
+    // future inspector or tooltip can surface it without breaking layout.
+    label: v.name,
+    ports: [...inputPorts, ...outputPorts],
+    defaultConfig: {
+      mode: 'runtime',
+      shardId: v.shardId,
+      name: v.name,
+      summary: v.summary ?? '',
+      // Per-node schema awareness — the runtime handler reads these to
+      // decide structured-vs-positional dispatch and output mapping.
+      // outputPortIds === null means "no output schema, use fallback ports".
+      hasInputSchema,
+      outputPortIds,
+    },
+  };
 }
 
 function buildInputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; hasInputSchema: boolean } {

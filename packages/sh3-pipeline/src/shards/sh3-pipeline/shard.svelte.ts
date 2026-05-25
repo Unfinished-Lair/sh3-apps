@@ -19,7 +19,15 @@ import type {
   InspectorInstanceContribution,
   InspectorBindHandle,
   DocPickerContribution,
+  InspectorRenderer,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
+import PrefetchInspectorAdapter from './views/PrefetchInspectorAdapter.svelte';
+import {
+  bindPrefetchActions,
+  unbindPrefetchActions,
+  setSelectedPrefetchNodeId,
+  maybeAutoPrefetch,
+} from './runtime/prefetch-actions';
 import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
@@ -32,6 +40,7 @@ import { openPipelineApp } from './verbs/open';
 import { structuralHandlers } from './runtime/handlers/structural';
 import { makeDocumentWriteHandler } from './runtime/handlers/document';
 import { makeVerbHandler } from './runtime/handlers/verb';
+import { makePrefetchHandler } from './runtime/handlers/prefetch';
 import type { PipelineDocument } from './document/format';
 import { load as loadDoc, save as saveDoc, emptyDocument } from './document/store';
 import {
@@ -44,20 +53,36 @@ import {
 
 const GRAPH_VIEW_POINT = 'sh3-editor.graph-view';
 const INSPECTOR_INSTANCE_POINT = 'sh3-editor.inspectorInstance';
+const INSPECTOR_RENDERER_POINT = 'sh3-editor.inspectorRenderer';
 const DOC_PICKER_POINT = 'sh3-editor.docPicker';
 const HELP_TABS_POINT = 'sh3-editor:help.tabs';
 const GRAPH_SLOT_ID = 'graph';
 const INSPECTOR_SLOT_ID = 'inspector';
+const PREFETCH_RENDERER_TYPE = 'sh3-pipeline:prefetch-node';
 
 let domainRef: ReturnType<typeof buildControlGraphDomain> | null = null;
 let graphController: GraphController | null = null;
+
+const verbHandler = makeVerbHandler();
+const prefetchHandler = makePrefetchHandler();
+
+/**
+ * Dispatch verb-prefixed nodes on config.mode so a single 'verb:' prefix
+ * registration covers both 'verb:<sh>:<n>' (runtime, defaults to mode:'runtime')
+ * and 'verb:<sh>:<n>:prefetch' (defaults to mode:'prefetch').
+ */
+const verbDispatcher: typeof verbHandler = (ctx, inv) => {
+  const mode = (inv.config as { mode?: unknown }).mode;
+  if (mode === 'prefetch') return prefetchHandler(ctx, inv);
+  return verbHandler(ctx, inv);
+};
 
 const handlers = {
   exact: new Map([
     ...structuralHandlers.exact,
     ['document.write', makeDocumentWriteHandler()],
   ]),
-  prefixed: [{ prefix: 'verb:', handler: makeVerbHandler() }],
+  prefixed: [{ prefix: 'verb:', handler: verbDispatcher }],
 };
 
 /** Route a RunLogEntry to the browser console with the right severity. */
@@ -395,8 +420,22 @@ export const shard: SourceShard = {
       untrack(() => {
         const binding = ctrl.getSelectedInspectorBinding();
         if (binding) {
-          handle.replace({ value: binding.value, meta: binding.meta });
+          const value = binding.value;
+          const isPrefetch = (value as { mode?: string }).mode === 'prefetch';
+          if (isPrefetch) {
+            const selected = ctrl.getAsset().nodes.find(
+              (n) => n.config === value || (n.config as { prefetch?: unknown }).prefetch === (value as { prefetch?: unknown }).prefetch,
+            );
+            setSelectedPrefetchNodeId(selected?.id ?? null);
+          } else {
+            setSelectedPrefetchNodeId(null);
+          }
+          const meta = isPrefetch
+            ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
+            : binding.meta;
+          handle.replace({ value, meta });
         } else {
+          setSelectedPrefetchNodeId(null);
           handle.replace({ value: null, meta: {} });
         }
       });
@@ -411,11 +450,30 @@ export const shard: SourceShard = {
       },
       bind: (ctrl) => {
         graphController = ctrl;
-        ctrl.onSelectionChange(() => syncInspector());
+        bindPrefetchActions(ctx, ctrl);
+        ctrl.onSelectionChange(() => {
+          syncInspector();
+          // Newly-dropped prefetch nodes fire one auto-fetch so the picker
+          // populates without user action. onSelectionChange fires after
+          // node drops; the maybeAutoPrefetch guard (list === null) makes
+          // the call idempotent on selection-only changes.
+          maybeAutoPrefetch();
+        });
         syncInspector();
+        maybeAutoPrefetch();
       },
     };
     ctx.contributions.register<GraphViewDescriptor>(GRAPH_VIEW_POINT, graphDescriptor);
+
+    // Inspector renderer for prefetch verb nodes. Dispatched via meta.type
+    // override in syncInspector when the selected node's config.mode is 'prefetch'.
+    const prefetchRenderer: InspectorRenderer = {
+      id: 'sh3-pipeline:prefetch-inspector',
+      type: PREFETCH_RENDERER_TYPE,
+      component: PrefetchInspectorAdapter,
+      priority: 100,
+    };
+    ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, prefetchRenderer);
 
     const inspectorContribution: InspectorInstanceContribution = {
       slotId: INSPECTOR_SLOT_ID,
@@ -521,6 +579,7 @@ export const shard: SourceShard = {
     // per-app cleanup bag. Reset the graphController module ref — its
     // bind callback won't fire again until the next onAppActivate.
     graphController = null;
+    unbindPrefetchActions();
   },
 
   deactivate() {

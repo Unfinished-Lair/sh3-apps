@@ -143,3 +143,35 @@ describe('verbsToTemplates', () => {
     });
   });
 });
+
+describe('verbsToTemplates — prefetch emission', () => {
+  const pickerable: VerbDescriptor = {
+    shardId: 'workspace-mgr',
+    name: 'workspaces.list',
+    summary: '',
+    schema: {
+      input: { type: 'object', properties: {} },
+      output: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } },
+    },
+  };
+  const nonPickerable: VerbDescriptor = {
+    shardId: 'x',
+    name: 'something',
+    summary: '',
+    schema: { input: { type: 'object', properties: {} } },
+  };
+
+  it('emits one runtime template + one prefetch template for pickerable verbs', () => {
+    const templates = verbsToTemplates([pickerable]);
+    const types = templates.map((t) => t.type).sort();
+    expect(types).toEqual([
+      'verb:workspace-mgr:workspaces.list',
+      'verb:workspace-mgr:workspaces.list:prefetch',
+    ]);
+  });
+
+  it('emits only the runtime template for non-pickerable verbs', () => {
+    const templates = verbsToTemplates([nonPickerable]);
+    expect(templates.map((t) => t.type)).toEqual(['verb:x:something']);
+  });
+});

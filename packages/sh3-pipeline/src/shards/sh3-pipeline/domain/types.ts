@@ -51,3 +51,27 @@ export interface PipelineInterface {
   inputs: Array<{ name: string; dataType: DataType }>;
   outputs: Array<{ name: string; dataType: DataType }>;
 }
+
+export interface PrefetchListSnapshot {
+  rows: Record<string, unknown>[];
+  fetchedAt: number;
+  schemaSnapshot: { properties: Record<string, unknown> } | null;
+}
+
+export interface PrefetchConfig {
+  shardId: string;
+  name: string;
+  summary: string;
+  /** Inspector literals mapped onto the verb's structured input. */
+  args: Record<string, unknown>;
+  /** Row field whose value flows on the `value` output port. Null until set. */
+  valueField: string | null;
+  /** Cached result; null before first fetch. */
+  list: PrefetchListSnapshot | null;
+  /** Stringified `valueField` value of the selected row (or JSON of the row). */
+  selectedRowKey: string | null;
+  /** Frozen snapshot of the selected row so orphans still emit a value. */
+  lastSelectedRow: Record<string, unknown> | null;
+  /** Surface for the last refresh error; null after successful fetch. */
+  lastError: { message: string; ts: number } | null;
+}

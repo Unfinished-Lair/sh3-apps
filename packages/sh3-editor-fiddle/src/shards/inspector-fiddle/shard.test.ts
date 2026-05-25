@@ -69,8 +69,13 @@ const APP_ID = 'inspector-fiddle-app';
 // In-memory DocumentHandle mock — covers readText / writeText / watch.
 // ----------------------------------------------------------------------------
 
+// sh3-core 0.26: DocumentHandle now exposes boundId + grants and every
+// path is scope-rooted (`<boundId>/<rest>`). The fake mirrors that shape;
+// the tests below seed and assert with `<APP_ID>/value.json` etc.
 class FakeDocs {
   files: Record<string, string> = {};
+  readonly boundId = APP_ID;
+  readonly grants = { browse: true, write: true };
 
   constructor(seed: Record<string, string> = {}) {
     this.files = { ...seed };
@@ -90,6 +95,7 @@ class FakeDocs {
   writeJson   = vi.fn(async () => {});
   delete      = vi.fn(async () => {});
   rename      = vi.fn(async () => {});
+  copy        = vi.fn(async () => {});
   mkdir       = vi.fn(async () => {});
   rmdir       = vi.fn(async () => {});
   renameFolder = vi.fn(async () => {});
@@ -99,7 +105,8 @@ class FakeDocs {
   status      = vi.fn(async () => null);
   resolveConflict = vi.fn(async () => {});
   readBranch  = vi.fn(async () => null);
-  dispose     = vi.fn(() => {});
+  autosave    = vi.fn(() => ({ update: () => {}, flush: async () => {}, dispose: async () => {}, dirty: false }));
+  dispose     = vi.fn(async () => {});
 }
 
 // ----------------------------------------------------------------------------
@@ -251,14 +258,15 @@ describe('inspectorFiddleShard — first-run seeding', () => {
   it('writes value.json + meta.json to documents when missing', async () => {
     const { ctx, docs } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
-    expect(docs.writeText).toHaveBeenCalledWith('value.json', STARTER_VALUE_TEXT);
-    expect(docs.writeText).toHaveBeenCalledWith('meta.json',  STARTER_META_TEXT);
+    // 0.26: scope-rooted paths under the app's boundId.
+    expect(docs.writeText).toHaveBeenCalledWith(`${APP_ID}/value.json`, STARTER_VALUE_TEXT);
+    expect(docs.writeText).toHaveBeenCalledWith(`${APP_ID}/meta.json`,  STARTER_META_TEXT);
   });
 
   it('does NOT overwrite existing value.json or meta.json', async () => {
     const docs = new FakeDocs({
-      'value.json': '{"hello":"world"}',
-      'meta.json':  '{"label":"Custom"}',
+      [`${APP_ID}/value.json`]: '{"hello":"world"}',
+      [`${APP_ID}/meta.json`]:  '{"label":"Custom"}',
     });
     const { ctx } = makeCtx({ documents: docs });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -267,8 +275,8 @@ describe('inspectorFiddleShard — first-run seeding', () => {
 
   it('hydrates live value from existing value.json', async () => {
     const docs = new FakeDocs({
-      'value.json': '{"hello":"world"}',
-      'meta.json':  STARTER_META_TEXT,
+      [`${APP_ID}/value.json`]: '{"hello":"world"}',
+      [`${APP_ID}/meta.json`]:  STARTER_META_TEXT,
     });
     const { ctx } = makeCtx({ documents: docs });
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
@@ -289,7 +297,7 @@ describe('inspectorFiddleShard — editor contributions', () => {
     expect(slotIds.sort()).toEqual(['fiddle.meta', 'fiddle.value']);
   });
 
-  it('value descriptor uses path mode with path=value.json and language=json', async () => {
+  it('value descriptor uses path mode with scope-rooted value.json and language=json', async () => {
     const { ctx, registered } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
     const desc = registered.find(r =>
@@ -297,12 +305,12 @@ describe('inspectorFiddleShard — editor contributions', () => {
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.value',
     )!.descriptor as EditorDocumentContribution;
     const seed = pathSeed(desc);
-    expect(seed.path).toBe('value.json');
+    expect(seed.path).toBe(`${APP_ID}/value.json`);
     expect(seed.language).toBe('json');
     expect(seed.initialContent).toBe(STARTER_VALUE_TEXT);
   });
 
-  it('meta descriptor uses path mode with path=meta.json', async () => {
+  it('meta descriptor uses path mode with scope-rooted meta.json', async () => {
     const { ctx, registered } = makeCtx();
     await inspectorFiddleShard.onAppActivate!(ctx, APP_ID);
     const desc = registered.find(r =>
@@ -310,7 +318,7 @@ describe('inspectorFiddleShard — editor contributions', () => {
       (r.descriptor as EditorDocumentContribution).slotId === 'fiddle.meta',
     )!.descriptor as EditorDocumentContribution;
     const seed = pathSeed(desc);
-    expect(seed.path).toBe('meta.json');
+    expect(seed.path).toBe(`${APP_ID}/meta.json`);
   });
 });
 

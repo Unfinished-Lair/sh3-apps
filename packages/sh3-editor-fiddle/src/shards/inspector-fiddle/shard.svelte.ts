@@ -3,17 +3,19 @@
  *
  * Lifecycle:
  *   register(ctx)              — no-op; fiddle is purely an app shard.
- *   onAppActivate(ctx, appId)  — seeds value.json / meta.json under
- *                                {scope}/docs/inspector-fiddle-app/, then
+ *   onAppActivate(ctx, appId)  — seeds value.json / meta.json under the
+ *                                app's scope-rooted document namespace
+ *                                (`<appId>/value.json`, `<appId>/meta.json`
+ *                                — see sh3-core 0.26 document API), then
  *                                registers the editor + inspector
  *                                contributions. All registrations land in
  *                                the per-app cleanup bag and auto-dispose
  *                                on app unload.
  *
  * The two JSON editors run in path mode — sh3-editor owns persistence
- * via ctx.documents (shared namespace across all required shards in the
- * app). The fiddle observes editor onContentChange to drive the live
- * parser into the inspector.
+ * via ctx.documents using the scope-rooted paths supplied below. The
+ * fiddle observes editor onContentChange to drive the live parser into
+ * the inspector.
  */
 
 import type { DocumentHandle, SourceShard, ShardContext } from 'sh3-core';
@@ -38,8 +40,12 @@ const EDITOR_DOCUMENT_POINT     = 'sh3-editor.document';
 const INSPECTOR_INSTANCE_POINT  = 'sh3-editor.inspectorInstance';
 const INSPECTOR_RENDERER_POINT  = 'sh3-editor.inspectorRenderer';
 
-const VALUE_PATH = 'value.json';
-const META_PATH  = 'meta.json';
+// sh3-core 0.26: paths passed to ctx.documents.* are scope-rooted —
+// they start with the handle's boundId (the activating app id here).
+// These are the bare leaf names; the boundId prefix is composed at use
+// site so we don't bake the appId into a module constant.
+const VALUE_LEAF = 'value.json';
+const META_LEAF  = 'meta.json';
 
 import {
   STARTER_VALUE,
@@ -101,14 +107,20 @@ export const inspectorFiddleShard: SourceShard & {
 
   async onAppActivate(ctx: ShardContext, _appId: string) {
     // ---- 1. First-run seeding ------------------------------------------
-    // ctx.documents resolves to {scope}/docs/inspector-fiddle-app/ for the
-    // duration of this app's activation. If the files don't exist yet,
-    // write the starter — otherwise hydrate live state from what's on disk.
-    await ensureSeedDoc(ctx.documents, VALUE_PATH, STARTER_VALUE_TEXT);
-    await ensureSeedDoc(ctx.documents, META_PATH,  STARTER_META_TEXT);
+    // sh3-core 0.26: ctx.documents is a per-activation DocumentHandle
+    // anchored to a boundId — the app id while running inside an app.
+    // Every path is scope-rooted (`<boundId>/<rest>`), so we compose
+    // `<appId>/value.json` etc. for both seeding and reads. If the
+    // files don't exist yet, write the starter — otherwise hydrate live
+    // state from what's on disk.
+    const valuePath = `${ctx.documents.boundId}/${VALUE_LEAF}`;
+    const metaPath  = `${ctx.documents.boundId}/${META_LEAF}`;
 
-    const valueText = (await ctx.documents.readText(VALUE_PATH)) ?? STARTER_VALUE_TEXT;
-    const metaText  = (await ctx.documents.readText(META_PATH))  ?? STARTER_META_TEXT;
+    await ensureSeedDoc(ctx.documents, valuePath, STARTER_VALUE_TEXT);
+    await ensureSeedDoc(ctx.documents, metaPath,  STARTER_META_TEXT);
+
+    const valueText = (await ctx.documents.readText(valuePath)) ?? STARTER_VALUE_TEXT;
+    const metaText  = (await ctx.documents.readText(metaPath))  ?? STARTER_META_TEXT;
 
     // ---- 2. Live state -------------------------------------------------
     const zone = ctx.state({
@@ -221,7 +233,9 @@ export const inspectorFiddleShard: SourceShard & {
       slotId: 'fiddle.value',
       seed: {
         kind: 'path',
-        path: VALUE_PATH,
+        // sh3-core 0.26: editor's ctx.documents shares this app's boundId,
+        // so we pass the same scope-rooted path used above.
+        path: valuePath,
         language: 'json',
         initialContent: STARTER_VALUE_TEXT,
       },
@@ -259,7 +273,7 @@ export const inspectorFiddleShard: SourceShard & {
       slotId: 'fiddle.meta',
       seed: {
         kind: 'path',
-        path: META_PATH,
+        path: metaPath,
         language: 'json',
         initialContent: STARTER_META_TEXT,
       },

@@ -449,9 +449,22 @@ export const shard: SourceShard = {
           return;
         }
         const value = binding.value;
-        const v = value as { mode?: string; pickerable?: boolean };
+        const v = value as { mode?: string; shardId?: string; name?: string };
         const isPrefetch = v.mode === 'prefetch';
-        const isRuntimePickerable = v.mode === 'runtime' && v.pickerable === true;
+
+        // Derive pickerability from the template, not from a config field:
+        // verb-adapter only attaches computePorts to verbs whose output
+        // schema is array-of-records, so its presence is the canonical
+        // "supports prefetch mode" signal.
+        const templateType =
+          typeof v.shardId === 'string' && typeof v.name === 'string'
+            ? `verb:${v.shardId}:${v.name}`
+            : null;
+        const template = templateType
+          ? domainRef?.getTemplates().find((t) => t.type === templateType)
+          : null;
+        const isPickerableVerb = Boolean(template?.computePorts);
+        const isRuntimePickerable = isPickerableVerb && v.mode === 'runtime';
 
         // Selected-id tracking covers both modes so the toolbar action and
         // PrefetchInspector commits both resolve the right node. Single-id
@@ -462,10 +475,9 @@ export const shard: SourceShard = {
 
         // Route only PREFETCH-mode nodes through the dedicated renderer —
         // it owns the picker UI (value-field, selection, refresh, …).
-        // Runtime-pickerable nodes keep the default walker so the user sees
+        // Pickerable runtime verbs keep the default walker so the user sees
         // the regular config fields, and we surface the mode toggle as a
-        // toolbar action above the inspector body instead of replacing the
-        // body with an entry-point button.
+        // toolbar action above the inspector body.
         const meta = isPrefetch
           ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
           : binding.meta;

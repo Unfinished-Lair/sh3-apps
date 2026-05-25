@@ -1,6 +1,6 @@
 {
   "name": "sh3-pipeline",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Programmatic pipeline",
   "author": "@unfinished-lair",
   "type": "module",

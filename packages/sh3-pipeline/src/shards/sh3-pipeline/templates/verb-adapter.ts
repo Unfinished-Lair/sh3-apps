@@ -26,7 +26,11 @@ function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
   const runtimePortBuild = buildRuntimePortBuild(v);
   const pickerable = isPickerableVerb(v);
 
-  return {
+  // computePorts is the runtime tell for "this verb supports prefetch mode."
+  // Non-pickerable verbs omit it so consumers (syncInspector → toolbar action)
+  // can derive pickerability from the template alone instead of carrying a
+  // redundant `pickerable: boolean` field on every node's config.
+  const template: NodeTemplate = {
     type: `verb:${v.shardId}:${v.name}`,
     category: 'Verbs',
     label: v.name,
@@ -38,13 +42,13 @@ function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
       summary: v.summary ?? '',
       hasInputSchema: runtimePortBuild.hasInputSchema,
       outputPortIds: runtimePortBuild.outputPortIds,
-      pickerable,
-    },
-    computePorts: (config) => {
-      if (pickerable && config?.mode === 'prefetch') return buildPrefetchPorts(v);
-      return runtimePortBuild.ports;
     },
   };
+  if (pickerable) {
+    template.computePorts = (config) =>
+      config?.mode === 'prefetch' ? buildPrefetchPorts(v) : runtimePortBuild.ports;
+  }
+  return template;
 }
 
 function buildRuntimePortBuild(v: VerbDescriptor): {

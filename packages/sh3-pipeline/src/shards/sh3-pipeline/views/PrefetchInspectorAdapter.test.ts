@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render } from '@testing-library/svelte';
 import PrefetchInspectorAdapter from './PrefetchInspectorAdapter.svelte';
 import type { PrefetchConfig } from '../domain/types';
 
@@ -20,7 +20,6 @@ function prefetchValue(): Record<string, unknown> {
     shardId: 'workspace-mgr',
     name: 'workspaces.list',
     summary: 'List workspaces',
-    pickerable: true,
     prefetch: {
       shardId: 'workspace-mgr',
       name: 'workspaces.list',
@@ -32,16 +31,6 @@ function prefetchValue(): Record<string, unknown> {
       lastSelectedRow: null,
       lastError: null,
     } satisfies PrefetchConfig,
-  };
-}
-
-function runtimePickerableValue(): Record<string, unknown> {
-  return {
-    mode: 'runtime',
-    shardId: 'workspace-mgr',
-    name: 'workspaces.list',
-    summary: 'List workspaces',
-    pickerable: true,
   };
 }
 
@@ -60,25 +49,9 @@ describe('PrefetchInspectorAdapter', () => {
     expect(getByText('workspaces.list')).toBeTruthy();
   });
 
-  it('renders a "Switch to Prefetch mode" button when value is runtime + pickerable', () => {
-    const { getByRole } = render(PrefetchInspectorAdapter, {
-      props: { value: runtimePickerableValue(), meta: {} },
-    });
-    const btn = getByRole('button', { name: /switch to prefetch mode/i });
-    expect(btn).toBeTruthy();
-  });
-
-  it('clicking the Switch button calls toggleSelectedNodeMode', async () => {
-    const { getByRole } = render(PrefetchInspectorAdapter, {
-      props: { value: runtimePickerableValue(), meta: {} },
-    });
-    await fireEvent.click(getByRole('button', { name: /switch to prefetch mode/i }));
-    expect(toggleMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders the empty fallback when value has no prefetch and is not runtime-pickerable', () => {
+  it('renders the empty fallback when value has no prefetch block', () => {
     const { getByText } = render(PrefetchInspectorAdapter, {
-      props: { value: { mode: 'runtime', pickerable: false }, meta: {} },
+      props: { value: { mode: 'runtime' }, meta: {} },
     });
     expect(getByText(/no prefetch config/i)).toBeTruthy();
   });

@@ -142,7 +142,7 @@ describe('verbsToTemplates', () => {
       });
     });
 
-    it('pickerable verb (array-of-object output) → pickerable:true in defaultConfig', () => {
+    it('pickerable verb (array-of-object output) gets computePorts', () => {
       const t = verbsToTemplates([{
         shardId: 'workspace-mgr',
         name: 'workspaces.list',
@@ -154,15 +154,17 @@ describe('verbsToTemplates', () => {
           },
         },
       }])[0];
-      expect(t.defaultConfig).toMatchObject({ pickerable: true });
+      expect(t.computePorts).toBeDefined();
+      expect(t.defaultConfig).not.toHaveProperty('pickerable');
     });
 
-    it('non-pickerable verb (no schema) → pickerable:false in defaultConfig', () => {
+    it('non-pickerable verb (no schema) omits computePorts', () => {
       const t = verbsToTemplates([{ shardId: 'ai', name: 'ai:ask', summary: 'Ask' }])[0];
-      expect(t.defaultConfig).toMatchObject({ pickerable: false });
+      expect(t.computePorts).toBeUndefined();
+      expect(t.defaultConfig).not.toHaveProperty('pickerable');
     });
 
-    it('non-pickerable verb (object output) → pickerable:false in defaultConfig', () => {
+    it('non-pickerable verb (object output) omits computePorts', () => {
       const t = verbsToTemplates([{
         shardId: 'demo',
         name: 'demo:do',
@@ -171,7 +173,8 @@ describe('verbsToTemplates', () => {
           output: { type: 'object', properties: { answer: { type: 'string' } } },
         },
       }])[0];
-      expect(t.defaultConfig).toMatchObject({ pickerable: false });
+      expect(t.computePorts).toBeUndefined();
+      expect(t.defaultConfig).not.toHaveProperty('pickerable');
     });
   });
 });
@@ -212,10 +215,9 @@ describe('verbsToTemplates — one template per verb', () => {
     ]);
   });
 
-  it('computePorts(mode:prefetch) on a non-pickerable verb falls back to runtime shape', () => {
+  it('non-pickerable verb has no computePorts', () => {
     const v: VerbDescriptor = { shardId: 's', name: 'plain', summary: '' };
     const [tmpl] = verbsToTemplates([v]);
-    const ports = tmpl.computePorts!({ mode: 'prefetch', shardId: 's', name: 'plain', summary: '' });
-    expect(ports.map(p => p.id)).toEqual(tmpl.ports.map(p => p.id));
+    expect(tmpl.computePorts).toBeUndefined();
   });
 });

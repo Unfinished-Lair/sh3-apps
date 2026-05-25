@@ -12,19 +12,13 @@
   });
 
   // ---- Reactive template list ----------------------------------------------
-  // Recompute on active-graph swap. We also bump on revision so newly
-  // registered templates show up in long-lived domains, but in practice
-  // domains register templates once at boot.
-  let revision = $state(0);
-  $effect(() => {
-    if (!active) return;
-    void active.state.revision; // subscribe so domain mutations trigger recompute
-    revision++;
-  });
-
+  // Re-derive when the active graph swaps. Reading state.revision here is a
+  // cheap defensive subscription so newly added templates show up — bridging
+  // via a separate $effect that did `revision++` self-subscribed (revision++
+  // reads + writes the signal) and tripped effect_update_depth_exceeded.
   const byCategory = $derived.by(() => {
-    void revision;
     if (!active) return new Map<string, NodeTemplate[]>();
+    void active.state.revision;
     return active.domain.getTemplatesByCategory();
   });
 

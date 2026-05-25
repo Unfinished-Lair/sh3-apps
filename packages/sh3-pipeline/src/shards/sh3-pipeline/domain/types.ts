@@ -37,8 +37,10 @@ export interface RunContext {
   ) => Promise<{ outputs: Record<string, unknown> }>;
   /**
    * Cross-shard document write, plumbed from the owning shard's
-   * `ctx.browse.writeTo`. Throws `documents:write capability missing`
-   * if the shard does not declare the capability.
+   * `ctx.documents.writeText` / `writeBinary` with a scope-rooted
+   * `<targetShard>/<path>`. Surfaces sh3-core's `PermissionError`
+   * (kind: 'write-without-grant') when the shard does not declare
+   * `documents:write`.
    */
   writeDocument: (
     targetShard: string,
@@ -50,4 +52,28 @@ export interface RunContext {
 export interface PipelineInterface {
   inputs: Array<{ name: string; dataType: DataType }>;
   outputs: Array<{ name: string; dataType: DataType }>;
+}
+
+export interface PrefetchListSnapshot {
+  rows: Record<string, unknown>[];
+  fetchedAt: number;
+  schemaSnapshot: { properties: Record<string, unknown> } | null;
+}
+
+export interface PrefetchConfig {
+  shardId: string;
+  name: string;
+  summary: string;
+  /** Inspector literals mapped onto the verb's structured input. */
+  args: Record<string, unknown>;
+  /** Row field whose value flows on the `value` output port. Null until set. */
+  valueField: string | null;
+  /** Cached result; null before first fetch. */
+  list: PrefetchListSnapshot | null;
+  /** Stringified `valueField` value of the selected row (or JSON of the row). */
+  selectedRowKey: string | null;
+  /** Frozen snapshot of the selected row so orphans still emit a value. */
+  lastSelectedRow: Record<string, unknown> | null;
+  /** Surface for the last refresh error; null after successful fetch. */
+  lastError: { message: string; ts: number } | null;
 }

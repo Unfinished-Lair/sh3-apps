@@ -20,6 +20,8 @@ const target: BackupTarget = {
 function fakeLogHandle(): DocumentHandle {
   const store = new Map<string, string>();
   return {
+    boundId: 'sh3-connector-r2',
+    grants: { browse: true, write: true },
     async list() { return Array.from(store.keys()).map((p) => ({ path: p, size: store.get(p)!.length, lastModified: 0 })); },
     async readText(p: string) { return store.get(p) ?? null; },
     async writeText(p: string, c: string) { store.set(p, c); },

@@ -5,19 +5,29 @@ const DIR = 'docs/';
 
 /** CRUD wrapper around the sh3-ai DocumentHandle, scoped to the
  *  `docs/<providerId>/...` namespace. Reads span every provider folder;
- *  writes and deletes are partitioned by provider id. */
+ *  writes and deletes are partitioned by provider id.
+ *
+ *  sh3-core 0.26: every path passed to / returned from the handle is
+ *  scope-rooted (`<boundId>/<rest>`). The store hides that detail and
+ *  continues to expose `<provider>/<file>`-style paths externally. */
 export class DocsStore {
   constructor(private readonly handle: DocumentHandle) {}
+
+  /** Internal: prepend the active boundId to a `docs/...` tail. */
+  private rooted(tail: string): string {
+    return `${this.handle.boundId}/${tail}`;
+  }
 
   /** List docs under `docs/`, optionally filtered to one provider folder.
    *  Sorted by `lastModified` desc. Entries that don't fit the
    *  `<provider>/<file>` shape (e.g. stray `docs/orphan.md`) are skipped. */
   async list(provider?: string): Promise<DocSummary[]> {
     const metas = await this.handle.list();
+    const prefix = this.rooted(DIR);
     const out: DocSummary[] = [];
     for (const meta of metas) {
-      if (!meta.path.startsWith(DIR)) continue;
-      const rest = meta.path.slice(DIR.length);
+      if (!meta.path.startsWith(prefix)) continue;
+      const rest = meta.path.slice(prefix.length);
       const slash = rest.indexOf('/');
       if (slash <= 0) continue;
       const providerId = rest.slice(0, slash);
@@ -36,7 +46,7 @@ export class DocsStore {
   /** Read by absolute-under-`docs/` path, e.g. `'gemini/notes.md'`. */
   async read(absPath: string): Promise<string | null> {
     validateAbsPath(absPath);
-    return this.handle.readText(`${DIR}${absPath}`);
+    return this.handle.readText(this.rooted(`${DIR}${absPath}`));
   }
 
   /** Write under the given provider's folder. `relPath` is relative to
@@ -44,7 +54,7 @@ export class DocsStore {
   async write(provider: string, relPath: string, content: string): Promise<void> {
     validateProvider(provider);
     validateRelPath(relPath);
-    await this.handle.writeText(`${DIR}${provider}/${relPath}`, content);
+    await this.handle.writeText(this.rooted(`${DIR}${provider}/${relPath}`), content);
   }
 
   /** Delete by absolute-under-`docs/` path. The path must start with
@@ -57,7 +67,7 @@ export class DocsStore {
         `ai.docs.delete: path '${absPath}' is outside provider folder '${provider}/'`,
       );
     }
-    await this.handle.delete(`${DIR}${absPath}`);
+    await this.handle.delete(this.rooted(`${DIR}${absPath}`));
   }
 }
 

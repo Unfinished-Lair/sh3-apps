@@ -7,9 +7,11 @@ import type { ShardContext } from 'sh3-core';
 
 function makeCtx(): ShardContext {
   return {
-    browse: {
-      listDocuments: vi.fn(async () => []),
-      watchDocuments: vi.fn(() => () => {}),
+    documents: {
+      boundId: 'sh3-file-explorer',
+      grants: { browse: true, write: true },
+      list: vi.fn(async () => []),
+      watch: vi.fn(() => () => {}),
     },
     contributions: { list: vi.fn(() => []), onChange: vi.fn(() => () => {}) },
   } as unknown as ShardContext;

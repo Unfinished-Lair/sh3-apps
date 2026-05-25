@@ -1,28 +1,32 @@
-import { sh3, type FileRef, type ShardContext } from 'sh3-core';
+import { sh3, PermissionError, type FileRef, type ShardContext } from 'sh3-core';
 import { EDITOR_DOCUMENT_POINT } from '../contributions';
 import { languageFromExtension } from './language';
 
 export async function openInFloat(ctx: ShardContext, file: FileRef): Promise<void> {
-  const readFrom = ctx.browse?.readFrom;
-  if (typeof readFrom !== 'function') {
-    sh3.toast.notify('Text Editor cannot read files from other shards (missing documents:read).', { level: 'warn' });
-    return;
-  }
-
   const slashIdx = file.path.indexOf('/');
   if (slashIdx <= 0) {
     sh3.toast.notify(`Text Editor: invalid path '${file.path}'.`, { level: 'error' });
     return;
   }
-  const shardId = file.path.slice(0, slashIdx);
+  // Path is scope-rooted (`<shardId>/<rest>`) per sh3-core 0.26. The relative
+  // portion (after the bound-id segment) is used for the title + language hint.
   const rel = file.path.slice(slashIdx + 1);
 
-  const result = await readFrom(shardId, rel);
+  let result: string | null;
+  try {
+    result = await ctx.documents.readText(file.path);
+  } catch (e) {
+    if (e instanceof PermissionError) {
+      sh3.toast.notify('Text Editor cannot read files from other shards (missing documents:browse).', { level: 'warn' });
+      return;
+    }
+    throw e;
+  }
   if (result == null) {
     sh3.toast.notify(`Text Editor: file not found: ${rel}.`, { level: 'warn' });
     return;
   }
-  const content = typeof result === 'string' ? result : '';
+  const content = result;
 
   const title = rel.split('/').pop() ?? rel;
   const language = languageFromExtension(rel);

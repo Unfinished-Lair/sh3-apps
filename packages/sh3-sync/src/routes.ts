@@ -25,13 +25,13 @@ export function registerRoutes(router: HonoLike, ctx: ServerShardContext): void 
     const docs = ctx.documents(tenant);
     const results = [];
     for (const entry of body.batch ?? []) {
-      // applyFromPeer writes incomingVersion as-is; on primary we bump.
-      const incomingVersion = entry.expectedLocalVersion + 1;
+      // applyFromPeer writes assignedVersion as-is; on primary we bump.
+      const assignedVersion = entry.expectedLocalVersion + 1;
       const res = await docs.applyFromPeer({
         shardId: entry.shardId,
         path: entry.path,
         content: entry.content,
-        incomingVersion,
+        assignedVersion,
         expectedLocalVersion: entry.expectedLocalVersion,
         origin: entry.origin,
         deleted: entry.deleted,

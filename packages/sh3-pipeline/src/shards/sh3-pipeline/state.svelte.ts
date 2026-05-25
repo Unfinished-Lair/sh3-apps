@@ -23,6 +23,8 @@ export interface PipelineState {
   log: RunLog;
   /** Abort controller for the current run. null when nothing's running. */
   abortController: AbortController | null;
+  /** Node ids currently being prefetched (out-of-band runner). */
+  prefetchingNodes: Set<string>;
 }
 
 export function createPipelineState(): PipelineState {
@@ -32,6 +34,7 @@ export function createPipelineState(): PipelineState {
     isRunning: false,
     log: createRunLog(),
     abortController: null,
+    prefetchingNodes: new Set<string>(),
   });
   return state;
 }

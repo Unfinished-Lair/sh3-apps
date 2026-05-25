@@ -63,7 +63,7 @@ async function runReplicaTick(
         shardId: change.shardId,
         path: change.path,
         content: change.content,
-        incomingVersion: change.version,
+        assignedVersion: change.version,
         expectedLocalVersion: change.version - 1,
         origin: change.metadata.origin ?? 'primary',
         deleted: change.metadata.deleted,

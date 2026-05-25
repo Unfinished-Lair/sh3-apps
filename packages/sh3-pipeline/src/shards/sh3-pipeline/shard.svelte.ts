@@ -19,7 +19,15 @@ import type {
   InspectorInstanceContribution,
   InspectorBindHandle,
   DocPickerContribution,
+  InspectorRenderer,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
+import PrefetchInspectorAdapter from './views/PrefetchInspectorAdapter.svelte';
+import {
+  bindPrefetchActions,
+  unbindPrefetchActions,
+  setSelectedPrefetchNodeId,
+  maybeAutoPrefetch,
+} from './runtime/prefetch-actions';
 import type { HelpTabContribution } from '@unfinished-lair/sh3-editor/help/contributions';
 import PipelineNodesHelpTab from './views/PipelineNodesHelpTab.svelte';
 import PipelineToolbar from './PipelineToolbar.svelte';
@@ -32,6 +40,7 @@ import { openPipelineApp } from './verbs/open';
 import { structuralHandlers } from './runtime/handlers/structural';
 import { makeDocumentWriteHandler } from './runtime/handlers/document';
 import { makeVerbHandler } from './runtime/handlers/verb';
+import { makePrefetchHandler } from './runtime/handlers/prefetch';
 import type { PipelineDocument } from './document/format';
 import { load as loadDoc, save as saveDoc, emptyDocument } from './document/store';
 import {
@@ -44,20 +53,36 @@ import {
 
 const GRAPH_VIEW_POINT = 'sh3-editor.graph-view';
 const INSPECTOR_INSTANCE_POINT = 'sh3-editor.inspectorInstance';
+const INSPECTOR_RENDERER_POINT = 'sh3-editor.inspectorRenderer';
 const DOC_PICKER_POINT = 'sh3-editor.docPicker';
 const HELP_TABS_POINT = 'sh3-editor:help.tabs';
 const GRAPH_SLOT_ID = 'graph';
 const INSPECTOR_SLOT_ID = 'inspector';
+const PREFETCH_RENDERER_TYPE = 'sh3-pipeline:prefetch-node';
 
 let domainRef: ReturnType<typeof buildControlGraphDomain> | null = null;
 let graphController: GraphController | null = null;
+
+const verbHandler = makeVerbHandler();
+const prefetchHandler = makePrefetchHandler();
+
+/**
+ * Dispatch verb-prefixed nodes on config.mode so the single 'verb:' prefix
+ * registration covers both runtime (config.mode === 'runtime') and prefetch
+ * (config.mode === 'prefetch') variants of a verb node.
+ */
+const verbDispatcher: typeof verbHandler = (ctx, inv) => {
+  const mode = (inv.config as { mode?: unknown }).mode;
+  if (mode === 'prefetch') return prefetchHandler(ctx, inv);
+  return verbHandler(ctx, inv);
+};
 
 const handlers = {
   exact: new Map([
     ...structuralHandlers.exact,
     ['document.write', makeDocumentWriteHandler()],
   ]),
-  prefixed: [{ prefix: 'verb:', handler: makeVerbHandler() }],
+  prefixed: [{ prefix: 'verb:', handler: verbDispatcher }],
 };
 
 /** Route a RunLogEntry to the browser console with the right severity. */
@@ -92,10 +117,15 @@ async function runActiveAsset(ctx: ShardContext, state: PipelineState): Promise<
       log: (e) => { state.log.push(e); consoleLog(e); },
       invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
       writeDocument: async (targetShard, path, content) => {
-        if (!ctx.browse?.writeTo) {
-          throw new Error('document.write: documents:write capability missing');
+        // sh3-core 0.26: scope-rooted path; binary vs text routed by content type.
+        // Cross-shard writes still go through ctx.documents (the relaxed handle
+        // honours documents:write across boundIds in the active scope).
+        const full = `${targetShard}/${path}`;
+        if (typeof content === 'string') {
+          await ctx.documents.writeText(full, content);
+        } else {
+          await ctx.documents.writeBinary(full, content);
         }
-        await ctx.browse.writeTo(targetShard, path, content);
       },
       loadSubGraph: (id) => loadDoc(ctx, id),
       handlers,
@@ -173,7 +203,10 @@ export const shard: SourceShard = {
       { id: 'sh3-pipeline:toolbar', label: 'Pipeline Toolbar' },
       { id: 'sh3-pipeline:log',     label: 'Pipeline Log' },
     ],
-    permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    // sh3-core 0.26: documents:read folded into documents:browse; documents:write implies browse.
+    // Kept both for clarity — this shard reads & writes across boundIds (verb nodes
+    // load sub-graphs from other shards; document.write fans out to arbitrary targetShard).
+    permissions: ['documents:browse', 'documents:write'],
   },
 
   register(ctx: ShardContext) {
@@ -309,10 +342,13 @@ export const shard: SourceShard = {
           },
           invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
           writeDocument: async (targetShard, path, content) => {
-            if (!ctx.browse?.writeTo) {
-              throw new Error('document.write: documents:write capability missing');
+            // sh3-core 0.26 coalesced doc API — see runActiveAsset above.
+            const full = `${targetShard}/${path}`;
+            if (typeof content === 'string') {
+              await ctx.documents.writeText(full, content);
+            } else {
+              await ctx.documents.writeBinary(full, content);
             }
-            await ctx.browse.writeTo(targetShard, path, content);
           },
           loadSubGraph: (id) => loadDoc(ctx, id),
           handlers,
@@ -395,8 +431,22 @@ export const shard: SourceShard = {
       untrack(() => {
         const binding = ctrl.getSelectedInspectorBinding();
         if (binding) {
-          handle.replace({ value: binding.value, meta: binding.meta });
+          const value = binding.value;
+          const isPrefetch = (value as { mode?: string }).mode === 'prefetch';
+          if (isPrefetch) {
+            const selected = ctrl.getAsset().nodes.find(
+              (n) => n.config === value || (n.config as { prefetch?: unknown }).prefetch === (value as { prefetch?: unknown }).prefetch,
+            );
+            setSelectedPrefetchNodeId(selected?.id ?? null);
+          } else {
+            setSelectedPrefetchNodeId(null);
+          }
+          const meta = isPrefetch
+            ? { ...binding.meta, type: PREFETCH_RENDERER_TYPE }
+            : binding.meta;
+          handle.replace({ value, meta });
         } else {
+          setSelectedPrefetchNodeId(null);
           handle.replace({ value: null, meta: {} });
         }
       });
@@ -411,11 +461,30 @@ export const shard: SourceShard = {
       },
       bind: (ctrl) => {
         graphController = ctrl;
-        ctrl.onSelectionChange(() => syncInspector());
+        bindPrefetchActions(ctx, ctrl);
+        ctrl.onSelectionChange(() => {
+          syncInspector();
+          // Newly-dropped prefetch nodes fire one auto-fetch so the picker
+          // populates without user action. onSelectionChange fires after
+          // node drops; the maybeAutoPrefetch guard (list === null) makes
+          // the call idempotent on selection-only changes.
+          maybeAutoPrefetch();
+        });
         syncInspector();
+        maybeAutoPrefetch();
       },
     };
     ctx.contributions.register<GraphViewDescriptor>(GRAPH_VIEW_POINT, graphDescriptor);
+
+    // Inspector renderer for prefetch verb nodes. Dispatched via meta.type
+    // override in syncInspector when the selected node's config.mode is 'prefetch'.
+    const prefetchRenderer: InspectorRenderer = {
+      id: 'sh3-pipeline:prefetch-inspector',
+      type: PREFETCH_RENDERER_TYPE,
+      component: PrefetchInspectorAdapter,
+      priority: 100,
+    };
+    ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, prefetchRenderer);
 
     const inspectorContribution: InspectorInstanceContribution = {
       slotId: INSPECTOR_SLOT_ID,
@@ -521,6 +590,7 @@ export const shard: SourceShard = {
     // per-app cleanup bag. Reset the graphController module ref — its
     // bind callback won't fire again until the next onAppActivate.
     graphController = null;
+    unbindPrefetchActions();
   },
 
   deactivate() {

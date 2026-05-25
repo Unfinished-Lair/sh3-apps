@@ -1,5 +1,6 @@
 import type { NodeTemplate, GraphAssetPort } from '@unfinished-lair/sh3-editor/graph/types';
 import { dataTypeFromJsonSchema, type DataType } from '../domain/data-types';
+import { isPickerableVerb, buildPrefetchPorts, defaultPrefetchConfig } from './prefetch-template';
 
 export interface VerbDescriptor {
   shardId: string;
@@ -18,29 +19,45 @@ function port(
 }
 
 export function verbsToTemplates(verbs: ReadonlyArray<VerbDescriptor>): NodeTemplate[] {
-  return verbs.map((v) => {
-    const { ports: inputPorts, hasInputSchema } = buildInputPorts(v);
-    const { ports: outputPorts, outputPortIds } = buildOutputPorts(v);
-    return {
-      type: `verb:${v.shardId}:${v.name}`,
-      category: 'Verbs',
-      // Use the verb's name as the node label — concise, deterministic, fits
-      // on one line. The full summary lives in defaultConfig.summary so a
-      // future inspector or tooltip can surface it without breaking layout.
-      label: v.name,
-      ports: [...inputPorts, ...outputPorts],
-      defaultConfig: {
-        shardId: v.shardId,
-        name: v.name,
-        summary: v.summary ?? '',
-        // Per-node schema awareness — the runtime handler reads these to
-        // decide structured-vs-positional dispatch and output mapping.
-        // outputPortIds === null means "no output schema, use fallback ports".
-        hasInputSchema,
-        outputPortIds,
-      },
-    };
-  });
+  return verbs.map((v) => buildVerbTemplate(v));
+}
+
+function buildVerbTemplate(v: VerbDescriptor): NodeTemplate {
+  const runtimePortBuild = buildRuntimePortBuild(v);
+  const pickerable = isPickerableVerb(v);
+
+  return {
+    type: `verb:${v.shardId}:${v.name}`,
+    category: 'Verbs',
+    label: v.name,
+    ports: runtimePortBuild.ports,
+    defaultConfig: {
+      mode: 'runtime',
+      shardId: v.shardId,
+      name: v.name,
+      summary: v.summary ?? '',
+      hasInputSchema: runtimePortBuild.hasInputSchema,
+      outputPortIds: runtimePortBuild.outputPortIds,
+    },
+    computePorts: (config) => {
+      if (pickerable && config?.mode === 'prefetch') return buildPrefetchPorts(v);
+      return runtimePortBuild.ports;
+    },
+  };
+}
+
+function buildRuntimePortBuild(v: VerbDescriptor): {
+  ports: GraphAssetPort[];
+  hasInputSchema: boolean;
+  outputPortIds: string[] | null;
+} {
+  const { ports: inputPorts, hasInputSchema } = buildInputPorts(v);
+  const { ports: outputPorts, outputPortIds } = buildOutputPorts(v);
+  return {
+    ports: [...inputPorts, ...outputPorts],
+    hasInputSchema,
+    outputPortIds,
+  };
 }
 
 function buildInputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; hasInputSchema: boolean } {
@@ -78,3 +95,7 @@ function buildOutputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; outputP
   ports.push(port('scrollback', 'output', 'array', 'scrollback'));
   return { ports, outputPortIds: null };
 }
+
+// Re-export for any external callers of the removed buildPrefetchTemplate
+// helper that needed the default config payload.
+export { defaultPrefetchConfig };

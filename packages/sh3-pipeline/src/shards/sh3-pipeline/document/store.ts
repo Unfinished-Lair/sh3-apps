@@ -42,13 +42,11 @@ export function emptyDocument(): PipelineDocument {
 
 export async function load(ctx: ShardContext, docId: string): Promise<PipelineDocument> {
   const { shardId, path } = splitDocId(docId);
-  const readFrom = ctx.browse?.readFrom;
-  if (!readFrom) throw new Error('documents:read capability missing');
-  const content = await readFrom(shardId, path);
+  // sh3-core 0.26 coalesced doc API: ctx.documents is a DocumentHandle
+  // property; paths are scope-rooted as `<boundId>/<rest>`. Permission
+  // failures throw PermissionError synchronously — no capability probe.
+  const content = await ctx.documents.readText(`${shardId}/${path}`);
   if (content === null) throw new Error(`Document not found: ${docId}`);
-  if (typeof content !== 'string') {
-    throw new Error(`Expected text document at ${docId}, got binary`);
-  }
   const parsed = JSON.parse(content) as PipelineDocument;
   if (parsed.version !== PIPELINE_DOC_VERSION) {
     throw new Error(
@@ -58,7 +56,25 @@ export async function load(ctx: ShardContext, docId: string): Promise<PipelineDo
   if (parsed.domainId !== DOMAIN_ID) {
     throw new Error(`Document domainId ${parsed.domainId} does not match ${DOMAIN_ID}`);
   }
+  applyPrefetchSuffixFixup(parsed);
   return parsed;
+}
+
+/**
+ * In-place migration: any pipeline node whose `type` ends in `:prefetch`
+ * (a relic of the 0.3.0 catalog-doubling workaround) has the suffix
+ * stripped and `config.mode = 'prefetch'` set. Idempotent — re-running on
+ * a normalized doc is a no-op.
+ */
+export function applyPrefetchSuffixFixup(doc: PipelineDocument): void {
+  const SUFFIX = ':prefetch';
+  for (const n of doc.asset.nodes) {
+    if (typeof n.type === 'string' && n.type.endsWith(SUFFIX)) {
+      n.type = n.type.slice(0, -SUFFIX.length);
+      if (!n.config) n.config = {};
+      if (n.config.mode !== 'prefetch') n.config.mode = 'prefetch';
+    }
+  }
 }
 
 export async function save(
@@ -67,11 +83,10 @@ export async function save(
   doc: PipelineDocument,
 ): Promise<void> {
   const { shardId, path } = splitDocId(docId);
-  const writeTo = ctx.browse?.writeTo;
-  if (!writeTo) throw new Error('documents:write capability missing');
   const next: PipelineDocument = {
     ...doc,
     interface: deriveInterface(doc.asset),
   };
-  await writeTo(shardId, path, JSON.stringify(next, null, 2));
+  // sh3-core 0.26: scope-rooted path; missing grant raises PermissionError.
+  await ctx.documents.writeText(`${shardId}/${path}`, JSON.stringify(next, null, 2));
 }

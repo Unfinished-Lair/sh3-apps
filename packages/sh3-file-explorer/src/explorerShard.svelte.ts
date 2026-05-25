@@ -27,7 +27,6 @@ export type ExplorerStore =
       ctx: ShardContext;
       ready: true;
       error?: undefined;
-      browse: NonNullable<ShardContext['browse']>;
       readonly selection: Selection;
       readonly documents: BrowseEntry[];
       readonly clipboard: Clipboard;
@@ -42,12 +41,30 @@ export type ExplorerStore =
       dispose(): void;
     };
 
+/**
+ * Split a scope-rooted document path into its bound-id prefix and the
+ * per-shard relative path. Returns null when the path has no bound-id
+ * segment (which shouldn't happen for sh3-core 0.26+).
+ */
+function splitScopeRooted(path: string): { shardId: string; rest: string } | null {
+  const slash = path.indexOf('/');
+  if (slash <= 0) {
+    // Bound-id root with no trailing path — return empty `rest`.
+    return slash < 0 && path.length > 0
+      ? { shardId: path, rest: '' }
+      : null;
+  }
+  return { shardId: path.slice(0, slash), rest: path.slice(slash + 1) };
+}
+
 export function createExplorerStore(ctx: ShardContext): ExplorerStore {
-  if (!ctx.browse) {
+  // The handle is always present in sh3-core 0.26+. Without documents:browse
+  // the handle is contained to this shard's own bound id and list() will
+  // only show that bound id's docs — but the view still functions. We only
+  // surface the permission-missing error when the grant is absent.
+  if (!ctx.documents.grants.browse) {
     return { ctx, ready: false, error: new PermissionMissingError(), dispose: () => {} };
   }
-
-  const browse = ctx.browse;
 
   let selection = $state<Selection>(null);
   const expanded = $state<Record<string, true>>({});
@@ -100,11 +117,22 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   }
 
   async function refreshDocuments() {
-    documents = await browse.listDocuments();
+    // ctx.documents.list() (relaxed handle) returns every doc in the active
+    // scope with scope-rooted paths. Split each path back into shardId +
+    // per-shard-relative path so the rest of file-explorer (which groups by
+    // shardId and renders shard-relative trees) keeps working unchanged.
+    const raw = await ctx.documents.list();
+    const out: BrowseEntry[] = [];
+    for (const meta of raw) {
+      const split = splitScopeRooted(meta.path);
+      if (!split) continue;
+      out.push({ ...meta, path: split.rest, shardId: split.shardId });
+    }
+    documents = out;
   }
 
   function startWatch() {
-    return browse.watchDocuments((_change: DocumentChange) => {
+    return ctx.documents.watch((_change: DocumentChange) => {
       refreshDocuments();
     });
   }
@@ -112,7 +140,6 @@ export function createExplorerStore(ctx: ShardContext): ExplorerStore {
   return {
     ctx,
     ready: true,
-    browse,
     get selection() { return selection; },
     get documents() { return documents; },
     get clipboard() { return clipboard; },

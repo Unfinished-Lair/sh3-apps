@@ -67,3 +67,38 @@ describe('structuralTemplates', () => {
     }
   });
 });
+
+function recordBuildTemplate() {
+  return structuralTemplates.find((t) => t.type === 'record.build')!;
+}
+
+describe('record.build computePorts', () => {
+  it('returns only the record output when keys is empty', () => {
+    const t = recordBuildTemplate();
+    expect(t.computePorts).toBeDefined();
+    const ports = t.computePorts!({ keys: [] });
+    expect(ports.map(p => p.id)).toEqual(['record']);
+  });
+
+  it('produces one input port per key', () => {
+    const t = recordBuildTemplate();
+    const ports = t.computePorts!({ keys: ['a', 'b'] });
+    expect(ports.map(p => `${p.direction}:${p.id}`)).toEqual([
+      'output:record',
+      'input:a',
+      'input:b',
+    ]);
+  });
+
+  it('dedupes duplicate keys', () => {
+    const t = recordBuildTemplate();
+    const ports = t.computePorts!({ keys: ['a', 'a', 'b'] });
+    expect(ports.map(p => p.id)).toEqual(['record', 'a', 'b']);
+  });
+
+  it('skips empty and non-string entries defensively', () => {
+    const t = recordBuildTemplate();
+    const ports = t.computePorts!({ keys: ['a', '', null as any, 42 as any, 'b'] });
+    expect(ports.map(p => p.id)).toEqual(['record', 'a', 'b']);
+  });
+});

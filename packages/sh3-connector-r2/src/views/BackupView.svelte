@@ -22,8 +22,8 @@
   });
 
   async function refreshShards() {
-    if (!rt.ctx.browse) return;
-    shardIds = await rt.ctx.browse.listShards();
+    // sh3-core 0.26: top-level folders in the active scope are bound ids.
+    shardIds = await rt.docs.listFolders('');
     if (!shardId && shardIds.length > 0) shardId = shardIds[0];
   }
   $effect(() => { void refreshShards(); });
@@ -35,7 +35,7 @@
 
   async function run() {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
-    if (!target || !rt.ctx.browse) return;
+    if (!target) return;
     if (!shardId) { sh3.toast.notify('Pick a shard to back up.', { level: 'warn' }); return; }
 
     rt.progress.running = true;
@@ -50,11 +50,17 @@
     try {
       const client = createR2Client(target);
       const read = readForeign(rt.ctx);
-      const browse = rt.ctx.browse;
+      const docs = rt.docs;
       const stats = await backupFolder({
         list: async () => {
-          const all = await browse.listDocuments();
-          return all.map((d) => ({ shardId: d.shardId, path: d.path }));
+          // sh3-core 0.26: list() returns scope-rooted paths `<shardId>/<rest>`.
+          const all = await docs.list();
+          return all.map((m) => {
+            const slash = m.path.indexOf('/');
+            return slash < 0
+              ? { shardId: m.path, path: '' }
+              : { shardId: m.path.slice(0, slash), path: m.path.slice(slash + 1) };
+          });
         },
         shardId,
         pathPrefix: pathPrefix || undefined,

@@ -1,8 +1,9 @@
-import type {
-  FileHandlerDescriptor,
-  FileHandlerPattern,
-  FileRef,
-  ShardContext,
+import {
+  PermissionError,
+  type FileHandlerDescriptor,
+  type FileHandlerPattern,
+  type FileRef,
+  type ShardContext,
 } from 'sh3-core';
 import { launchApp } from 'sh3-core';
 
@@ -38,29 +39,34 @@ async function headerMatches(
 ): Promise<boolean> {
   const split = splitPath(file.path);
   if (!split) return false;
-  const readFrom = ctx.browse?.readFrom;
-  if (typeof readFrom !== 'function') return false;
-  const content = await readFrom(split.shardId, split.rel);
+
+  // MIGRATION: ctx.browse.readFrom is gone. The shard's documents handle
+  // (browse-class) can readBinary across all bound ids in the active scope.
+  // PermissionError surfaces a grants problem the same way the old code
+  // surfaced an undefined method — drop the candidate quietly.
+  let content: ArrayBuffer | null;
+  try {
+    content = await ctx.documents.readBinary(`${split.shardId}/${split.rel}`);
+  } catch (err) {
+    if (err instanceof PermissionError) return false;
+    throw err;
+  }
   if (content == null) return false;
+
   const readBytes = header.readBytes ?? 256;
-  const isString = typeof content === 'string';
-  const headString = isString
-    ? content.slice(0, readBytes)
-    : new TextDecoder().decode(new Uint8Array(content as ArrayBuffer).subarray(0, readBytes));
+  const bytes = new Uint8Array(content).subarray(0, readBytes);
+  const headString = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+
   if (header.patterns?.length) {
     for (const p of header.patterns) {
       if (matchPattern(headString, p)) {
-        if (header.predicate) {
-          return header.predicate(isString ? headString : new Uint8Array(content as ArrayBuffer).subarray(0, readBytes));
-        }
+        if (header.predicate) return header.predicate(bytes);
         return true;
       }
     }
     return false;
   }
-  if (header.predicate) {
-    return header.predicate(isString ? headString : new Uint8Array(content as ArrayBuffer).subarray(0, readBytes));
-  }
+  if (header.predicate) return header.predicate(bytes);
   return true;
 }
 

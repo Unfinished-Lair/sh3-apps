@@ -12,7 +12,8 @@ import {
 } from './commands';
 import { graphAssetToState, graphStateToAsset } from '../state/bridge';
 import { createGraphDomain } from '../domain/create';
-import type { GraphAsset } from '../asset/types';
+import type { GraphAsset, GraphAssetPort } from '../asset/types';
+import type { NodeTemplate } from '../domain/types';
 
 const dom = createGraphDomain({ id: 't', label: 't' });
 
@@ -185,6 +186,88 @@ describe('add-many', () => {
     expect(s.nodes.size).toBe(2);
     cmd.revert();
     expect(s.nodes.size).toBe(0);
+  });
+});
+
+function port(id: string, direction: 'input' | 'output', dataType: string): GraphAssetPort {
+  return { id, direction, dataType, label: id };
+}
+
+const recTemplate: NodeTemplate = {
+  type: 'rec', category: 'c', label: 'rec',
+  ports: [port('record', 'output', 'record')],
+  defaultConfig: { keys: [] },
+  computePorts: (config) => {
+    const out: GraphAssetPort[] = [port('record', 'output', 'record')];
+    const keys = Array.isArray(config.keys) ? (config.keys as unknown[]) : [];
+    const seen = new Set<string>();
+    for (const k of keys) {
+      if (typeof k !== 'string' || k.length === 0 || seen.has(k)) continue;
+      seen.add(k);
+      out.push(port(k, 'input', 'unknown'));
+    }
+    return out;
+  },
+};
+const sinkTemplate: NodeTemplate = {
+  type: 'sink', category: 'c', label: 'sink',
+  ports: [
+    port('in', 'input', 'unknown'),
+    port('in2', 'input', 'unknown'),
+  ],
+  defaultConfig: {},
+};
+const recDom = createGraphDomain({ id: 't', label: 't', templates: [recTemplate, sinkTemplate] });
+
+function recState(initialKeys: string[]) {
+  const recPorts = recTemplate.computePorts!({ keys: initialKeys }).map(p => ({
+    ...p,
+    id: `rec1_${p.id}`,
+  }));
+  const sinkPorts = sinkTemplate.ports.map(p => ({ ...p, id: `sink1_${p.id}` }));
+  return graphAssetToState({
+    id: 'g', name: '', domain: 't', version: 1,
+    nodes: [
+      { id: 'rec1', type: 'rec', position: { x: 0, y: 0 }, config: { keys: initialKeys }, ports: recPorts },
+      { id: 'sink1', type: 'sink', position: { x: 100, y: 0 }, config: {}, ports: sinkPorts },
+    ],
+    edges: initialKeys.slice(0, 2).map((k, i) => ({
+      id: `e_${k}`,
+      sourceNodeId: 'rec1', sourcePortId: `rec1_${k}`,
+      targetNodeId: 'sink1', targetPortId: `sink1_${i === 0 ? 'in' : 'in2'}`,
+    })),
+  }, recDom);
+}
+
+describe('makeSetNodeConfigCommand — dynamic ports', () => {
+  it('adds new ports when config.keys grows', () => {
+    const s = recState(['a']);
+    const cmd = makeSetNodeConfigCommand(s, recDom, 'rec1', ['keys'], ['a'], ['a', 'b']);
+    cmd.apply();
+    const after = s.nodes.get('rec1')!;
+    expect(after.ports.map(p => p.shortId).sort()).toEqual(['a', 'b', 'record']);
+  });
+
+  it('drops edges whose endpoint port no longer exists after a rename', () => {
+    const s = recState(['a', 'b']);
+    const cmd = makeSetNodeConfigCommand(s, recDom, 'rec1', ['keys'], ['a', 'b'], ['aa', 'b']);
+    cmd.apply();
+    const edges = [...s.edges.values()];
+    expect(edges.map(e => e.sourcePortId).sort()).toEqual(['b']);
+  });
+
+  it('restores dropped edges on revert', () => {
+    const s = recState(['a', 'b']);
+    const cmd = makeSetNodeConfigCommand(s, recDom, 'rec1', ['keys'], ['a', 'b'], ['b']);
+    cmd.apply();
+    expect([...s.edges.values()].map(e => e.sourcePortId).sort()).toEqual(['b']);
+
+    cmd.revert();
+    const restored = [...s.edges.values()].map(e => e.sourcePortId).sort();
+    expect(restored).toEqual(['a', 'b']);
+
+    const node = s.nodes.get('rec1')!;
+    expect(node.ports.map(p => p.shortId).sort()).toEqual(['a', 'b', 'record']);
   });
 });
 

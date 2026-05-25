@@ -5,12 +5,17 @@ import { makeSketchTools, SH3_INLINE_MARKER } from './tools';
 import type { Tool } from '../catalog/types';
 import { DocsStore } from '../docs/store';
 
+const BOUND = 'ai';
+const DOCS_ROOT = `${BOUND}/docs/`;
+
 function fakeHandle() {
   const files = new Map<string, string>();
-  const handle: Pick<DocumentHandle, 'list' | 'readText' | 'writeText' | 'delete'> & {
+  const handle: Pick<DocumentHandle, 'boundId' | 'grants' | 'list' | 'readText' | 'writeText' | 'delete'> & {
     _files: Map<string, string>;
   } = {
     _files: files,
+    boundId: BOUND,
+    grants: { browse: false, write: false },
     async list(): Promise<DocumentMeta[]> {
       return [...files.entries()].map(([path, content]) => ({
         path,
@@ -145,7 +150,7 @@ describe('ai.sketch.show — path arg', () => {
   it('loads saved sketch and detects inline mode from sh3:inline marker', async () => {
     const { state, byName, handle } = setup();
     handle._files.set(
-      'docs/gemini/sketches/foo.html',
+      `${DOCS_ROOT}gemini/sketches/foo.html`,
       `${SH3_INLINE_MARKER}\n<button class="sh3-btn">Hi</button>`,
     );
     const out = await byName
@@ -164,7 +169,7 @@ describe('ai.sketch.show — path arg', () => {
   it('falls back to isolated mode when marker is absent', async () => {
     const { state, byName, handle } = setup();
     handle._files.set(
-      'docs/gemini/sketches/bar.html',
+      `${DOCS_ROOT}gemini/sketches/bar.html`,
       '<style>body{background:red}</style><div>raw</div>',
     );
     const out = await byName
@@ -177,7 +182,7 @@ describe('ai.sketch.show — path arg', () => {
   it('explicit mode overrides marker-based detection', async () => {
     const { state, byName, handle } = setup();
     handle._files.set(
-      'docs/gemini/sketches/foo.html',
+      `${DOCS_ROOT}gemini/sketches/foo.html`,
       `${SH3_INLINE_MARKER}\n<div>hi</div>`,
     );
     await byName
@@ -197,7 +202,7 @@ describe('ai.sketch.show — path arg', () => {
 
   it('cross-provider read is allowed', async () => {
     const { state, byName, handle } = setup({ activeProviderId: 'gemini' });
-    handle._files.set('docs/openai/sketches/x.html', '<p>cross</p>');
+    handle._files.set(`${DOCS_ROOT}openai/sketches/x.html`, '<p>cross</p>');
     const out = await byName
       .get('ai.sketch.show')!
       .run({ path: 'openai/sketches/x.html' }, opts);
@@ -237,7 +242,7 @@ describe('ai.sketch.save', () => {
       path: 'gemini/sketches/foo.html',
       mode: 'inline',
     });
-    const stored = handle._files.get('docs/gemini/sketches/foo.html');
+    const stored = handle._files.get(`${DOCS_ROOT}gemini/sketches/foo.html`);
     expect(stored).toBe(`${SH3_INLINE_MARKER}\n<p>raw</p>`);
   });
 
@@ -245,7 +250,7 @@ describe('ai.sketch.save', () => {
     const { state, byName, handle } = setup();
     state.set({ html: '<style>x</style><p>iso</p>', mode: 'isolated' });
     await byName.get('ai.sketch.save')!.run({ name: 'iso' }, opts);
-    const stored = handle._files.get('docs/gemini/sketches/iso.html');
+    const stored = handle._files.get(`${DOCS_ROOT}gemini/sketches/iso.html`);
     expect(stored).toBe('<style>x</style><p>iso</p>');
     expect(stored).not.toContain('sh3:inline');
   });
@@ -257,29 +262,29 @@ describe('ai.sketch.save', () => {
       mode: 'inline',
     });
     await byName.get('ai.sketch.save')!.run({ name: 'foo' }, opts);
-    const stored = handle._files.get('docs/gemini/sketches/foo.html')!;
+    const stored = handle._files.get(`${DOCS_ROOT}gemini/sketches/foo.html`)!;
     const occurrences = stored.split('sh3:inline').length - 1;
     expect(occurrences).toBe(1);
   });
 
   it('returns exists error when file is present and overwrite is false', async () => {
     const { state, byName, handle } = setup();
-    handle._files.set('docs/gemini/sketches/foo.html', 'old');
+    handle._files.set(`${DOCS_ROOT}gemini/sketches/foo.html`, 'old');
     state.set({ html: '<p>new</p>', mode: 'inline' });
     const out = await byName.get('ai.sketch.save')!.run({ name: 'foo' }, opts);
     expect(out).toMatchObject({ error: 'exists', path: 'gemini/sketches/foo.html' });
-    expect(handle._files.get('docs/gemini/sketches/foo.html')).toBe('old');
+    expect(handle._files.get(`${DOCS_ROOT}gemini/sketches/foo.html`)).toBe('old');
   });
 
   it('overwrites when overwrite is true', async () => {
     const { state, byName, handle } = setup();
-    handle._files.set('docs/gemini/sketches/foo.html', 'old');
+    handle._files.set(`${DOCS_ROOT}gemini/sketches/foo.html`, 'old');
     state.set({ html: '<p>new</p>', mode: 'inline' });
     const out = await byName
       .get('ai.sketch.save')!
       .run({ name: 'foo', overwrite: true }, opts);
     expect(out).toMatchObject({ ok: true });
-    expect(handle._files.get('docs/gemini/sketches/foo.html')).toBe(
+    expect(handle._files.get(`${DOCS_ROOT}gemini/sketches/foo.html`)).toBe(
       `${SH3_INLINE_MARKER}\n<p>new</p>`,
     );
   });

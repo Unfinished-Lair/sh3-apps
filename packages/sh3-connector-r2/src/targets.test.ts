@@ -2,10 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { listTargets, saveTarget, deleteTarget, newTargetId, type BackupTarget } from './targets';
 import type { DocumentHandle, DocumentMeta } from 'sh3-core';
 
+const BOUND_ID = 'sh3-connector-r2';
+
 function makeFakeHandle(): DocumentHandle & { _store: Map<string, string> } {
   const store = new Map<string, string>();
   const handle = {
     _store: store,
+    boundId: BOUND_ID,
+    grants: { browse: true, write: true },
     async list(): Promise<DocumentMeta[]> {
       return Array.from(store.keys()).map((path) => ({ path, size: store.get(path)!.length, lastModified: 0 }));
     },
@@ -40,7 +44,7 @@ describe('targets persistence', () => {
     const list = await listTargets(h);
     expect(list).toHaveLength(1);
     expect(list[0].label).toBe('test');
-    expect(h._store.has(`targets/${tgt.id}.json`)).toBe(true);
+    expect(h._store.has(`${BOUND_ID}/targets/${tgt.id}.json`)).toBe(true);
   });
 
   it('deletes a target', async () => {

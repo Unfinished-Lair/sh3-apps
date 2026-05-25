@@ -38,7 +38,7 @@ export interface PortDefinition extends GraphAssetPort {
 export interface FieldDescriptor {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'json' | 'doc';
+  type: 'string' | 'number' | 'boolean' | 'select' | 'json' | 'doc' | 'string-list';
   options?: { value: string; label: string }[];
   /** Renderer dispatch hint, mapped to InspectorMeta.type by the inspector bridge. */
   rendererHint?: string;

@@ -58,7 +58,7 @@ describe('registerBuiltinWidgets', () => {
     const tags = captured.map((c) => c.contribution.type).sort();
     expect(tags).toEqual([
       'doc', 'file', 'icon-toggle', 'json', 'number', 'range', 'segmented',
-      'select', 'slider', 'slider-group', 'string', 'text',
+      'select', 'slider', 'slider-group', 'string', 'string-list', 'text',
     ]);
   });
 });

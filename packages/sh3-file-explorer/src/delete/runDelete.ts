@@ -1,14 +1,21 @@
-import { sh3, type ShardContext } from 'sh3-core';
-import type { Action } from 'sh3-core';
+import { sh3, PermissionError, type ShardContext } from 'sh3-core';
 import type { ExplorerStore } from '../explorerShard.svelte';
 import { SELECTION_TYPE, type DeleteTargetRef } from '../explorerSelection.svelte';
 import { readPreview } from './readPreview';
 import { confirmDelete } from './confirmDelete';
 
 type ReadyStore = Extract<ExplorerStore, { ready: true }>;
-type ActionDispatchContext = Parameters<Action['run']>[0];
 
-const FEATURE_GATE_TOAST = 'Delete requires sh3-core with browse.deleteFrom.';
+// MIGRATION: sh3-core 0.26 no longer exports `Action` from its public api.
+// Mirror just the shape we touch here so we don't depend on internals.
+interface ActionDispatchContext {
+  action: { id: string; label: string };
+  appId: string | null;
+  selection?: { type: string; ref: unknown; ownerShardId: string };
+  invokedVia: 'keyboard' | 'context-menu' | 'palette' | 'programmatic';
+  dispatch(actionId: string): void;
+}
+
 const NO_SELECTION_TOAST = 'Select a file or folder first.';
 
 export async function runDelete(
@@ -23,18 +30,12 @@ export async function runDelete(
     return;
   }
 
-  const browse = ctx.browse;
-  if (!browse || typeof browse.deleteFrom !== 'function') {
-    sh3.toast.notify(FEATURE_GATE_TOAST, { level: 'warn' });
-    return;
-  }
-
   const ref = sel.ref as DeleteTargetRef;
   const goStraightToDelete = ref.kind === 'file' && opts.skipConfirm;
 
   if (!goStraightToDelete) {
     const preview = ref.kind === 'file'
-      ? await readPreview(browse, ref.shardId, ref.path)
+      ? await readPreview(ctx, ref.shardId, ref.path)
       : { state: 'text' as const, text: null };
 
     const descendantCount = ref.kind === 'folder'
@@ -53,12 +54,12 @@ export async function runDelete(
 
   if (ref.kind === 'file') {
     try {
-      await browse.deleteFrom(ref.shardId, ref.path);
+      await ctx.documents.delete(`${ref.shardId}/${ref.path}`);
       sh3.toast.notify(`Deleted ${ref.path}`, { level: 'success' });
       store.setSelection(null);
     } catch (err) {
       sh3.toast.notify(
-        `Failed to delete ${ref.path}: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to delete ${ref.path}: ${formatErr(err)}`,
         { level: 'error' },
       );
     }
@@ -68,7 +69,7 @@ export async function runDelete(
   // Folder: fan out over the locally-known descendants.
   const targets = collectFolderTargets(store, ref.shardId, ref.path);
   const results = await Promise.allSettled(
-    targets.map((t) => browse.deleteFrom!(t.shardId, t.path)),
+    targets.map((t) => ctx.documents.delete(`${t.shardId}/${t.path}`)),
   );
   const failed = results.filter((r) => r.status === 'rejected').length;
   if (failed === 0) {
@@ -83,6 +84,11 @@ export async function runDelete(
     );
   }
   store.setSelection(null);
+}
+
+function formatErr(err: unknown): string {
+  if (err instanceof PermissionError) return err.message;
+  return err instanceof Error ? err.message : String(err);
 }
 
 function collectFolderTargets(

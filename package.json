@@ -7,8 +7,10 @@
   "scripts": {
     "test:publish": "node --test .github/scripts/publish.test.mjs"
   },
+  "overrides": {
+    "sh3-core": "file:../SH3/packages/sh3-core"
+  },
   "devDependencies": {
-    "fflate": "^0.8.0",
-    "sh3-core": "^0.23.2"
+    "fflate": "^0.8.0"
   }
 }

@@ -41,9 +41,11 @@ export interface EditorDocumentSeedCommon {
  *  observes external changes through `ctx.documents.watch`. */
 export interface EditorPathSeed extends EditorDocumentSeedCommon {
   kind: 'path';
-  /** Path resolved against `ctx.documents` — i.e. the active app's namespace
-   *  when this slot lives inside an app, the editor shard's own namespace
-   *  otherwise. */
+  /** Scope-rooted path passed straight to `ctx.documents.readText` /
+   *  `writeText` (sh3-core 0.26). The first segment is the bound id — the
+   *  active app's id when this slot lives inside an app, the editor shard's
+   *  id otherwise. Contributors typically build it as
+   *  `${ctx.documents.boundId}/<rest>`. */
   path: string;
   /** Written by the editor on first save iff `readText` returns null at mount.
    *  Lets contributors seed a starter for "new file" cases without doing the

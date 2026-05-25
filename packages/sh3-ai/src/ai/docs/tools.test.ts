@@ -4,12 +4,17 @@ import { DocsStore } from './store';
 import { makeDocTools } from './tools';
 import type { Tool } from '../catalog/types';
 
+const BOUND = 'ai';
+const DOCS_ROOT = `${BOUND}/docs/`;
+
 function fakeHandle() {
   const docs = new Map<string, string>();
-  const handle: Pick<DocumentHandle, 'list' | 'readText' | 'writeText' | 'delete'> & {
+  const handle: Pick<DocumentHandle, 'boundId' | 'grants' | 'list' | 'readText' | 'writeText' | 'delete'> & {
     _docs: Map<string, string>;
   } = {
     _docs: docs,
+    boundId: BOUND,
+    grants: { browse: false, write: false },
     async list(): Promise<DocumentMeta[]> {
       return [...docs.entries()].map(([path, content]) => ({
         path,
@@ -78,16 +83,16 @@ describe('makeDocTools — surface', () => {
 describe('ai.docs.list', () => {
   it('runs without an active provider', async () => {
     const { handle, byName } = setup(null);
-    handle._docs.set('docs/gemini/a.md', 'a');
-    handle._docs.set('docs/deepseek/b.md', 'b');
+    handle._docs.set(`${DOCS_ROOT}gemini/a.md`, 'a');
+    handle._docs.set(`${DOCS_ROOT}deepseek/b.md`, 'b');
     const out = (await byName.get('ai.docs.list')!.run({}, opts)) as Array<{ path: string }>;
     expect(out.map((x) => x.path).sort()).toEqual(['deepseek/b.md', 'gemini/a.md']);
   });
 
   it('passes provider filter', async () => {
     const { handle, byName } = setup('gemini');
-    handle._docs.set('docs/gemini/a.md', 'a');
-    handle._docs.set('docs/deepseek/b.md', 'b');
+    handle._docs.set(`${DOCS_ROOT}gemini/a.md`, 'a');
+    handle._docs.set(`${DOCS_ROOT}deepseek/b.md`, 'b');
     const out = (await byName.get('ai.docs.list')!.run({ provider: 'gemini' }, opts)) as Array<{
       path: string;
     }>;
@@ -98,7 +103,7 @@ describe('ai.docs.list', () => {
 describe('ai.docs.read', () => {
   it('runs without an active provider', async () => {
     const { handle, byName } = setup(null);
-    handle._docs.set('docs/gemini/a.md', 'hello');
+    handle._docs.set(`${DOCS_ROOT}gemini/a.md`, 'hello');
     const out = await byName.get('ai.docs.read')!.run({ path: 'gemini/a.md' }, opts);
     expect(out).toEqual({ content: 'hello' });
   });
@@ -122,7 +127,7 @@ describe('ai.docs.write', () => {
       .get('ai.docs.write')!
       .run({ path: 'notes.md', content: 'hi' }, opts);
     expect(out).toEqual({ ok: true, path: 'gemini/notes.md' });
-    expect(handle._docs.get('docs/gemini/notes.md')).toBe('hi');
+    expect(handle._docs.get(`${DOCS_ROOT}gemini/notes.md`)).toBe('hi');
   });
 
   it('throws when no provider is active', async () => {
@@ -150,18 +155,18 @@ describe('ai.docs.write', () => {
 describe('ai.docs.delete', () => {
   it('deletes within active provider folder', async () => {
     const { handle, byName } = setup('gemini');
-    handle._docs.set('docs/gemini/a.md', 'x');
+    handle._docs.set(`${DOCS_ROOT}gemini/a.md`, 'x');
     await byName.get('ai.docs.delete')!.run({ path: 'gemini/a.md' }, opts);
-    expect(handle._docs.has('docs/gemini/a.md')).toBe(false);
+    expect(handle._docs.has(`${DOCS_ROOT}gemini/a.md`)).toBe(false);
   });
 
   it('refuses cross-provider deletes', async () => {
     const { handle, byName } = setup('gemini');
-    handle._docs.set('docs/deepseek/b.md', 'x');
+    handle._docs.set(`${DOCS_ROOT}deepseek/b.md`, 'x');
     await expect(
       byName.get('ai.docs.delete')!.run({ path: 'deepseek/b.md' }, opts),
     ).rejects.toThrow(/outside provider folder/);
-    expect(handle._docs.has('docs/deepseek/b.md')).toBe(true);
+    expect(handle._docs.has(`${DOCS_ROOT}deepseek/b.md`)).toBe(true);
   });
 
   it('throws when no provider is active', async () => {

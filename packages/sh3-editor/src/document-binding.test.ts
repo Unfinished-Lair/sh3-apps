@@ -71,8 +71,7 @@ class MockDocuments {
       const change: DocumentChange = {
         type: existed ? 'update' : 'create',
         path,
-        tenantId: 'test',
-        shardId: 'test',
+        scope: 'test',
       };
       for (const cb of this.watchers) cb(change);
     });
@@ -93,8 +92,7 @@ class MockDocuments {
     const change: DocumentChange = {
       type: existed ? 'update' : 'create',
       path,
-      tenantId: 'test',
-      shardId: 'test',
+      scope: 'test',
     };
     for (const cb of this.watchers) cb(change);
   }

@@ -1,8 +1,15 @@
-import { sh3, type BrowseCapability } from 'sh3-core';
+import { sh3, type ShardContext } from 'sh3-core';
 import type { ExplorerStore } from '../explorerShard.svelte';
 import type { Ref } from '../clipboard/destination';
 
 type ReadyStore = Extract<ExplorerStore, { ready: true }>;
+
+/** Minimal slice of ShardContext used by runNewFolder — exported for tests. */
+export interface NewFolderCtx {
+  documents: {
+    writeText(path: string, content: string): Promise<void>;
+  };
+}
 
 export function validateFolderName(name: string, siblings: string[]): string | null {
   const trimmed = name.trim();
@@ -37,7 +44,7 @@ export function listSiblingFolders(
 }
 
 export async function runNewFolder(
-  browse: BrowseCapability,
+  ctx: NewFolderCtx,
   store: ReadyStore,
   target: Ref,
   name: string,
@@ -50,7 +57,7 @@ export async function runNewFolder(
   if (reason) { sh3.toast.notify(reason, { level: 'warn' }); return; }
   const placeholderPath = computePlaceholderPath(parentFolder, name.trim());
   try {
-    await browse.writeTo!(target.shardId, placeholderPath, '');
+    await ctx.documents.writeText(`${target.shardId}/${placeholderPath}`, '');
     sh3.toast.notify(
       `Created folder "${name.trim()}" (.keep placeholder; sh3#34 will remove the need).`,
       { level: 'success' },
@@ -62,3 +69,5 @@ export async function runNewFolder(
     );
   }
 }
+
+export type _CtxOk = ShardContext extends NewFolderCtx ? true : false;

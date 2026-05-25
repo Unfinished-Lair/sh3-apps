@@ -18,6 +18,7 @@ import SelectWidget      from './SelectWidget.svelte';
 import FileWidget        from './FileWidget.svelte';
 import JsonWidget        from './JsonWidget.svelte';
 import DocWidget         from './DocWidget.svelte';
+import StringListWidget  from './StringListWidget.svelte';
 import { setDocPickerLister } from './doc-picker-registry';
 
 const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
@@ -33,6 +34,7 @@ const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
   { id: 'sh3-editor:widget:file',         type: 'file',         component: FileWidget        as any },
   { id: 'sh3-editor:widget:json',         type: 'json',         component: JsonWidget        as any },
   { id: 'sh3-editor:widget:doc',          type: 'doc',          component: DocWidget         as any },
+  { id: 'sh3-editor:widget:string-list',  type: 'string-list',  component: StringListWidget  as any },
 ];
 
 /** Registers all built-in widget renderers at priority 10 and wires the

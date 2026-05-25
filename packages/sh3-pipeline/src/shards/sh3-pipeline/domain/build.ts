@@ -65,7 +65,15 @@ export function buildControlGraphDomain(ctx: CtxLike, _host: GraphDomainHost): G
 
   const visualMap: Record<string, NodeVisuals> = { ...VISUALS };
   for (const t of verbTemplates) {
-    visualMap[t.type] = { ...VERB_VISUAL, label: typeof t.label === 'string' ? t.label : t.type };
+    const labelText = typeof t.label === 'string' ? t.label : t.type;
+    visualMap[t.type] = {
+      ...VERB_VISUAL,
+      label: (config) => {
+        const mode = (config as { mode?: unknown }).mode;
+        const name = String((config as { name?: string }).name ?? labelText);
+        return mode === 'prefetch' ? `⚡ ${name}` : name;
+      },
+    };
   }
 
   return makeDomain({

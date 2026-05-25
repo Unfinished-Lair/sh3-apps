@@ -24,7 +24,9 @@ export const shard: SourceShard = {
     views: [
       { id: 'sh3-file-explorer-browser', label: 'Files', standalone: true },
     ],
-    permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    // documents:write implies documents:browse in sh3-core 0.26 — keeping
+    // browse explicit for clarity since this is an observer-class shard.
+    permissions: ['documents:browse', 'documents:write'],
   },
 
   register(ctx: ShardContext) {
@@ -90,7 +92,10 @@ export const shard: SourceShard = {
         },
       });
 
-      const writeAvailable = () => typeof ctx.browse?.writeTo === 'function';
+      // MIGRATION: In sh3-core 0.26 the document handle methods always
+      // exist; gating switches from capability presence to grant snapshot.
+      // documents:write grant is required to mutate any bound id.
+      const canWrite = () => ctx.documents.grants.write;
 
       ctx.actions.register({
         id: 'sh3-file-explorer:document.cut',
@@ -100,7 +105,7 @@ export const shard: SourceShard = {
         group: 'document',
         paletteItem: false,
         contextItem: true,
-        disabled: () => !writeAvailable(),
+        disabled: () => !canWrite(),
         run: (dCtx) => { if (store.ready) runCut(store, dCtx.selection as never); },
       });
 
@@ -112,7 +117,7 @@ export const shard: SourceShard = {
         group: 'document',
         paletteItem: false,
         contextItem: true,
-        disabled: () => !writeAvailable(),
+        disabled: () => !canWrite(),
         run: (dCtx) => { if (store.ready) runCopy(store, dCtx.selection as never); },
       });
 
@@ -124,12 +129,12 @@ export const shard: SourceShard = {
         group: 'document',
         paletteItem: false,
         contextItem: true,
-        disabled: () => !writeAvailable() || !store.ready || store.clipboard === null,
+        disabled: () => !canWrite() || !store.ready || store.clipboard === null,
         run: async (dCtx) => {
           if (!store.ready) return;
           const ref = (dCtx.selection as { ref?: { shardId: string; path: string; kind: 'file' | 'folder' } } | undefined)?.ref;
           if (!ref) return;
-          await runPaste(ctx.browse!, store, ref);
+          await runPaste(ctx, store, ref);
         },
       });
 
@@ -141,7 +146,7 @@ export const shard: SourceShard = {
         group: 'document',
         paletteItem: false,
         contextItem: true,
-        disabled: () => typeof ctx.browse?.renameFrom !== 'function',
+        disabled: () => !canWrite(),
         run: async (dCtx) => {
           if (!store.ready) return;
           const ref = (dCtx.selection as { ref?: { shardId: string; path: string; kind: 'file' | 'folder' } } | undefined)?.ref;
@@ -149,7 +154,7 @@ export const shard: SourceShard = {
           const initial = ref.path.split('/').pop() ?? ref.path;
           const name = await promptText('Rename', initial);
           if (!name) return;
-          await runRename(ctx.browse!, store, ref, name);
+          await runRename(ctx, store, ref, name);
         },
       });
 
@@ -160,14 +165,14 @@ export const shard: SourceShard = {
         group: 'document',
         paletteItem: true,
         contextItem: true,
-        disabled: () => !writeAvailable(),
+        disabled: () => !canWrite(),
         run: async () => {
           if (!store.ready) return;
           const sel = store.selection;
           const target = sel ?? { shardId: store.documents[0]?.shardId ?? 'sh3-file-explorer', path: '', kind: 'folder' as const };
           const name = await promptText('New folder', '');
           if (!name) return;
-          await runNewFolder(ctx.browse!, store, target, name);
+          await runNewFolder(ctx, store, target, name);
         },
       });
     }

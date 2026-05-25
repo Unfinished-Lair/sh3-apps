@@ -8,17 +8,23 @@ vi.mock('sh3-core', () => ({
 
 import { runPaste } from './runPaste';
 
-function makeBrowse(overrides: Partial<{
-  readFrom: (s: string, p: string) => Promise<string | ArrayBuffer | null>;
-  writeTo: (s: string, p: string, c: string | ArrayBuffer) => Promise<void>;
-  renameFrom: (s: string, op: string, np: string) => Promise<void>;
-  deleteFrom: (s: string, p: string) => Promise<void>;
+function toBuf(s: string): ArrayBuffer {
+  return new TextEncoder().encode(s).buffer as ArrayBuffer;
+}
+
+function makeCtx(overrides: Partial<{
+  readBinary: (path: string) => Promise<ArrayBuffer | null>;
+  writeBinary: (path: string, content: ArrayBuffer) => Promise<void>;
+  rename: (op: string, np: string) => Promise<void>;
+  delete: (path: string) => Promise<void>;
 }> = {}) {
   return {
-    readFrom: overrides.readFrom ?? vi.fn(async (_s: string, _p: string) => 'hello' as string | ArrayBuffer | null),
-    writeTo: overrides.writeTo ?? vi.fn(async () => {}),
-    renameFrom: overrides.renameFrom ?? vi.fn(async () => {}),
-    deleteFrom: overrides.deleteFrom ?? vi.fn(async () => {}),
+    documents: {
+      readBinary: overrides.readBinary ?? vi.fn(async (_p: string) => toBuf('hello') as ArrayBuffer | null),
+      writeBinary: overrides.writeBinary ?? vi.fn(async () => {}),
+      rename: overrides.rename ?? vi.fn(async () => {}),
+      delete: overrides.delete ?? vi.fn(async () => {}),
+    },
   };
 }
 
@@ -35,81 +41,81 @@ function makeStore(overrides: Partial<{ clipboard: any; documents: any[]; setSel
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('runPaste — files', () => {
-  it('cross-shard cut: readFrom + writeTo + deleteFrom + clearClipboard', async () => {
-    const browse = makeBrowse();
+  it('cross-shard cut: readBinary + writeBinary + delete + clearClipboard, scope-rooted paths', async () => {
+    const ctx = makeCtx();
     const clearClipboard = vi.fn();
     const store = makeStore({
       clipboard: { mode: 'cut', ref: { shardId: 'A', path: 'foo/bar.txt', kind: 'file' } },
       clearClipboard,
     });
-    await runPaste(browse as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
-    expect(browse.readFrom).toHaveBeenCalledWith('A', 'foo/bar.txt');
-    expect(browse.writeTo).toHaveBeenCalledWith('B', 'sub/bar.txt', 'hello');
-    expect(browse.deleteFrom).toHaveBeenCalledWith('A', 'foo/bar.txt');
+    await runPaste(ctx as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
+    expect(ctx.documents.readBinary).toHaveBeenCalledWith('A/foo/bar.txt');
+    expect(ctx.documents.writeBinary).toHaveBeenCalledWith('B/sub/bar.txt', expect.any(ArrayBuffer));
+    expect(ctx.documents.delete).toHaveBeenCalledWith('A/foo/bar.txt');
     expect(clearClipboard).toHaveBeenCalled();
   });
 
-  it('cross-shard copy: readFrom + writeTo, NO delete, clipboard preserved', async () => {
-    const browse = makeBrowse();
+  it('cross-shard copy: readBinary + writeBinary, NO delete, clipboard preserved', async () => {
+    const ctx = makeCtx();
     const clearClipboard = vi.fn();
     const store = makeStore({
       clipboard: { mode: 'copy', ref: { shardId: 'A', path: 'foo/bar.txt', kind: 'file' } },
       clearClipboard,
     });
-    await runPaste(browse as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
-    expect(browse.writeTo).toHaveBeenCalled();
-    expect(browse.deleteFrom).not.toHaveBeenCalled();
+    await runPaste(ctx as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
+    expect(ctx.documents.writeBinary).toHaveBeenCalled();
+    expect(ctx.documents.delete).not.toHaveBeenCalled();
     expect(clearClipboard).not.toHaveBeenCalled();
   });
 
-  it('same-shard cut uses renameFrom (atomic move)', async () => {
-    const browse = makeBrowse();
+  it('same-shard cut uses rename (atomic move) with scope-rooted paths', async () => {
+    const ctx = makeCtx();
     const store = makeStore({
       clipboard: { mode: 'cut', ref: { shardId: 'A', path: 'foo/bar.txt', kind: 'file' } },
     });
-    await runPaste(browse as any, store, { shardId: 'A', path: 'sub', kind: 'folder' });
-    expect(browse.renameFrom).toHaveBeenCalledWith('A', 'foo/bar.txt', 'sub/bar.txt');
-    expect(browse.writeTo).not.toHaveBeenCalled();
-    expect(browse.deleteFrom).not.toHaveBeenCalled();
+    await runPaste(ctx as any, store, { shardId: 'A', path: 'sub', kind: 'folder' });
+    expect(ctx.documents.rename).toHaveBeenCalledWith('A/foo/bar.txt', 'A/sub/bar.txt');
+    expect(ctx.documents.writeBinary).not.toHaveBeenCalled();
+    expect(ctx.documents.delete).not.toHaveBeenCalled();
   });
 
   it('same-folder copy: auto-rename with (copy) suffix', async () => {
-    const browse = makeBrowse({
-      readFrom: vi.fn(async (_s: string, p: string) => p === 'foo/bar.txt' ? 'hello' : null),
+    const ctx = makeCtx({
+      readBinary: vi.fn(async (p: string) => p === 'A/foo/bar.txt' ? toBuf('hello') : null),
     });
     const store = makeStore({
       clipboard: { mode: 'copy', ref: { shardId: 'A', path: 'foo/bar.txt', kind: 'file' } },
     });
-    await runPaste(browse as any, store, { shardId: 'A', path: 'foo', kind: 'folder' });
-    expect(browse.writeTo).toHaveBeenCalledWith('A', 'foo/bar (copy).txt', 'hello');
+    await runPaste(ctx as any, store, { shardId: 'A', path: 'foo', kind: 'folder' });
+    expect(ctx.documents.writeBinary).toHaveBeenCalledWith('A/foo/bar (copy).txt', expect.any(ArrayBuffer));
   });
 
   it('same source and destination (cut): toast + abort', async () => {
-    const browse = makeBrowse();
+    const ctx = makeCtx();
     const store = makeStore({
       clipboard: { mode: 'cut', ref: { shardId: 'A', path: 'foo/bar.txt', kind: 'file' } },
     });
-    await runPaste(browse as any, store, { shardId: 'A', path: 'foo', kind: 'folder' });
+    await runPaste(ctx as any, store, { shardId: 'A', path: 'foo', kind: 'folder' });
     expect(notify).toHaveBeenCalledWith(
       expect.stringContaining('identical'),
       expect.objectContaining({ level: 'warn' }),
     );
-    expect(browse.renameFrom).not.toHaveBeenCalled();
+    expect(ctx.documents.rename).not.toHaveBeenCalled();
   });
 
   it('source no longer exists: toast + clear clipboard', async () => {
-    const browse = makeBrowse({ readFrom: vi.fn(async () => null) });
+    const ctx = makeCtx({ readBinary: vi.fn(async () => null) });
     const clearClipboard = vi.fn();
     const store = makeStore({
       clipboard: { mode: 'copy', ref: { shardId: 'A', path: 'gone.txt', kind: 'file' } },
       clearClipboard,
     });
-    await runPaste(browse as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
+    await runPaste(ctx as any, store, { shardId: 'B', path: 'sub', kind: 'folder' });
     expect(notify).toHaveBeenCalledWith(
       expect.stringContaining('no longer exists'),
       expect.objectContaining({ level: 'warn' }),
     );
-    expect(browse.writeTo).not.toHaveBeenCalled();
+    expect(ctx.documents.writeBinary).not.toHaveBeenCalled();
     expect(clearClipboard).toHaveBeenCalled();
   });
 });

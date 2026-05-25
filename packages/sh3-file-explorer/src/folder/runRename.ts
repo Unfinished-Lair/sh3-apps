@@ -1,9 +1,16 @@
-import { sh3, type BrowseCapability, type DocumentMeta } from 'sh3-core';
+import { sh3, type ShardContext, type DocumentMeta } from 'sh3-core';
 import type { Ref } from '../clipboard/destination';
 import type { ExplorerStore } from '../explorerShard.svelte';
 
 type ReadyStore = Extract<ExplorerStore, { ready: true }>;
 type Descendant = DocumentMeta & { shardId: string };
+
+/** Minimal slice of ShardContext used by runRename — exported for tests. */
+export interface RenameCtx {
+  documents: {
+    rename(oldPath: string, newPath: string): Promise<void>;
+  };
+}
 
 export function renamePathsFor(
   source: Ref,
@@ -28,8 +35,12 @@ export function renamePathsFor(
     });
 }
 
+function rooted(shardId: string, path: string): string {
+  return `${shardId}/${path}`;
+}
+
 export async function runRename(
-  browse: BrowseCapability,
+  ctx: RenameCtx,
   store: ReadyStore,
   source: Ref,
   newBaseName: string,
@@ -46,7 +57,7 @@ export async function runRename(
 
   if (source.kind === 'file') {
     try {
-      await browse.renameFrom!(source.shardId, pairs[0][0], pairs[0][1]);
+      await ctx.documents.rename(rooted(source.shardId, pairs[0][0]), rooted(source.shardId, pairs[0][1]));
       sh3.toast.notify(`Renamed to ${pairs[0][1]}.`, { level: 'success' });
       store.setSelection({ shardId: source.shardId, path: pairs[0][1], kind: 'file' });
     } catch (err) {
@@ -59,7 +70,9 @@ export async function runRename(
   }
 
   const results = await Promise.allSettled(
-    pairs.map(([oldPath, newPath]) => browse.renameFrom!(source.shardId, oldPath, newPath)),
+    pairs.map(([oldPath, newPath]) =>
+      ctx.documents.rename(rooted(source.shardId, oldPath), rooted(source.shardId, newPath)),
+    ),
   );
   const failed = results.filter((r) => r.status === 'rejected').length;
   if (failed === 0) {
@@ -77,3 +90,5 @@ export async function runRename(
     });
   }
 }
+
+export type _CtxOk = ShardContext extends RenameCtx ? true : false;

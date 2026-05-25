@@ -1,12 +1,28 @@
-import { sh3 } from 'sh3-core';
-import type { BrowseCapability } from 'sh3-core';
+import { sh3, type ShardContext } from 'sh3-core';
 import type { ExplorerStore } from '../explorerShard.svelte';
 import { type Ref, computeDestination, addCopySuffix, isPasteIntoSelf } from './destination';
 
 type ReadyStore = Extract<ExplorerStore, { ready: true }>;
 
+/**
+ * Minimal slice of ShardContext that the paste verbs need. Defined
+ * separately so tests can pass a thin stub.
+ */
+export interface PasteCtx {
+  documents: {
+    readBinary(path: string): Promise<ArrayBuffer | null>;
+    writeBinary(path: string, content: ArrayBuffer): Promise<void>;
+    rename(oldPath: string, newPath: string): Promise<void>;
+    delete(path: string): Promise<void>;
+  };
+}
+
+function rooted(shardId: string, path: string): string {
+  return `${shardId}/${path}`;
+}
+
 export async function runPaste(
-  browse: BrowseCapability,
+  ctx: PasteCtx,
   store: ReadyStore,
   targetRef: Ref,
 ): Promise<void> {
@@ -33,9 +49,9 @@ export async function runPaste(
   }
 
   if (source.kind === 'file') {
-    await pasteFile(browse, store, source, targetRef, cb.mode, sameShardAndFolder);
+    await pasteFile(ctx, store, source, targetRef, cb.mode, sameShardAndFolder);
   } else {
-    await pasteFolder(browse, store, source, targetRef, cb.mode);
+    await pasteFolder(ctx, store, source, targetRef, cb.mode);
   }
 }
 
@@ -45,7 +61,7 @@ function parentDir(path: string): string {
 }
 
 async function pasteFile(
-  browse: BrowseCapability,
+  ctx: PasteCtx,
   store: ReadyStore,
   source: Ref,
   targetRef: Ref,
@@ -59,7 +75,7 @@ async function pasteFile(
     let attempt = 1;
     while (true) {
       destPath = addCopySuffix(initialDest.path, attempt);
-      const existing = await browse.readFrom?.(initialDest.shardId, destPath);
+      const existing = await ctx.documents.readBinary(rooted(initialDest.shardId, destPath));
       if (existing == null) break;
       attempt++;
       if (attempt > 999) {
@@ -71,7 +87,7 @@ async function pasteFile(
 
   if (source.shardId === initialDest.shardId && mode === 'cut') {
     try {
-      await browse.renameFrom!(source.shardId, source.path, destPath);
+      await ctx.documents.rename(rooted(source.shardId, source.path), rooted(source.shardId, destPath));
       sh3.toast.notify(`Moved to ${destPath}.`, { level: 'success' });
       store.clearClipboard();
       store.setSelection(null);
@@ -84,7 +100,7 @@ async function pasteFile(
     return;
   }
 
-  const content = await browse.readFrom?.(source.shardId, source.path);
+  const content = await ctx.documents.readBinary(rooted(source.shardId, source.path));
   if (content == null) {
     sh3.toast.notify(`Source no longer exists: ${source.path}.`, { level: 'warn' });
     store.clearClipboard();
@@ -92,7 +108,7 @@ async function pasteFile(
   }
 
   try {
-    await browse.writeTo!(initialDest.shardId, destPath, content);
+    await ctx.documents.writeBinary(rooted(initialDest.shardId, destPath), content);
   } catch (err) {
     sh3.toast.notify(
       `Paste failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -103,7 +119,7 @@ async function pasteFile(
 
   if (mode === 'cut') {
     try {
-      await browse.deleteFrom!(source.shardId, source.path);
+      await ctx.documents.delete(rooted(source.shardId, source.path));
     } catch (err) {
       sh3.toast.notify(
         `Copied to ${destPath}, but failed to remove source: ${err instanceof Error ? err.message : String(err)}`,
@@ -118,7 +134,7 @@ async function pasteFile(
 }
 
 async function pasteFolder(
-  browse: BrowseCapability,
+  ctx: PasteCtx,
   store: ReadyStore,
   source: Ref,
   targetRef: Ref,
@@ -141,14 +157,14 @@ async function pasteFolder(
     const rel = source.path === '' ? d.path : d.path.slice(sourcePrefix.length);
     const destPath = rel ? `${newBase}/${rel}` : newBase;
     if (source.shardId === targetRef.shardId && mode === 'cut') {
-      await browse.renameFrom!(source.shardId, d.path, destPath);
+      await ctx.documents.rename(rooted(source.shardId, d.path), rooted(source.shardId, destPath));
       return;
     }
-    const content = await browse.readFrom?.(source.shardId, d.path);
+    const content = await ctx.documents.readBinary(rooted(source.shardId, d.path));
     if (content == null) throw new Error(`source missing: ${d.path}`);
-    await browse.writeTo!(targetRef.shardId, destPath, content);
+    await ctx.documents.writeBinary(rooted(targetRef.shardId, destPath), content);
     if (mode === 'cut') {
-      await browse.deleteFrom!(source.shardId, d.path);
+      await ctx.documents.delete(rooted(source.shardId, d.path));
     }
   });
 
@@ -172,3 +188,7 @@ function basename(path: string): string {
   const i = path.lastIndexOf('/');
   return i < 0 ? path : path.slice(i + 1);
 }
+
+// Compile-time assert that ShardContext satisfies the PasteCtx shape so
+// callers can pass `ctx` directly without further adapters.
+export type _CtxOk = ShardContext extends PasteCtx ? true : false;

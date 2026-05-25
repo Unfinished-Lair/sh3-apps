@@ -1,17 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { FileHandlerDescriptor, FileRef, ShardContext } from 'sh3-core';
 
-vi.mock('sh3-core', () => ({ launchApp: vi.fn() }));
+const { PermissionError } = vi.hoisted(() => ({
+  PermissionError: class PermissionError extends Error {
+    constructor(public kind: string, public path: string) {
+      super(`PermissionError(${kind}): ${path}`);
+    }
+  },
+}));
+
+vi.mock('sh3-core', () => ({ launchApp: vi.fn(), PermissionError }));
 
 import { listHandlersFor } from './dispatch';
+
+function toBuf(s: string): ArrayBuffer {
+  return new TextEncoder().encode(s).buffer as ArrayBuffer;
+}
 
 function ctxWith(handlers: FileHandlerDescriptor[], readResult?: string): ShardContext {
   return {
     contributions: {
       list: vi.fn(() => handlers),
     },
-    browse: {
-      readFrom: vi.fn(async () => readResult ?? null),
+    documents: {
+      readBinary: vi.fn(async () => (readResult == null ? null : toBuf(readResult))),
     },
   } as unknown as ShardContext;
 }

@@ -17,12 +17,18 @@ const docs = [
   { shardId: 'A', path: 'src/other.txt', size: 0, lastModified: 0 },
 ];
 
-function makeBrowse() {
+function toBuf(s: string): ArrayBuffer {
+  return new TextEncoder().encode(s).buffer as ArrayBuffer;
+}
+
+function makeCtx() {
   return {
-    readFrom: vi.fn(async () => 'content'),
-    writeTo: vi.fn(async () => {}),
-    renameFrom: vi.fn(async () => {}),
-    deleteFrom: vi.fn(async () => {}),
+    documents: {
+      readBinary: vi.fn(async (_path: string) => toBuf('content') as ArrayBuffer | null),
+      writeBinary: vi.fn(async (_path: string, _content: ArrayBuffer) => {}),
+      rename: vi.fn(async (_old: string, _new: string) => {}),
+      delete: vi.fn(async (_path: string) => {}),
+    },
   };
 }
 
@@ -37,38 +43,38 @@ function makeStore(clipboard: any) {
 }
 
 describe('runPaste — folders', () => {
-  it('cross-shard copy fans out reads + writes for every descendant under the new folder', async () => {
-    const browse = makeBrowse();
+  it('cross-shard copy fans out reads + writes (scope-rooted) for every descendant under the new folder', async () => {
+    const ctx = makeCtx();
     const store = makeStore({ mode: 'copy', ref: { shardId: 'A', path: 'src/lib', kind: 'folder' } });
-    await runPaste(browse as any, store, { shardId: 'B', path: 'dst', kind: 'folder' });
-    const writeArgs = browse.writeTo.mock.calls.map((c) => [c[0], c[1]]);
+    await runPaste(ctx as any, store, { shardId: 'B', path: 'dst', kind: 'folder' });
+    const writeArgs = ctx.documents.writeBinary.mock.calls.map((c) => c[0]);
     expect(writeArgs).toEqual(expect.arrayContaining([
-      ['B', 'dst/lib/a.txt'],
-      ['B', 'dst/lib/b.txt'],
-      ['B', 'dst/lib/sub/c.txt'],
+      'B/dst/lib/a.txt',
+      'B/dst/lib/b.txt',
+      'B/dst/lib/sub/c.txt',
     ]));
     expect(writeArgs).toHaveLength(3);
-    expect(browse.deleteFrom).not.toHaveBeenCalled();
+    expect(ctx.documents.delete).not.toHaveBeenCalled();
   });
 
-  it('same-shard cut uses renameFrom per descendant', async () => {
-    const browse = makeBrowse();
+  it('same-shard cut uses rename per descendant with scope-rooted paths', async () => {
+    const ctx = makeCtx();
     const store = makeStore({ mode: 'cut', ref: { shardId: 'A', path: 'src/lib', kind: 'folder' } });
-    await runPaste(browse as any, store, { shardId: 'A', path: 'dst', kind: 'folder' });
-    const renameArgs = browse.renameFrom.mock.calls.map((c) => [c[1], c[2]]);
+    await runPaste(ctx as any, store, { shardId: 'A', path: 'dst', kind: 'folder' });
+    const renameArgs = ctx.documents.rename.mock.calls.map((c) => [c[0], c[1]]);
     expect(renameArgs).toEqual(expect.arrayContaining([
-      ['src/lib/a.txt', 'dst/lib/a.txt'],
-      ['src/lib/b.txt', 'dst/lib/b.txt'],
-      ['src/lib/sub/c.txt', 'dst/lib/sub/c.txt'],
+      ['A/src/lib/a.txt', 'A/dst/lib/a.txt'],
+      ['A/src/lib/b.txt', 'A/dst/lib/b.txt'],
+      ['A/src/lib/sub/c.txt', 'A/dst/lib/sub/c.txt'],
     ]));
-    expect(browse.writeTo).not.toHaveBeenCalled();
+    expect(ctx.documents.writeBinary).not.toHaveBeenCalled();
   });
 
   it('reports partial failure count', async () => {
-    const browse = makeBrowse();
-    browse.writeTo.mockRejectedValueOnce(new Error('disk full'));
+    const ctx = makeCtx();
+    ctx.documents.writeBinary.mockRejectedValueOnce(new Error('disk full'));
     const store = makeStore({ mode: 'copy', ref: { shardId: 'A', path: 'src/lib', kind: 'folder' } });
-    await runPaste(browse as any, store, { shardId: 'B', path: 'dst', kind: 'folder' });
+    await runPaste(ctx as any, store, { shardId: 'B', path: 'dst', kind: 'folder' });
     expect(notify.mock.calls.some((c: any) => /1.*failed/i.test(c[0]))).toBe(true);
   });
 });

@@ -10,6 +10,7 @@
   import {
     makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand,
   } from '../history/commands';
+  import { effectivePorts } from '../domain/effective-ports';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
   import {
@@ -370,11 +371,20 @@
     if (!tpl) return;
     const drop = at ?? getRecentDrop() ?? viewportGraphCenter();
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const ports: GraphAssetPort[] = tpl.ports.map((p) => ({ ...p, id: `${id}_${p.id}` }));
+    const initialConfig = { ...tpl.defaultConfig };
+    let resolved: GraphAssetPort[];
+    try {
+      resolved = effectivePorts(tpl, initialConfig);
+      if (!Array.isArray(resolved)) throw new Error('computePorts returned non-array');
+    } catch (err) {
+      console.warn('computePorts threw at instantiation; falling back to static ports', err);
+      resolved = tpl.ports;
+    }
+    const ports: GraphAssetPort[] = resolved.map((p) => ({ ...p, id: `${id}_${p.id}` }));
     const node: GraphAssetNode = {
       id, type: tpl.type,
       position: { ...drop },
-      config: { ...tpl.defaultConfig },
+      config: initialConfig,
       ports,
     };
     const cmd = makeAddNodeCommand(props.state, props.domain, node);

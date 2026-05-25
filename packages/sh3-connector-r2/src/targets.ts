@@ -22,11 +22,17 @@ export function newTargetId(): string {
   return `tgt-${hex}`;
 }
 
+function scopedDir(handle: DocumentHandle): string {
+  return `${handle.boundId}/${DIR}`;
+}
+
 export async function listTargets(handle: DocumentHandle): Promise<BackupTarget[]> {
+  // sh3-core 0.26: list() returns scope-rooted paths under this handle's boundId.
+  const prefix = scopedDir(handle);
   const metas = await handle.list();
   const out: BackupTarget[] = [];
   for (const meta of metas) {
-    if (!meta.path.startsWith(DIR) || !meta.path.endsWith('.json')) continue;
+    if (!meta.path.startsWith(prefix) || !meta.path.endsWith('.json')) continue;
     const raw = await handle.readText(meta.path);
     if (!raw) continue;
     try {
@@ -39,9 +45,9 @@ export async function listTargets(handle: DocumentHandle): Promise<BackupTarget[
 }
 
 export async function saveTarget(handle: DocumentHandle, tgt: BackupTarget): Promise<void> {
-  await handle.writeText(`${DIR}${tgt.id}.json`, JSON.stringify(tgt, null, 2));
+  await handle.writeText(`${scopedDir(handle)}${tgt.id}.json`, JSON.stringify(tgt, null, 2));
 }
 
 export async function deleteTarget(handle: DocumentHandle, id: string): Promise<void> {
-  await handle.delete(`${DIR}${id}.json`);
+  await handle.delete(`${scopedDir(handle)}${id}.json`);
 }

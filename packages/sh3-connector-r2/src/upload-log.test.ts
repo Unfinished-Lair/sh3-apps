@@ -2,9 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { appendLog, listRecentLog, listAllSuccessfulLog, type UploadLogEntry } from './upload-log';
 import type { DocumentHandle, DocumentMeta } from 'sh3-core';
 
+const BOUND_ID = 'sh3-connector-r2';
+
 function makeFakeHandle(): DocumentHandle {
   const store = new Map<string, string>();
   return {
+    boundId: BOUND_ID,
+    grants: { browse: true, write: true },
     async list(): Promise<DocumentMeta[]> {
       return Array.from(store.keys()).map((path) => ({ path, size: store.get(path)!.length, lastModified: 0 }));
     },
@@ -37,14 +41,14 @@ describe('upload log', () => {
     const h = makeFakeHandle();
     await appendLog(h, entry());
     const metas = await h.list();
-    expect(metas.some((m) => m.path.startsWith('uploads/2026-04/') && m.path.endsWith('.json'))).toBe(true);
+    expect(metas.some((m) => m.path.startsWith(`${BOUND_ID}/uploads/2026-04/`) && m.path.endsWith('.json'))).toBe(true);
   });
 
   it('writes filenames without colons (Windows-safe)', async () => {
     const h = makeFakeHandle();
     await appendLog(h, entry({ at: '2026-04-26T00:11:01.019Z' }));
     const metas = await h.list();
-    const stored = metas.find((m) => m.path.startsWith('uploads/'))!;
+    const stored = metas.find((m) => m.path.startsWith(`${BOUND_ID}/uploads/`))!;
     expect(stored.path).not.toContain(':');
     expect(stored.path).toMatch(/2026-04-26T00-11-01\.019Z/);
   });

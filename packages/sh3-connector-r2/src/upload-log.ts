@@ -26,8 +26,13 @@ function randomSuffix(): string {
   return s;
 }
 
+function scopedDir(handle: DocumentHandle): string {
+  // sh3-core 0.26: all paths into ctx.documents are scope-rooted by boundId.
+  return `${handle.boundId}/${DIR}`;
+}
+
 export async function appendLog(handle: DocumentHandle, entry: UploadLogEntry): Promise<void> {
-  const folder = `${DIR}${monthFolder(entry.at)}/`;
+  const folder = `${scopedDir(handle)}${monthFolder(entry.at)}/`;
   // Colons in ISO timestamps break filesystem-backed storage on Windows.
   // Replace them in the filename only; entry.at inside the JSON keeps the canonical ISO string.
   const safeAt = entry.at.replace(/:/g, '-');
@@ -36,11 +41,12 @@ export async function appendLog(handle: DocumentHandle, entry: UploadLogEntry): 
 }
 
 export async function listRecentLog(handle: DocumentHandle, limit: number): Promise<UploadLogEntry[]> {
+  const prefix = scopedDir(handle);
   const metas = await handle.list();
   const months = new Set<string>();
   for (const m of metas) {
-    if (!m.path.startsWith(DIR)) continue;
-    const rest = m.path.slice(DIR.length);
+    if (!m.path.startsWith(prefix)) continue;
+    const rest = m.path.slice(prefix.length);
     const slash = rest.indexOf('/');
     if (slash > 0) months.add(rest.slice(0, slash));
   }
@@ -48,7 +54,7 @@ export async function listRecentLog(handle: DocumentHandle, limit: number): Prom
 
   const entries: UploadLogEntry[] = [];
   for (const m of metas) {
-    const monthMatch = sortedMonths.find((mo) => m.path.startsWith(`${DIR}${mo}/`));
+    const monthMatch = sortedMonths.find((mo) => m.path.startsWith(`${prefix}${mo}/`));
     if (!monthMatch) continue;
     if (!m.path.endsWith('.json')) continue;
     const raw = await handle.readText(m.path);
@@ -64,10 +70,11 @@ export async function listRecentLog(handle: DocumentHandle, limit: number): Prom
 }
 
 export async function listAllSuccessfulLog(handle: DocumentHandle): Promise<UploadLogEntry[]> {
+  const prefix = scopedDir(handle);
   const metas = await handle.list();
   const entries: UploadLogEntry[] = [];
   for (const m of metas) {
-    if (!m.path.startsWith(DIR)) continue;
+    if (!m.path.startsWith(prefix)) continue;
     if (!m.path.endsWith('.json')) continue;
     const raw = await handle.readText(m.path);
     if (!raw) continue;

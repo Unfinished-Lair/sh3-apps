@@ -1,7 +1,7 @@
 # sh3-connector-r2
 
 **Version:** 0.1.0
-**Status:** end-to-end — requires `sh3-core@^0.9.1` (ships the `documents:read` and `documents:write` permissions this shard needs for foreign-shard content access).
+**Status:** end-to-end — requires `sh3-core@^0.26.0` (uses the unified `ctx.documents` handle with scope-rooted paths; the shard declares `documents:write`, which implies `documents:browse`).
 
 A client shard + app that backs up SH3 documents to a user-owned Cloudflare R2 bucket.
 
@@ -11,7 +11,7 @@ A client shard + app that backs up SH3 documents to a user-owned Cloudflare R2 b
 npm install sh3-connector-r2
 ```
 
-Requires `sh3-core@^0.9.1` and `sh3-file-explorer@^0.3.0`.
+Requires `sh3-core@^0.26.0` and `sh3-file-explorer@^0.3.0`.
 
 ## Configure
 
@@ -38,7 +38,7 @@ Uploads are append-only: local deletes do not propagate to R2. Use the Cloudflar
 
 ## Import
 
-Open the **Import** tab, pick a target, click **Scan**. The shard paginates the bucket, overlays local-presence badges (locally-existing paths are unchecked by default to protect your current state), and restores selected objects via `ctx.browse.writeTo`.
+Open the **Import** tab, pick a target, click **Scan**. The shard paginates the bucket, overlays local-presence badges (locally-existing paths are unchecked by default to protect your current state), and restores selected objects via `ctx.documents.writeText('<shardId>/<path>', …)`.
 
 Binary documents are not yet supported in v0.1.0 — the upload path surfaces a "binary not supported" error and logs the entry as failed.
 
@@ -55,7 +55,7 @@ Against a real R2 bucket:
 - [ ] Delete a target — local config gone; R2 objects untouched.
 - [ ] Install in a second SH3 instance with a different `keyPrefix` on the same bucket — no key collisions.
 - [ ] Import tab → Scan → remote tree populated; locally-existing objects show "local" badge and unchecked by default.
-- [ ] Import selected objects — objects written to correct `{shardId, path}` via `documents:write`; file-explorer picks them up via `watchDocuments`.
+- [ ] Import selected objects — objects written to correct `{shardId, path}` via `documents:write`; file-explorer picks them up via `ctx.documents.watch`.
 
 ## Architecture
 

@@ -33,11 +33,16 @@
   const previewCount = $derived(recursive ? recursiveCount : directCount);
 
   async function refreshCounts() {
-    if (!rt.ctx.browse) return;
-    const browse = rt.ctx.browse;
+    const docs = rt.docs;
     const list = async () => {
-      const all = await browse.listDocuments();
-      return all.map((d) => ({ shardId: d.shardId, path: d.path }));
+      // sh3-core 0.26: list() returns scope-rooted paths `<shardId>/<rest>`.
+      const all = await docs.list();
+      return all.map((m) => {
+        const slash = m.path.indexOf('/');
+        return slash < 0
+          ? { shardId: m.path, path: '' }
+          : { shardId: m.path.slice(0, slash), path: m.path.slice(slash + 1) };
+      });
     };
     const prefix = pathPrefix.endsWith('/') || pathPrefix === '' ? pathPrefix : `${pathPrefix}/`;
     const recurseStats = await walkScope({
@@ -58,17 +63,23 @@
 
   async function confirm() {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
-    if (!target || !rt.ctx.browse) return;
+    if (!target) return;
     phase = 'running';
     progress = null;
-    const browse = rt.ctx.browse;
+    const docs = rt.docs;
     const client = createR2Client(target);
     const read = readForeign(rt.ctx);
     const prefix = pathPrefix.endsWith('/') || pathPrefix === '' ? pathPrefix : `${pathPrefix}/`;
     const stats = await backupFolder({
       list: async () => {
-        const all = await browse.listDocuments();
-        return all.map((d) => ({ shardId: d.shardId, path: d.path }));
+        // sh3-core 0.26: list() returns scope-rooted paths `<shardId>/<rest>`.
+        const all = await docs.list();
+        return all.map((m) => {
+          const slash = m.path.indexOf('/');
+          return slash < 0
+            ? { shardId: m.path, path: '' }
+            : { shardId: m.path.slice(0, slash), path: m.path.slice(slash + 1) };
+        });
       },
       shardId,
       pathPrefix: prefix || undefined,

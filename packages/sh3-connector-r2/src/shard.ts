@@ -30,7 +30,7 @@ export const shard: SourceShard = {
       { id: 'sh3-connector-r2-backup', label: 'Backup' },
       { id: 'sh3-connector-r2-import', label: 'Import' },
     ],
-    permissions: ['documents:browse', 'documents:read', 'documents:write'],
+    permissions: ['documents:write'],
   },
 
   async register(ctx: ShardContext) {

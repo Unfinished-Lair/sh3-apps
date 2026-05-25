@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { sh3, type DocStatus } from 'sh3-core';
+  import { sh3, PermissionError, type DocStatus } from 'sh3-core';
   import type { Runtime } from '../runtime.svelte';
   import type { BackupTarget } from '../targets';
   import { createR2Client } from '../r2/client';
@@ -66,15 +66,17 @@
 
   async function scan() {
     const target: BackupTarget | undefined = rt.targets.find((t) => t.id === targetId);
-    if (!target || !rt.ctx.browse) return;
+    if (!target) return;
     summary = null;
     scanning = true;
     try {
       const client = createR2Client(target);
       const read = readForeign(rt.ctx);
-      const statusFrom = rt.ctx.browse.statusFrom;
+      const docs = rt.docs;
       const localSet = new Set<string>();
-      for (const d of await rt.ctx.browse.listDocuments()) localSet.add(`${d.shardId}/${d.path}`);
+      // sh3-core 0.26: list() returns scope-rooted paths; entries already match
+      // the `<shardId>/<docPath>` key shape we use below.
+      for (const m of await docs.list()) localSet.add(m.path);
 
       const collected: Node[] = [];
       const nextSel = new Set<string>();
@@ -94,20 +96,22 @@
             const c = await read(shardId, docPath);
             localContent = c ?? '';
           } catch (err) {
-            if (err instanceof MissingCapabilityError) {
+            if (err instanceof PermissionError) {
               permissionBlocked = true;
               scanning = false;
               return;
             }
-            binaryUnsupported = true;
-          }
-          if (statusFrom) {
-            try {
-              const s = await statusFrom(shardId, docPath);
-              if (s) localStatus = s;
-            } catch {
-              // defensive; fall back to defaults at use-site
+            if (err instanceof MissingCapabilityError) {
+              binaryUnsupported = true;
+            } else {
+              binaryUnsupported = true;
             }
+          }
+          try {
+            const s = await docs.status(`${shardId}/${docPath}`);
+            if (s) localStatus = s;
+          } catch {
+            // defensive; fall back to defaults at use-site
           }
         }
 
@@ -149,7 +153,7 @@
         await write(node.shardId, node.docPath, content);
         stats.imported++;
       } catch (err) {
-        if (err instanceof MissingCapabilityError) {
+        if (err instanceof PermissionError) {
           permissionBlocked = true;
           return false;
         }
@@ -218,7 +222,7 @@
           await write(d.shardId, d.path, input.incomingContent);
           stats.resolvedIncoming++;
         } catch (err) {
-          if (err instanceof MissingCapabilityError) {
+          if (err instanceof PermissionError) {
             permissionBlocked = true;
             return false;
           }
@@ -265,7 +269,7 @@
 
   {#if permissionBlocked}
     <div class="warn">
-      Import requires the <code>documents:write</code> permission (sh3-core 0.9.1+).
+      Import requires the <code>documents:write</code> permission.
       Reinstall the shard and grant this permission when prompted.
     </div>
   {/if}

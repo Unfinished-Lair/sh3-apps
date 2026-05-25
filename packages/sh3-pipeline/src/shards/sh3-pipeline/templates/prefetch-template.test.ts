@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPrefetchTemplate, isPickerableVerb } from './prefetch-template';
+import { buildPrefetchPorts, defaultPrefetchConfig, isPickerableVerb } from './prefetch-template';
 import type { VerbDescriptor } from './verb-adapter';
 
 const arrayOutputVerb: VerbDescriptor = {
@@ -57,54 +57,35 @@ describe('isPickerableVerb', () => {
   });
 });
 
-describe('buildPrefetchTemplate', () => {
-  it('produces type "verb:<shard>:<name>:prefetch"', () => {
-    const t = buildPrefetchTemplate(arrayOutputVerb);
-    expect(t.type).toBe('verb:workspace-mgr:workspaces.list:prefetch');
-  });
-
-  it('uses category "Pickers" so the palette groups them together', () => {
-    expect(buildPrefetchTemplate(arrayOutputVerb).category).toBe('Pickers');
-  });
-
-  it('uses the verb name as label', () => {
-    expect(buildPrefetchTemplate(arrayOutputVerb).label).toBe('workspaces.list');
-  });
-
-  it('has no input ports', () => {
-    const ports = buildPrefetchTemplate(arrayOutputVerb).ports;
-    expect(ports.filter((p) => p.direction === 'input')).toEqual([]);
-  });
-
-  it('has exactly two output ports: value and record', () => {
-    const outs = buildPrefetchTemplate(arrayOutputVerb).ports.filter((p) => p.direction === 'output');
-    expect(outs.map((p) => p.id)).toEqual(['value', 'record']);
+describe('buildPrefetchPorts', () => {
+  it('returns value + record outputs only', () => {
+    const ports = buildPrefetchPorts(arrayOutputVerb);
+    expect(ports.map(p => `${p.direction}:${p.id}`)).toEqual([
+      'output:value',
+      'output:record',
+    ]);
   });
 
   it('value port has dataType "unknown" until a valueField is known', () => {
-    const valuePort = buildPrefetchTemplate(arrayOutputVerb).ports.find((p) => p.id === 'value');
+    const valuePort = buildPrefetchPorts(arrayOutputVerb).find((p) => p.id === 'value');
     expect(valuePort?.dataType).toBe('unknown');
   });
 
   it('record port has dataType "record"', () => {
-    const recordPort = buildPrefetchTemplate(arrayOutputVerb).ports.find((p) => p.id === 'record');
+    const recordPort = buildPrefetchPorts(arrayOutputVerb).find((p) => p.id === 'record');
     expect(recordPort?.dataType).toBe('record');
   });
+});
 
-  it('seeds defaultConfig with mode: "prefetch" and an empty prefetch block', () => {
-    const t = buildPrefetchTemplate(arrayOutputVerb);
-    expect(t.defaultConfig).toMatchObject({
-      mode: 'prefetch',
-      shardId: 'workspace-mgr',
-      name: 'workspaces.list',
-      prefetch: {
-        args: {},
-        valueField: null,
-        list: null,
-        selectedRowKey: null,
-        lastSelectedRow: null,
-        lastError: null,
-      },
+describe('defaultPrefetchConfig', () => {
+  it('seeds an empty prefetch block', () => {
+    expect(defaultPrefetchConfig()).toEqual({
+      args: {},
+      valueField: null,
+      list: null,
+      selectedRowKey: null,
+      lastSelectedRow: null,
+      lastError: null,
     });
   });
 });

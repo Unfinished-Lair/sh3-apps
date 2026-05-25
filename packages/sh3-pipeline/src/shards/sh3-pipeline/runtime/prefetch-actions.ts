@@ -34,7 +34,7 @@ export function maybeAutoPrefetch(): void {
   if (!state) return;
   const ctx = activeCtx;
   for (const node of state.asset.nodes) {
-    if (!node.type.endsWith(':prefetch')) continue;
+    if ((node.config as { mode?: unknown }).mode !== 'prefetch') continue;
     const cfg = (node.config as { prefetch?: PrefetchConfig }).prefetch;
     if (cfg && cfg.list === null && cfg.lastError === null && !state.prefetchingNodes.has(node.id)) {
       refreshPrefetchNode(ctx, state, node.id).catch((err) => {
@@ -149,10 +149,9 @@ export function commitPrefetchConfig(state: PipelineState, nodeId: string, next:
 export function toggleNodeMode(state: PipelineState, nodeId: string): void {
   const node = state.asset.nodes.find((n) => n.id === nodeId);
   if (!node) return;
-  const isPrefetch = node.type.endsWith(':prefetch');
-  const newType = isPrefetch ? node.type.replace(/:prefetch$/, '') : `${node.type}:prefetch`;
+  const isPrefetch = (node.config as { mode?: unknown }).mode === 'prefetch';
 
-  // Strip wires touching this node (they're invalid in the new mode).
+  // Strip wires touching this node (they're invalid in the new port shape).
   const edges = state.asset.edges.filter(
     (e) => e.sourceNodeId !== nodeId && e.targetNodeId !== nodeId,
   );
@@ -171,7 +170,7 @@ export function toggleNodeMode(state: PipelineState, nodeId: string): void {
       };
 
   const nodes = state.asset.nodes.map((n) =>
-    n.id === nodeId ? { ...n, type: newType, config: nextConfig as Record<string, unknown> } : n,
+    n.id === nodeId ? { ...n, config: nextConfig as Record<string, unknown> } : n,
   );
   state.asset = { ...state.asset, nodes, edges };
   pushAssetToController(state.asset);

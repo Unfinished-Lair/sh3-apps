@@ -1,4 +1,4 @@
-import type { NodeTemplate, GraphAssetPort } from '@unfinished-lair/sh3-editor/graph/types';
+import type { GraphAssetPort } from '@unfinished-lair/sh3-editor/graph/types';
 import type { VerbDescriptor } from './verb-adapter';
 
 /**
@@ -14,29 +14,29 @@ export function isPickerableVerb(v: VerbDescriptor): boolean {
   return true;
 }
 
-export function buildPrefetchTemplate(v: VerbDescriptor): NodeTemplate {
-  const ports: GraphAssetPort[] = [
+/**
+ * Port shape for a verb node in prefetch mode. Used by verb-adapter's
+ * computePorts when config.mode === 'prefetch'. Returns value + record
+ * outputs only — no control or schema-derived input ports.
+ */
+export function buildPrefetchPorts(_v: VerbDescriptor): GraphAssetPort[] {
+  return [
     { id: 'value',  direction: 'output', dataType: 'unknown', label: 'value' },
     { id: 'record', direction: 'output', dataType: 'record',  label: 'record' },
   ];
+}
+
+/**
+ * Default `prefetch` config block for a verb node forced into prefetch mode
+ * (used by Toggle Prefetch when activating mode for the first time).
+ */
+export function defaultPrefetchConfig(): Record<string, unknown> {
   return {
-    type: `verb:${v.shardId}:${v.name}:prefetch`,
-    category: 'Pickers',
-    label: v.name,
-    ports,
-    defaultConfig: {
-      mode: 'prefetch',
-      shardId: v.shardId,
-      name: v.name,
-      summary: v.summary ?? '',
-      prefetch: {
-        args: {},
-        valueField: null,
-        list: null,
-        selectedRowKey: null,
-        lastSelectedRow: null,
-        lastError: null,
-      },
-    },
+    args: {},
+    valueField: null,
+    list: null,
+    selectedRowKey: null,
+    lastSelectedRow: null,
+    lastError: null,
   };
 }

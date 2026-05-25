@@ -19,7 +19,7 @@ function makeCtx(): RunContext {
 function makeNode(cfg: PrefetchConfig) {
   return {
     nodeId: 'n1',
-    type: 'verb:workspace-mgr:workspaces.list:prefetch',
+    type: 'verb:workspace-mgr:workspaces.list',
     config: { mode: 'prefetch', ...cfg } as Record<string, unknown>,
     inputs: {},
   };

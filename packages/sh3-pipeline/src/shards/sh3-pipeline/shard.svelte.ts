@@ -67,9 +67,9 @@ const verbHandler = makeVerbHandler();
 const prefetchHandler = makePrefetchHandler();
 
 /**
- * Dispatch verb-prefixed nodes on config.mode so a single 'verb:' prefix
- * registration covers both 'verb:<sh>:<n>' (runtime, defaults to mode:'runtime')
- * and 'verb:<sh>:<n>:prefetch' (defaults to mode:'prefetch').
+ * Dispatch verb-prefixed nodes on config.mode so the single 'verb:' prefix
+ * registration covers both runtime (config.mode === 'runtime') and prefetch
+ * (config.mode === 'prefetch') variants of a verb node.
  */
 const verbDispatcher: typeof verbHandler = (ctx, inv) => {
   const mode = (inv.config as { mode?: unknown }).mode;

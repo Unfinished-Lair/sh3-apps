@@ -144,34 +144,46 @@ describe('verbsToTemplates', () => {
   });
 });
 
-describe('verbsToTemplates — prefetch emission', () => {
-  const pickerable: VerbDescriptor = {
-    shardId: 'workspace-mgr',
-    name: 'workspaces.list',
-    summary: '',
-    schema: {
-      input: { type: 'object', properties: {} },
-      output: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } },
-    },
-  };
-  const nonPickerable: VerbDescriptor = {
-    shardId: 'x',
-    name: 'something',
-    summary: '',
-    schema: { input: { type: 'object', properties: {} } },
-  };
+describe('verbsToTemplates — one template per verb', () => {
+  it('emits exactly one template per verb', () => {
+    const verbs: VerbDescriptor[] = [
+      {
+        shardId: 's', name: 'do', summary: '',
+        schema: { output: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } } },
+      },
+      { shardId: 's', name: 'nondrop', summary: '' },
+    ];
+    const tmpls = verbsToTemplates(verbs);
+    expect(tmpls.map(t => t.type)).toEqual(['verb:s:do', 'verb:s:nondrop']);
+  });
 
-  it('emits one runtime template + one prefetch template for pickerable verbs', () => {
-    const templates = verbsToTemplates([pickerable]);
-    const types = templates.map((t) => t.type).sort();
-    expect(types).toEqual([
-      'verb:workspace-mgr:workspaces.list',
-      'verb:workspace-mgr:workspaces.list:prefetch',
+  it('computePorts(mode:runtime) matches runtime shape', () => {
+    const v: VerbDescriptor = {
+      shardId: 's', name: 'list', summary: '',
+      schema: { output: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } } },
+    };
+    const [tmpl] = verbsToTemplates([v]);
+    const runtimePorts = tmpl.computePorts!({ mode: 'runtime', shardId: 's', name: 'list', summary: '' });
+    expect(runtimePorts.map(p => p.id)).toEqual(tmpl.ports.map(p => p.id));
+  });
+
+  it('computePorts(mode:prefetch) on a pickerable verb returns the prefetch shape', () => {
+    const v: VerbDescriptor = {
+      shardId: 's', name: 'list', summary: '',
+      schema: { output: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } } },
+    };
+    const [tmpl] = verbsToTemplates([v]);
+    const prefetchPorts = tmpl.computePorts!({ mode: 'prefetch', shardId: 's', name: 'list', summary: '' });
+    expect(prefetchPorts.map(p => `${p.direction}:${p.id}`)).toEqual([
+      'output:value',
+      'output:record',
     ]);
   });
 
-  it('emits only the runtime template for non-pickerable verbs', () => {
-    const templates = verbsToTemplates([nonPickerable]);
-    expect(templates.map((t) => t.type)).toEqual(['verb:x:something']);
+  it('computePorts(mode:prefetch) on a non-pickerable verb falls back to runtime shape', () => {
+    const v: VerbDescriptor = { shardId: 's', name: 'plain', summary: '' };
+    const [tmpl] = verbsToTemplates([v]);
+    const ports = tmpl.computePorts!({ mode: 'prefetch', shardId: 's', name: 'plain', summary: '' });
+    expect(ports.map(p => p.id)).toEqual(tmpl.ports.map(p => p.id));
   });
 });

@@ -11,6 +11,7 @@
     makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand,
   } from '../history/commands';
   import { effectivePorts } from '../domain/effective-ports';
+  import { resolvePortColor } from './port-color';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
   import {
@@ -106,7 +107,12 @@
     if (!n) return '#888';
     const p = n.ports.find((pp) => pp.shortId === e.sourcePortId);
     if (!p?.dataType) return '#888';
-    return visualsFor(n).portColors?.[p.dataType] ?? '#888';
+    return resolvePortColor(props.domain, visualsFor(n), p.dataType) ?? '#888';
+  }
+
+  function portColorFor(node: NodeState, p: PortDefinition): string | null {
+    void props.state.revision;
+    return resolvePortColor(props.domain, visualsFor(node), p.dataType);
   }
 
   function selectOne(id: string, additive: boolean) {
@@ -608,6 +614,7 @@
         node={n}
         visuals={visualsFor(n)}
         selected={isSelected(n.id)}
+        portColor={(p) => portColorFor(n, p)}
         onSelectClick={(ev) => { ev.stopPropagation(); selectOne(n.id, ev.ctrlKey || ev.metaKey); }}
         onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
         onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}

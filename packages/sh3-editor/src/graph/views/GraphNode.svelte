@@ -6,6 +6,8 @@
     node: NodeState;
     visuals: NodeVisuals;
     selected: boolean;
+    /** Resolver injected by Graph.svelte. Returns hex, or null to inherit border. */
+    portColor?: (port: PortDefinition) => string | null;
     onHeaderPointerDown?: (ev: PointerEvent) => void;
     onPortPointerDown?: (port: PortDefinition, ev: PointerEvent) => void;
     onPortPointerUp?: (port: PortDefinition, ev: PointerEvent) => void;
@@ -15,6 +17,10 @@
 
   const inputs = $derived(props.node.ports.filter((p) => p.direction === 'input'));
   const outputs = $derived(props.node.ports.filter((p) => p.direction === 'output'));
+
+  function colorFor(p: PortDefinition): string | undefined {
+    return props.portColor?.(p) ?? undefined;
+  }
 </script>
 
 <div
@@ -43,6 +49,7 @@
         <div class="port input"
              data-port-id={p.shortId}
              data-data-type={p.dataType ?? ''}
+             style:--port-color={colorFor(p)}
              onpointerdown={(ev) => props.onPortPointerDown?.(p, ev)}
              onpointerup={(ev) => props.onPortPointerUp?.(p, ev)}>
           <span class="port-marker"></span>
@@ -55,6 +62,7 @@
         <div class="port output"
              data-port-id={p.shortId}
              data-data-type={p.dataType ?? ''}
+             style:--port-color={colorFor(p)}
              onpointerdown={(ev) => props.onPortPointerDown?.(p, ev)}
              onpointerup={(ev) => props.onPortPointerUp?.(p, ev)}>
           <span class="port-label">{p.label}</span>
@@ -86,7 +94,9 @@
   .ports-col.inputs { align-items: flex-start; }
   .ports-col.outputs { align-items: flex-end; }
   .port { display: flex; align-items: center; gap: 4px; padding: 0 4px; font-size: 0.85em; cursor: crosshair; }
-  .port-marker { width: 10px; height: 10px; border-radius: 50%; background: var(--border-color); border: 1px solid rgba(255,255,255,0.4); }
+  .port-marker { width: 10px; height: 10px; border-radius: 50%;
+                 background: var(--port-color, var(--border-color));
+                 border: 1px solid rgba(255,255,255,0.4); }
   .input .port-marker { margin-left: -10px; }
   .output .port-marker { margin-right: -10px; }
 </style>

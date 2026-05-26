@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createGraphDomain } from './create';
+import type { DataTypeDef, ConversionDef } from './types';
 
 describe('createGraphDomain', () => {
   it('applies sane defaults', () => {
@@ -53,5 +54,35 @@ describe('createGraphDomain', () => {
   it('falls back to type when resolveLabel is omitted', () => {
     const d = createGraphDomain({ id: 'd', label: 'D' });
     expect(d.resolveLabel('t', {})).toBe('t');
+  });
+});
+
+describe('createGraphDomain — new fields', () => {
+  it('plumbs dataTypes / conversions / resolveConnect from spec', () => {
+    const dataTypes: Record<string, DataTypeDef> = {
+      str: { label: 'String', color: '#0ff' },
+    };
+    const conversions: ConversionDef[] = [
+      { id: 'demo:n-to-s', from: 'num', to: 'str', adapt: (v) => String(v) },
+    ];
+    const d = createGraphDomain({
+      id: 'demo', label: 'Demo',
+      dataTypes,
+      conversions,
+      resolveConnect: () => ({ via: 'demo:n-to-s' }),
+    });
+    expect(d.dataTypes).toBe(dataTypes);
+    expect(d.conversions).toBe(conversions);
+    expect(d.resolveConnect?.(
+      { nodeId: 'a', portId: 'x', direction: 'output', dataType: 'num' },
+      { nodeId: 'b', portId: 'y', direction: 'input',  dataType: 'str' },
+    )).toEqual({ via: 'demo:n-to-s' });
+  });
+
+  it('omits dataTypes / conversions / resolveConnect when spec does not include them', () => {
+    const d = createGraphDomain({ id: 'd', label: 'd' });
+    expect(d.dataTypes).toBeUndefined();
+    expect(d.conversions).toBeUndefined();
+    expect(d.resolveConnect).toBeUndefined();
   });
 });

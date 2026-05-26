@@ -1,4 +1,5 @@
 import type {
+  ConnectResolution, ConversionDef, DataTypeDef,
   EdgeSemantics, GraphDomain, NodeTemplate, NodeVisuals, PortRef,
 } from './types';
 
@@ -13,6 +14,9 @@ export interface GraphDomainSpec {
   templates?: NodeTemplate[];
   visuals?: Record<string, NodeVisuals>;
   canConnect?(src: PortRef, tgt: PortRef): boolean;
+  resolveConnect?(src: PortRef, tgt: PortRef): ConnectResolution;
+  dataTypes?: Record<string, DataTypeDef>;
+  conversions?: ReadonlyArray<ConversionDef>;
   resolveLabel?(type: string, config: Record<string, unknown>): string;
 }
 
@@ -55,6 +59,9 @@ export function createGraphDomain(spec: GraphDomainSpec): GraphDomain {
     resolveLabel: spec.resolveLabel ?? ((type) => type),
 
     ...(spec.canConnect ? { canConnect: spec.canConnect } : {}),
+    ...(spec.resolveConnect ? { resolveConnect: spec.resolveConnect } : {}),
+    ...(spec.dataTypes ? { dataTypes: spec.dataTypes } : {}),
+    ...(spec.conversions ? { conversions: spec.conversions } : {}),
   };
   return dom;
 }

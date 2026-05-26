@@ -9,16 +9,20 @@
     color: string;
     oriented: boolean;
     selected: boolean;
+    adapter?: string;
     onClick?: (ev: MouseEvent) => void;
   }
   const props: Props = $props();
 
   const d = $derived(cubicEdgePath(props.source, props.target));
+  const isAdapter = $derived(!!props.adapter);
 </script>
 
-<g class="edge" class:selected={props.selected} onclick={(ev) => props.onClick?.(ev)} role="presentation">
+<g class="edge" class:selected={props.selected} class:adapter={isAdapter}
+   onclick={(ev) => props.onClick?.(ev)} role="presentation">
   {#if props.selected}<path d={d} class="halo" />{/if}
   <path d={d} class="line" stroke={props.color}
+        stroke-dasharray={isAdapter ? '6 4' : undefined}
         marker-end={props.oriented ? `url(#arrow-${props.id})` : null} />
   {#if props.oriented}
     <defs>
@@ -34,4 +38,5 @@
   .line { fill: none; stroke-width: 2; }
   .halo { fill: none; stroke: var(--sh3-accent, #4a9eff); stroke-width: 6; opacity: 0.4; }
   .selected .line { stroke-width: 3; }
+  .adapter .line { opacity: 0.85; }
 </style>

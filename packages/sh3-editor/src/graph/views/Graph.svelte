@@ -598,6 +598,7 @@
           color={edgeColor(e)}
           oriented={oriented}
           selected={isSelected(e.id)}
+          adapter={e.adapter}
           onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.ctrlKey || ev.metaKey); }}
         />
       {/each}

@@ -17,8 +17,8 @@ describe('verbsToTemplates', () => {
     const inIds = t.ports.filter((p) => p.direction === 'input').map((p) => p.id);
     const outIds = t.ports.filter((p) => p.direction === 'output').map((p) => p.id);
 
-    expect(inIds).toEqual(['control-in', 'args']);
-    expect(outIds).toEqual(['control-out', 'result', 'stdout', 'stderr', 'scrollback']);
+    expect(inIds).toEqual(['run-in', 'args']);
+    expect(outIds).toEqual(['run-out', 'result', 'stdout', 'stderr', 'scrollback']);
   });
 
   it('maps schema.input.properties to typed input ports', () => {
@@ -44,7 +44,7 @@ describe('verbsToTemplates', () => {
     expect(byId.get('topic')?.dataType).toBe('string');
     expect(byId.get('maxItems')?.dataType).toBe('number');
     expect(byId.get('loud')?.dataType).toBe('boolean');
-    expect(byId.get('control-in')?.dataType).toBe('control');
+    expect(byId.get('run-in')?.dataType).toBe('run');
   });
 
   it('maps schema.output object properties to typed output ports (no fallback)', () => {
@@ -65,8 +65,8 @@ describe('verbsToTemplates', () => {
     const byId = new Map(outputs.map((p) => [p.id, p]));
     expect(byId.get('answer')?.dataType).toBe('string');
     expect(byId.get('count')?.dataType).toBe('number');
-    expect(byId.get('control-out')?.dataType).toBe('control');
-    expect(outputs.map((p) => p.id).sort()).toEqual(['answer', 'control-out', 'count']);
+    expect(byId.get('run-out')?.dataType).toBe('run');
+    expect(outputs.map((p) => p.id).sort()).toEqual(['answer', 'count', 'run-out']);
   });
 
   it('assigns category=Verbs and label=v.name (concise, single-line)', () => {

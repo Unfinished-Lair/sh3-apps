@@ -61,7 +61,7 @@ function buildRuntimePortBuild(v: VerbDescriptor): {
 }
 
 function buildInputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; hasInputSchema: boolean } {
-  const ports: GraphAssetPort[] = [port('control-in', 'input', 'control', 'control')];
+  const ports: GraphAssetPort[] = [port('run-in', 'input', 'run', '')];
   const input = (v.schema?.input ?? null) as { type?: string; properties?: Record<string, unknown> } | null;
   if (input && input.type === 'object' && input.properties && typeof input.properties === 'object') {
     for (const [key, prop] of Object.entries(input.properties)) {
@@ -74,7 +74,7 @@ function buildInputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; hasInput
 }
 
 function buildOutputPorts(v: VerbDescriptor): { ports: GraphAssetPort[]; outputPortIds: string[] | null } {
-  const ports: GraphAssetPort[] = [port('control-out', 'output', 'control', 'control')];
+  const ports: GraphAssetPort[] = [port('run-out', 'output', 'run', '')];
   const output = (v.schema?.output ?? null) as { type?: string; properties?: Record<string, unknown> } | null;
 
   if (output && output.type === 'object' && output.properties && typeof output.properties === 'object') {

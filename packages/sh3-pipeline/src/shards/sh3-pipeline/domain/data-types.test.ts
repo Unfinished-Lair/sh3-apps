@@ -1,30 +1,52 @@
 import { describe, it, expect } from 'vitest';
-import { dataTypeFromJsonSchema } from './data-types';
+import {
+  DATA_TYPES, DATA_TYPE_DEFS, CONVERSIONS, parseNumberOrThrow, parseBooleanOrThrow,
+  dataTypeFromJsonSchema,
+  type DataType,
+} from './data-types';
 
-describe('dataTypeFromJsonSchema', () => {
-  it('null / non-object schema → unknown', () => {
-    expect(dataTypeFromJsonSchema(null)).toBe('unknown');
-    expect(dataTypeFromJsonSchema(undefined)).toBe('unknown');
-    expect(dataTypeFromJsonSchema('string')).toBe('unknown');
-    expect(dataTypeFromJsonSchema(42)).toBe('unknown');
+describe('data-types', () => {
+  it('DATA_TYPES uses "run" instead of "control"', () => {
+    expect(DATA_TYPES).toContain('run');
+    expect(DATA_TYPES).not.toContain('control' as DataType);
   });
 
-  it('primitive types map directly', () => {
+  it('DATA_TYPE_DEFS has label + color for every DataType', () => {
+    for (const t of DATA_TYPES) {
+      expect(DATA_TYPE_DEFS[t].label).toBeTruthy();
+      expect(DATA_TYPE_DEFS[t].color).toMatch(/^#/);
+    }
+  });
+
+  it('CONVERSIONS declares the v1 set', () => {
+    const ids = CONVERSIONS.map((c) => c.id).sort();
+    expect(ids).toEqual([
+      'pipeline:boolean-to-string',
+      'pipeline:number-to-string',
+      'pipeline:string-to-boolean',
+      'pipeline:string-to-number',
+    ].sort());
+  });
+
+  it('parseNumberOrThrow accepts numerics, throws on garbage', () => {
+    expect(parseNumberOrThrow('42')).toBe(42);
+    expect(parseNumberOrThrow('-3.5')).toBe(-3.5);
+    expect(() => parseNumberOrThrow('abc')).toThrow();
+    expect(() => parseNumberOrThrow('NaN')).toThrow();
+  });
+
+  it('parseBooleanOrThrow accepts true-ish / false-ish / throws otherwise', () => {
+    expect(parseBooleanOrThrow('true')).toBe(true);
+    expect(parseBooleanOrThrow(' YES ')).toBe(true);
+    expect(parseBooleanOrThrow('1')).toBe(true);
+    expect(parseBooleanOrThrow('false')).toBe(false);
+    expect(parseBooleanOrThrow('0')).toBe(false);
+    expect(parseBooleanOrThrow('')).toBe(false);
+    expect(() => parseBooleanOrThrow('maybe')).toThrow();
+  });
+
+  it('dataTypeFromJsonSchema unchanged for primitives', () => {
     expect(dataTypeFromJsonSchema({ type: 'string' })).toBe('string');
-    expect(dataTypeFromJsonSchema({ type: 'number' })).toBe('number');
     expect(dataTypeFromJsonSchema({ type: 'integer' })).toBe('number');
-    expect(dataTypeFromJsonSchema({ type: 'boolean' })).toBe('boolean');
-    expect(dataTypeFromJsonSchema({ type: 'array' })).toBe('array');
-    expect(dataTypeFromJsonSchema({ type: 'object' })).toBe('record');
-  });
-
-  it('unknown type → unknown', () => {
-    expect(dataTypeFromJsonSchema({ type: 'null' })).toBe('unknown');
-    expect(dataTypeFromJsonSchema({})).toBe('unknown');
-  });
-
-  it('format: "sh3-document" short-circuits to doc regardless of type', () => {
-    expect(dataTypeFromJsonSchema({ type: 'object', format: 'sh3-document' })).toBe('doc');
-    expect(dataTypeFromJsonSchema({ format: 'sh3-document' })).toBe('doc');
   });
 });

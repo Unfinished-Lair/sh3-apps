@@ -16,11 +16,19 @@ function makeCtx(): RunContext {
   };
 }
 
+// Asset shape: PrefetchConfig is nested under config.prefetch, with shardId
+// and name duplicated at top level (see toggleNodeMode in prefetch-actions.ts).
 function makeNode(cfg: PrefetchConfig) {
   return {
     nodeId: 'n1',
     type: 'verb:workspace-mgr:workspaces.list',
-    config: { mode: 'prefetch', ...cfg } as Record<string, unknown>,
+    config: {
+      mode: 'prefetch',
+      shardId: cfg.shardId,
+      name: cfg.name,
+      summary: cfg.summary,
+      prefetch: cfg,
+    } as Record<string, unknown>,
     inputs: {},
   };
 }
@@ -92,5 +100,47 @@ describe('prefetchHandler', () => {
     const outcome = await handler(makeCtx(), makeNode(cfg));
     expect(outcome.outputs.value).toEqual({ id: 'a' });
     expect(outcome.outputs.record).toEqual({ id: 'a' });
+  });
+
+  it('regression: reads prefetch block from nested config (full toggleNodeMode shape)', async () => {
+    // This is what toggleNodeMode / commitPrefetchConfig actually persist:
+    // PrefetchConfig under config.prefetch, identifier fields duplicated at
+    // top level. Earlier handler reads at the top level were the
+    // "no valid selection" bug.
+    const handler = makePrefetchHandler();
+    const persistedConfig = {
+      mode: 'prefetch',
+      shardId: 'guml',
+      name: 'workspace-list',
+      summary: '',
+      prefetch: {
+        shardId: 'guml',
+        name: 'workspace-list',
+        summary: '',
+        args: {},
+        valueField: 'id',
+        list: {
+          rows: [{ id: 'square-survivor', name: 'Square-Survivor' }],
+          fetchedAt: Date.now(),
+          schemaSnapshot: null,
+        },
+        selectedRowKey: 'square-survivor',
+        lastSelectedRow: { id: 'square-survivor', name: 'Square-Survivor' },
+        lastError: null,
+      },
+    };
+    const ctx = makeCtx();
+    const outcome = await handler(ctx, {
+      nodeId: 'pf1',
+      type: 'verb:guml:workspace-list',
+      config: persistedConfig,
+      inputs: {},
+    });
+    expect(outcome.outputs.value).toBe('square-survivor');
+    expect(outcome.outputs.record).toEqual({ id: 'square-survivor', name: 'Square-Survivor' });
+    expect(ctx.log).not.toHaveBeenCalledWith(expect.objectContaining({
+      level: 'warn',
+      message: expect.stringMatching(/no valid selection/i),
+    }));
   });
 });

@@ -41,4 +41,9 @@ export interface GraphAssetEdge {
   sourcePortId: string;
   targetNodeId: string;
   targetPortId: string;
+  /**
+   * Conversion id recorded when the domain's `resolveConnect` returned
+   * `{ via }`. Absent = direct connection, no adapter applied at runtime.
+   */
+  adapter?: string;
 }

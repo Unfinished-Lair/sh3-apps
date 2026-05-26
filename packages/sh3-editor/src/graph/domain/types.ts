@@ -50,6 +50,38 @@ export interface GraphDomainHost {
   log: (level: 'debug' | 'info' | 'warn' | 'error', msg: string, ...args: unknown[]) => void;
 }
 
+/**
+ * Domain-level declaration for a port data type. The renderer reads
+ * `color` for port discs (with fallback to per-template `portColors`,
+ * then `borderColor`).
+ */
+export interface DataTypeDef {
+  label: string;
+  color: string;
+  description?: string;
+}
+
+/**
+ * Declared conversion adapter between two data types. The conversion id is
+ * persisted on the edge (`GraphAssetEdge.adapter`) when `resolveConnect`
+ * resolves a cross-type connection via this entry. The consumer runtime
+ * applies `adapt(value)` when reading the upstream output.
+ */
+export interface ConversionDef {
+  id: string;
+  from: string;
+  to: string;
+  adapt: (value: unknown) => unknown;
+}
+
+/**
+ * Resolution result for a candidate connection.
+ * - `false`: connection rejected
+ * - `true`: direct connection (no adapter)
+ * - `{ via }`: routed through the named conversion id
+ */
+export type ConnectResolution = false | true | { via: string };
+
 export interface GraphDomain {
   // Identity
   readonly id: string;
@@ -75,5 +107,15 @@ export interface GraphDomain {
   resolveLabel(type: string, config: Record<string, unknown>): string;
 
   // Connection rules — default: any output → any input on a different node.
+  /** Boolean form. When `resolveConnect` is also present, it wins. */
   canConnect?(src: PortRef, tgt: PortRef): boolean;
+
+  /** Rich form: supports adapter-routed connections. Overrides canConnect when present. */
+  resolveConnect?(src: PortRef, tgt: PortRef): ConnectResolution;
+
+  /** Domain-level data type registry. Renderer reads `[t].color` for port discs. */
+  dataTypes?: Record<string, DataTypeDef>;
+
+  /** Adapter table. Indexed by id at runtime by the consumer. */
+  conversions?: ReadonlyArray<ConversionDef>;
 }

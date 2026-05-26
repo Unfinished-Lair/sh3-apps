@@ -71,6 +71,71 @@ createGraphDomain({
 The default rule (when `canConnect` is omitted): any output → any input on a
 different node, regardless of `dataType`.
 
+## 4b. Conversion adapters (optional)
+
+A domain can declare a port-type registry plus a set of one-hop conversion
+adapters, and use `resolveConnect` (a richer form of `canConnect`) to route
+cross-type connections through them.
+
+```ts
+import type {
+  DataTypeDef, ConversionDef, ConnectResolution,
+} from '@unfinished-lair/sh3-editor/graph/types';
+
+const dataTypes: Record<string, DataTypeDef> = {
+  number: { label: 'Number', color: '#a3e635' },
+  string: { label: 'String', color: '#22d3ee' },
+};
+
+const conversions: ConversionDef[] = [
+  { id: 'demo:number-to-string', from: 'number', to: 'string',
+    adapt: (v) => String(v) },
+];
+
+createGraphDomain({
+  // ...
+  dataTypes,
+  conversions,
+  resolveConnect(src, tgt): ConnectResolution {
+    if (src.direction !== 'output' || tgt.direction !== 'input') return false;
+    if (src.nodeId === tgt.nodeId) return false;
+    if (src.dataType === tgt.dataType) return true;
+    const conv = conversions.find(
+      (c) => c.from === src.dataType && c.to === tgt.dataType,
+    );
+    return conv ? { via: conv.id } : false;
+  },
+});
+```
+
+**Port-disc colors.** When `dataTypes[t].color` is set, the renderer uses it
+for the port disc. Resolution order is `domain.dataTypes[t].color →
+visuals.portColors[t] → null` (when null the disc falls back to the node's
+border color via CSS).
+
+**`resolveConnect` return values.**
+
+- `false` — connection rejected
+- `true` — direct connection (no adapter)
+- `{ via: <id> }` — accept and persist `<id>` as `GraphAssetEdge.adapter`
+
+When both `resolveConnect` and `canConnect` are present, `resolveConnect`
+wins.
+
+**Naming convention for conversion ids.** `<domain>:<from>-to-<to>`, e.g.
+`pipeline:number-to-string`. Ids are persisted on edges; rename with a
+migration step.
+
+**Visual treatment.** Edges with `adapter` set are rendered dashed.
+
+**Runtime application.** sh3-editor only records the adapter id on the edge.
+Applying `conv.adapt(value)` is the consumer's responsibility — typically in
+the value-resolution path of the graph runner. The consumer should look up
+the adapter in its own copy of the `conversions` table by id, call
+`adapt(raw)`, and pass the result to the downstream node. If the adapter
+throws, surface the error in the run log and pass `undefined` to the
+consumer.
+
 ## 5. Dynamic labels
 
 For nodes whose display name is derived from config (e.g. an `expression`

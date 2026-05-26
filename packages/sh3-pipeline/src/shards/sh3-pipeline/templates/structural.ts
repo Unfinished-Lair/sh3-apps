@@ -169,4 +169,26 @@ export const structuralTemplates: NodeTemplate[] = [
     defaultConfig: { pretty: true },
     configSchema: [{ key: 'pretty', label: 'Pretty-print', type: 'boolean' }],
   },
+  {
+    type: 'array.size',
+    category: 'Data',
+    label: 'Array Size',
+    ports: [
+      port('array', 'input',  'array'),
+      port('size',  'output', 'number'),
+    ],
+    defaultConfig: {},
+  },
+  {
+    type: 'array.get',
+    category: 'Data',
+    label: 'Array Get',
+    ports: [
+      port('array', 'input',  'array'),
+      port('index', 'input',  'number'),
+      port('value', 'output', 'unknown'),
+      port('error', 'output', 'boolean'),
+    ],
+    defaultConfig: {},
+  },
 ];

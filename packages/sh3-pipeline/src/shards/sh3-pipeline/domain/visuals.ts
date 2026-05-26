@@ -23,6 +23,8 @@ export const VISUALS: Record<string, NodeVisuals> = {
   print:           { ...BASE, label: 'Print',         borderColor: '#94a3b8' },
   'record.toJson': { ...BASE, label: 'Record → JSON', borderColor: '#c4b5fd' },
   'array.toJson':  { ...BASE, label: 'Array → JSON',  borderColor: '#fb7185' },
+  'array.size':    { ...BASE, label: 'Array Size',    borderColor: '#fb7185' },
+  'array.get':     { ...BASE, label: 'Array Get',     borderColor: '#fb7185' },
 };
 
 export const VERB_VISUAL: NodeVisuals = {

@@ -2,6 +2,7 @@ import type { ParamDef } from '../../domain/types';
 import type { HandlerRegistry, NodeHandler } from './index';
 import { makePrintHandler } from './print';
 import { makeJsonifyHandler } from './jsonify';
+import { arraySizeHandler, arrayGetHandler } from './array';
 import { toDisplay } from './pretty';
 
 const jsonifyHandler = makeJsonifyHandler();
@@ -108,6 +109,8 @@ export const structuralHandlers: HandlerRegistry = {
     ['print',           makePrintHandler()],
     ['record.toJson',   jsonifyHandler],
     ['array.toJson',    jsonifyHandler],
+    ['array.size',      arraySizeHandler],
+    ['array.get',       arrayGetHandler],
   ]),
   prefixed: [],
 };

@@ -17,9 +17,9 @@ const tplA: NodeTemplate = {
   category: 'Verbs',
   label: 'ai:ask',
   ports: [
-    { id: 'control-in', direction: 'input', dataType: 'control', label: 'control' },
+    { id: 'run-in', direction: 'input', dataType: 'run', label: '' },
     { id: 'topic', direction: 'input', dataType: 'string', label: 'topic' },
-    { id: 'control-out', direction: 'output', dataType: 'control', label: 'control' },
+    { id: 'run-out', direction: 'output', dataType: 'run', label: '' },
     { id: 'answer', direction: 'output', dataType: 'string', label: 'answer' },
   ],
   defaultConfig: { summary: 'Ask the AI' },
@@ -29,7 +29,7 @@ const tplB: NodeTemplate = {
   type: 'structural:branch',
   category: 'Structural',
   label: 'Branch',
-  ports: [{ id: 'control-in', direction: 'input', dataType: 'control', label: 'control' }],
+  ports: [{ id: 'run-in', direction: 'input', dataType: 'run', label: '' }],
   defaultConfig: { summary: 'Branch the flow' },
 };
 

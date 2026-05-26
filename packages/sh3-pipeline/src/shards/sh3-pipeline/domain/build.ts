@@ -1,4 +1,7 @@
 import type {
+  ConnectResolution,
+  ConversionDef,
+  DataTypeDef,
   GraphDomain,
   GraphDomainHost,
   NodeTemplate,
@@ -8,7 +11,8 @@ import type {
 import { structuralTemplates } from '../templates/structural';
 import { documentTemplates } from '../templates/document';
 import { verbsToTemplates, type VerbDescriptor } from '../templates/verb-adapter';
-import { hybridConnectRule } from './connect-rule';
+import { resolveConnect as resolveConnectFn } from './connect-rule';
+import { CONVERSIONS, DATA_TYPE_DEFS } from './data-types';
 import { VISUALS, VERB_VISUAL } from './visuals';
 
 // Cross-shard rule: sh3-pipeline must not value-import from sh3-editor. The
@@ -20,7 +24,9 @@ function makeDomain(opts: {
   templates: NodeTemplate[];
   visuals: Record<string, NodeVisuals>;
   defaultVisual: (type: string) => NodeVisuals;
-  canConnect: (src: PortRef, tgt: PortRef) => boolean;
+  resolveConnect: (src: PortRef, tgt: PortRef) => ConnectResolution;
+  dataTypes: Record<string, DataTypeDef>;
+  conversions: ReadonlyArray<ConversionDef>;
 }): GraphDomain {
   const templates = new Map<string, NodeTemplate>();
   for (const t of opts.templates) templates.set(t.type, t);
@@ -51,7 +57,9 @@ function makeDomain(opts: {
       const v = visuals.get(type) ?? opts.defaultVisual(type);
       return typeof v.label === 'function' ? v.label(config) : v.label;
     },
-    canConnect: opts.canConnect,
+    resolveConnect: opts.resolveConnect,
+    dataTypes: opts.dataTypes,
+    conversions: opts.conversions,
   };
 }
 
@@ -82,6 +90,8 @@ export function buildControlGraphDomain(ctx: CtxLike, _host: GraphDomainHost): G
     templates: [...structuralTemplates, ...documentTemplates, ...verbTemplates],
     visuals: visualMap,
     defaultVisual: (type) => ({ ...VERB_VISUAL, label: type, borderColor: '#888888' }),
-    canConnect: hybridConnectRule,
+    resolveConnect: resolveConnectFn,
+    dataTypes: DATA_TYPE_DEFS,
+    conversions: CONVERSIONS,
   });
 }

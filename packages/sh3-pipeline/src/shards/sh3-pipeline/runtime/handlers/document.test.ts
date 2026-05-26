@@ -37,7 +37,7 @@ describe('document.write handler — single object', () => {
     expect(calls[0].path).toBe('out/result.json');
     expect(calls[0].content).toBe(JSON.stringify({ hello: 'world' }, null, 2));
     expect(outcome.outputs.paths).toEqual(['out/result.json']);
-    expect(outcome.next).toBe('control-out');
+    expect(outcome.next).toBe('run-out');
   });
 });
 
@@ -76,7 +76,7 @@ describe('document.write handler — array fan-out', () => {
     });
     expect(calls).toHaveLength(0);
     expect(outcome.outputs.paths).toEqual([]);
-    expect(outcome.next).toBe('control-out');
+    expect(outcome.next).toBe('run-out');
   });
 });
 

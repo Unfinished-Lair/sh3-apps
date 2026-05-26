@@ -15,10 +15,10 @@ describe('documentTemplates', () => {
     const t = documentTemplates[0];
     const portIds = t.ports.map((p) => `${p.direction}:${p.id}`).sort();
     expect(portIds).toEqual([
-      'input:control-in',
       'input:data',
-      'output:control-out',
+      'input:run-in',
       'output:paths',
+      'output:run-out',
     ]);
   });
 

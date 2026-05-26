@@ -74,7 +74,7 @@ export function makeDocumentWriteHandler(): NodeHandler {
         level: 'info',
         message: 'document.write: data is empty array; no writes',
       });
-      return { outputs: { paths: [] }, next: 'control-out' };
+      return { outputs: { paths: [] }, next: 'run-out' };
     }
 
     const resolved: { path: string; content: string | ArrayBuffer }[] = [];
@@ -112,6 +112,6 @@ export function makeDocumentWriteHandler(): NodeHandler {
         message: `document.write: wrote ${targetShard}/${resolved[i].path}`,
       });
     }
-    return { outputs: { paths }, next: 'control-out' };
+    return { outputs: { paths }, next: 'run-out' };
   };
 }

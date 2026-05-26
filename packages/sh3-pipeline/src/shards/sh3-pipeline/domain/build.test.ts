@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildControlGraphDomain } from './build';
+import { CONVERSIONS, DATA_TYPE_DEFS } from './data-types';
 
 const fakeHost = { log: () => {} };
 
@@ -32,12 +33,12 @@ describe('buildControlGraphDomain', () => {
     expect(byCat.has('Verbs')).toBe(true);
   });
 
-  it('canConnect honors the hybrid rule', () => {
+  it('resolveConnect honors the run-port rule', () => {
     const ctx = makeCtx([]);
     const domain = buildControlGraphDomain(ctx as any, fakeHost);
-    const a = { nodeId: 'a', portId: 'p', direction: 'output' as const, dataType: 'control' };
-    const b = { nodeId: 'b', portId: 'p', direction: 'input' as const, dataType: 'control' };
-    expect(domain.canConnect!(a, b)).toBe(true);
+    const a = { nodeId: 'a', portId: 'p', direction: 'output' as const, dataType: 'run' };
+    const b = { nodeId: 'b', portId: 'p', direction: 'input' as const, dataType: 'run' };
+    expect(domain.resolveConnect!(a, b)).toBe(true);
   });
 
   it('exposes verb-decorated visuals', () => {
@@ -45,5 +46,14 @@ describe('buildControlGraphDomain', () => {
     const domain = buildControlGraphDomain(ctx as any, fakeHost);
     expect(domain.getNodeVisuals('start').borderColor).toBe('#22c55e');
     expect(domain.getNodeVisuals('verb:ai:ai:ask').borderColor).toBe('#3b82f6');
+  });
+
+  it('domain exposes dataTypes / conversions / resolveConnect', () => {
+    const ctx = makeCtx([]);
+    const domain = buildControlGraphDomain(ctx as any, fakeHost);
+    expect(domain.dataTypes).toBe(DATA_TYPE_DEFS);
+    expect(domain.conversions).toBe(CONVERSIONS);
+    expect(typeof domain.resolveConnect).toBe('function');
+    expect(domain.canConnect).toBeUndefined();
   });
 });

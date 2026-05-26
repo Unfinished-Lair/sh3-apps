@@ -11,7 +11,7 @@ const start: NodeHandler = async (ctx, inv) => {
       outputs[p.name] = p.default;
     }
   }
-  return { outputs, next: 'control' };
+  return { outputs, next: 'run' };
 };
 
 const end: NodeHandler = async (_ctx, inv) => {
@@ -42,7 +42,7 @@ const setVar: NodeHandler = async (ctx, inv) => {
   } else {
     ctx.vars.set(key, inv.inputs.value);
   }
-  return { outputs: {}, next: 'control-out' };
+  return { outputs: {}, next: 'run-out' };
 };
 
 const getVar: NodeHandler = async (ctx, inv) => {

@@ -123,10 +123,10 @@ async function resolveInputs(
   const incoming = state.incoming.get(node.id) ?? [];
 
   for (const edge of incoming) {
-    // Control input ports follow a naming convention: 'control' (default) or
-    // 'control-in' (used when a node has both a control input and output).
+    // Run input ports follow a naming convention: 'run' (default) or
+    // 'run-in' (used when a node has both a run input and output).
     // Edges into them carry no data — skip pulling.
-    if (edge.to.port === 'control' || edge.to.port === 'control-in') continue;
+    if (edge.to.port === 'run' || edge.to.port === 'run-in') continue;
 
     let upstream = state.valueCache.get(edge.from.node);
     if (!upstream) {

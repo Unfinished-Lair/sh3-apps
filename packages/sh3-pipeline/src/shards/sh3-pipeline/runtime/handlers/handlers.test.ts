@@ -33,7 +33,7 @@ describe('structuralHandlers.start', () => {
       inputs: {},
     });
     expect(outcome.outputs).toEqual({ topic: 'hello', count: 3 });
-    expect(outcome.next).toBe('control');
+    expect(outcome.next).toBe('run');
   });
 });
 
@@ -86,7 +86,7 @@ describe('structuralHandlers.setVar / getVar', () => {
       inputs: { value: 42 },
     });
     expect(ctx.vars.get('k')).toBe(42);
-    expect(set.next).toBe('control-out');
+    expect(set.next).toBe('run-out');
     const get = await structuralHandlers.exact.get('getVar')!(ctx, {
       nodeId: 'gv',
       type: 'getVar',
@@ -159,7 +159,7 @@ describe('verbHandler — fallback (no schema)', () => {
       },
       inputs: { args: 'arg1 arg2' },
     });
-    expect(outcome.next).toBe('control-out');
+    expect(outcome.next).toBe('run-out');
     expect(outcome.outputs.result).toBe(42);
     expect(outcome.outputs.stdout).toBe('hello world');
     expect(outcome.outputs.stderr).toBe('oops');
@@ -207,7 +207,7 @@ describe('verbHandler — structured', () => {
       inputs: { topic: 'cats', count: 3 },
     });
     expect(outcome.outputs).toEqual({ answer: 'ok', count: 3 });
-    expect(outcome.next).toBe('control-out');
+    expect(outcome.next).toBe('run-out');
   });
 
   it('input-schema-only verb: dispatches structured but maps outputs via fallback shape', async () => {

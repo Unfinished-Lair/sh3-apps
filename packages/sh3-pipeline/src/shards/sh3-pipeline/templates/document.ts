@@ -16,10 +16,10 @@ export const documentTemplates: NodeTemplate[] = [
     category: 'I/O',
     label: 'Write Document',
     ports: [
-      port('control-in',  'input',  'control'),
-      port('data',        'input',  'unknown', 'data'),
-      port('control-out', 'output', 'control'),
-      port('paths',       'output', 'array',   'paths'),
+      port('run-in',  'input',  'run', ''),
+      port('data',    'input',  'unknown', 'data'),
+      port('run-out', 'output', 'run', ''),
+      port('paths',   'output', 'array', 'paths'),
     ],
     defaultConfig: { targetShard: '', pathTemplate: 'out/result-{i}.json', format: 'json' },
     configSchema: [

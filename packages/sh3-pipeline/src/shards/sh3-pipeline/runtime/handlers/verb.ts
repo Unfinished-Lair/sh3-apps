@@ -56,7 +56,7 @@ export function makeVerbHandler(): NodeHandler {
       ? mapFallbackOutputs(runResult)
       : mapStructuredOutputs(runResult.result, outputPortIds);
 
-    return { outputs, next: 'control-out' };
+    return { outputs, next: 'run-out' };
   };
 }
 

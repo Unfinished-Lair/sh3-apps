@@ -33,10 +33,10 @@ describe('runGraph — minimal linear run', () => {
         { id: 'e',  type: 'end',            config: { returns: [{ name: 'topic', dataType: 'string' }] } },
       ],
       edges: [
-        { from: { node: 's',  port: 'control'     }, to: { node: 'sv', port: 'control-in' } },
-        { from: { node: 'l',  port: 'value'       }, to: { node: 'sv', port: 'value'      } },
-        { from: { node: 's',  port: 'topic'       }, to: { node: 'e',  port: 'topic'      } },
-        { from: { node: 'sv', port: 'control-out' }, to: { node: 'e',  port: 'control'    } },
+        { from: { node: 's',  port: 'run'     }, to: { node: 'sv', port: 'run-in' } },
+        { from: { node: 'l',  port: 'value'   }, to: { node: 'sv', port: 'value'  } },
+        { from: { node: 's',  port: 'topic'   }, to: { node: 'e',  port: 'topic'  } },
+        { from: { node: 'sv', port: 'run-out' }, to: { node: 'e',  port: 'run'    } },
       ],
     };
 
@@ -57,11 +57,11 @@ describe('runGraph — branch', () => {
         { id: 'e',   type: 'end',            config: { returns: [{ name: 'result', dataType: 'string' }] } },
       ],
       edges: [
-        { from: { node: 's',  port: 'control' }, to: { node: 'b', port: 'control' } },
-        { from: { node: 's',  port: 'flag'    }, to: { node: 'b', port: 'cond'    } },
-        { from: { node: 'b',  port: 'then'    }, to: { node: 'e', port: 'control' } },
-        { from: { node: 'b',  port: 'else'    }, to: { node: 'e', port: 'control' } },
-        { from: { node: 'ok', port: 'value'   }, to: { node: 'e', port: 'result'  } },
+        { from: { node: 's',  port: 'run'   }, to: { node: 'b', port: 'run'    } },
+        { from: { node: 's',  port: 'flag'  }, to: { node: 'b', port: 'cond'   } },
+        { from: { node: 'b',  port: 'then'  }, to: { node: 'e', port: 'run'    } },
+        { from: { node: 'b',  port: 'else'  }, to: { node: 'e', port: 'run'    } },
+        { from: { node: 'ok', port: 'value' }, to: { node: 'e', port: 'result' } },
       ],
     };
     const result = await runGraph({
@@ -110,7 +110,7 @@ describe('runGraph — aborted run', () => {
         { id: 's', type: 'start', config: { params: [] } },
         { id: 'e', type: 'end',   config: { returns: [] } },
       ],
-      edges: [{ from: { node: 's', port: 'control' }, to: { node: 'e', port: 'control' } }],
+      edges: [{ from: { node: 's', port: 'run' }, to: { node: 'e', port: 'run' } }],
     };
     const ctx = makeCtx({ signal: controller.signal });
     await expect(runGraph({ graph, ctx, handlers })).rejects.toThrow(/abort/i);

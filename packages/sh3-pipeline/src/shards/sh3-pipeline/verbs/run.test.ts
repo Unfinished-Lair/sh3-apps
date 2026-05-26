@@ -27,7 +27,7 @@ function makePassthroughDoc(name: string): PipelineDocument {
           config: { params: [{ name, dataType: 'string' }] },
           position: { x: 0, y: 0 },
           ports: [
-            { id: 's_control', label: 'control', direction: 'output', dataType: 'control' },
+            { id: 's_run', label: '', direction: 'output', dataType: 'run' },
             { id: `s_${name}`, label: name, direction: 'output', dataType: 'string' },
           ],
         },
@@ -37,13 +37,13 @@ function makePassthroughDoc(name: string): PipelineDocument {
           config: { returns: [{ name, dataType: 'string' }] },
           position: { x: 0, y: 0 },
           ports: [
-            { id: 'e_control', label: 'control', direction: 'input', dataType: 'control' },
+            { id: 'e_run', label: '', direction: 'input', dataType: 'run' },
             { id: `e_${name}`, label: name, direction: 'input', dataType: 'string' },
           ],
         },
       ],
       edges: [
-        { id: 'edge-ctrl', sourceNodeId: 's', sourcePortId: 's_control',     targetNodeId: 'e', targetPortId: 'e_control' },
+        { id: 'edge-ctrl', sourceNodeId: 's', sourcePortId: 's_run',     targetNodeId: 'e', targetPortId: 'e_run' },
         { id: 'edge-data', sourceNodeId: 's', sourcePortId: `s_${name}`,     targetNodeId: 'e', targetPortId: `e_${name}` },
       ],
     },
@@ -85,7 +85,7 @@ describe('runPipelineDocument — sub-graph fork', () => {
       ctx.vars.set('child-saw-parent', 'parent-only' in Object.fromEntries(ctx.vars));
       return {
         outputs: { childEcho: childResult.outputs.echo },
-        next: 'control-out',
+        next: 'run-out',
       };
     };
 
@@ -97,21 +97,21 @@ describe('runPipelineDocument — sub-graph fork', () => {
         ...emptyAsset(),
         nodes: [
           { id: 's',  type: 'start',          config: { params: [] }, position: { x: 0, y: 0 }, ports: [
-            { id: 's_control', label: 'control', direction: 'output', dataType: 'control' },
+            { id: 's_run', label: '', direction: 'output', dataType: 'run' },
           ] },
           { id: 'sg', type: 'fake:sub',       config: {},             position: { x: 0, y: 0 }, ports: [
-            { id: 'sg_control-in',  label: 'control', direction: 'input',  dataType: 'control' },
-            { id: 'sg_control-out', label: 'control', direction: 'output', dataType: 'control' },
+            { id: 'sg_run-in',  label: '', direction: 'input',  dataType: 'run' },
+            { id: 'sg_run-out', label: '', direction: 'output', dataType: 'run' },
             { id: 'sg_childEcho',   label: 'echo',    direction: 'output', dataType: 'string'  },
           ] },
           { id: 'e',  type: 'end',            config: { returns: [{ name: 'final', dataType: 'string' }] }, position: { x: 0, y: 0 }, ports: [
-            { id: 'e_control', label: 'control', direction: 'input', dataType: 'control' },
+            { id: 'e_run', label: '', direction: 'input', dataType: 'run' },
             { id: 'e_final',   label: 'final',   direction: 'input', dataType: 'string'  },
           ] },
         ],
         edges: [
-          { id: 'e1', sourceNodeId: 's',  sourcePortId: 's_control',     targetNodeId: 'sg', targetPortId: 'sg_control-in'  },
-          { id: 'e2', sourceNodeId: 'sg', sourcePortId: 'sg_control-out', targetNodeId: 'e',  targetPortId: 'e_control'      },
+          { id: 'e1', sourceNodeId: 's',  sourcePortId: 's_run',     targetNodeId: 'sg', targetPortId: 'sg_run-in'  },
+          { id: 'e2', sourceNodeId: 'sg', sourcePortId: 'sg_run-out', targetNodeId: 'e',  targetPortId: 'e_run'      },
           { id: 'e3', sourceNodeId: 'sg', sourcePortId: 'sg_childEcho',   targetNodeId: 'e',  targetPortId: 'e_final'        },
         ],
       },
@@ -165,7 +165,7 @@ describe('runPipelineDocument — document.write', () => {
             config: { params: [{ name: 'items', dataType: 'array' }] },
             position: { x: 0, y: 0 },
             ports: [
-              { id: 's_control', label: 'control', direction: 'output', dataType: 'control' },
+              { id: 's_run', label: '', direction: 'output', dataType: 'run' },
               { id: 's_items',   label: 'items',   direction: 'output', dataType: 'array'   },
             ],
           },
@@ -179,9 +179,9 @@ describe('runPipelineDocument — document.write', () => {
             },
             position: { x: 0, y: 0 },
             ports: [
-              { id: 'w_control-in',  label: 'control', direction: 'input',  dataType: 'control' },
+              { id: 'w_run-in',  label: '', direction: 'input',  dataType: 'run' },
               { id: 'w_data',        label: 'data',    direction: 'input',  dataType: 'unknown' },
-              { id: 'w_control-out', label: 'control', direction: 'output', dataType: 'control' },
+              { id: 'w_run-out', label: '', direction: 'output', dataType: 'run' },
               { id: 'w_paths',       label: 'paths',   direction: 'output', dataType: 'array'   },
             ],
           },
@@ -190,13 +190,13 @@ describe('runPipelineDocument — document.write', () => {
             type: 'end',
             config: { returns: [] },
             position: { x: 0, y: 0 },
-            ports: [{ id: 'e_control', label: 'control', direction: 'input', dataType: 'control' }],
+            ports: [{ id: 'e_run', label: '', direction: 'input', dataType: 'run' }],
           },
         ],
         edges: [
-          { id: 'c1', sourceNodeId: 's', sourcePortId: 's_control',     targetNodeId: 'w', targetPortId: 'w_control-in'  },
+          { id: 'c1', sourceNodeId: 's', sourcePortId: 's_run',     targetNodeId: 'w', targetPortId: 'w_run-in'  },
           { id: 'd1', sourceNodeId: 's', sourcePortId: 's_items',       targetNodeId: 'w', targetPortId: 'w_data'        },
-          { id: 'c2', sourceNodeId: 'w', sourcePortId: 'w_control-out', targetNodeId: 'e', targetPortId: 'e_control'     },
+          { id: 'c2', sourceNodeId: 'w', sourcePortId: 'w_run-out', targetNodeId: 'e', targetPortId: 'e_run'     },
         ],
       },
     };

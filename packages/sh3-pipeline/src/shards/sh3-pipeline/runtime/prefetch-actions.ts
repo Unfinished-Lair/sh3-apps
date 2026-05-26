@@ -203,7 +203,7 @@ export function toggleNodeMode(state: PipelineState, nodeId: string): void {
       };
 
   // Recompute ports from the template so the node visually swaps between
-  // runtime (control-in + structured inputs + result outputs) and prefetch
+  // runtime (run-in + structured inputs + result outputs) and prefetch
   // (no inputs + value/record outputs). Without this the asset retains the
   // pre-toggle port shape and the canvas still shows old ports.
   const ports = computePortsForType(node.type, nextConfig, nodeId) ?? node.ports;

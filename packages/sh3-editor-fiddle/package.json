@@ -10,7 +10,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
-    "@unfinished-lair/sh3-editor": "^0.14.0 || ^0.16.0",
+    "@unfinished-lair/sh3-editor": "^0.14.0 || ^0.16.0 || ^0.17.0",
     "sh3-core": "^0.26.0"
   },
   "devDependencies": {

@@ -62,6 +62,12 @@ describe('fieldsToInspectorMeta', () => {
     ]);
     expect(meta.fields?.fields?.type).toBe('string-list');
   });
+
+  it('passes doc-folder through with label, no widget config', () => {
+    const fs: FieldDescriptor[] = [{ key: 'folder', label: 'Folder', type: 'doc-folder' }];
+    const meta = fieldsToInspectorMeta(fs);
+    expect(meta.fields?.folder).toEqual({ label: 'Folder', type: 'doc-folder' });
+  });
 });
 
 describe('makeNodeConfigOverride', () => {

@@ -1,3 +1,5 @@
+import type { PickerDocumentSource } from 'sh3-core';
+
 /** Represents a single open document in the editor. */
 export interface EditorDocument {
   id: string;
@@ -218,6 +220,11 @@ export interface InspectorRendererProps {
    *  (no key) or by starting a new gesture with a different key. Absent
    *  at root-level mounts (same as onCommit). */
   onCommitCoalesced?: (next: unknown, key: string) => void;
+  /** Host-supplied document source — present when the renderer is mounted by
+   *  sh3-editor's Inspector View (threaded from `ctx.documents`). Absent when
+   *  a non-sh3-editor consumer drives the renderer registry directly.
+   *  Renderers that need it must degrade gracefully when undefined. */
+  documents?: PickerDocumentSource;
 }
 
 /** The public API surface exposed to consuming shards. */

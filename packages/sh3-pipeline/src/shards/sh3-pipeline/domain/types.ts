@@ -36,15 +36,15 @@ export interface RunContext {
     inputs: Record<string, unknown>,
   ) => Promise<{ outputs: Record<string, unknown> }>;
   /**
-   * Cross-shard document write, plumbed from the owning shard's
-   * `ctx.documents.writeText` / `writeBinary` with a scope-rooted
-   * `<targetShard>/<path>`. Surfaces sh3-core's `PermissionError`
-   * (kind: 'write-without-grant') when the shard does not declare
-   * `documents:write`.
+   * Cross-shard document write. The caller assembles the full
+   * scope-rooted path (`<shardId>/<path>`) and passes it as a single
+   * argument; the implementation routes it to
+   * `ctx.documents.writeText` / `writeBinary` based on content type.
+   * Surfaces sh3-core's `PermissionError` (kind: 'write-without-grant')
+   * when the shard does not declare `documents:write`.
    */
   writeDocument: (
-    targetShard: string,
-    path: string,
+    fullPath: string,
     content: string | ArrayBuffer,
   ) => Promise<void>;
 }

@@ -22,10 +22,25 @@ describe('documentTemplates', () => {
     ]);
   });
 
-  it('declares targetShard, pathTemplate, and format in configSchema', () => {
+  it('declares folder, filename, and format in configSchema', () => {
     const t = documentTemplates[0];
     const keys = (t.configSchema ?? []).map((f) => f.key);
-    expect(keys).toEqual(['targetShard', 'pathTemplate', 'format']);
+    expect(keys).toEqual(['folder', 'filename', 'format']);
+  });
+
+  it('marks folder field as doc-folder', () => {
+    const t = documentTemplates[0];
+    const folderField = (t.configSchema ?? []).find((f) => f.key === 'folder');
+    expect(folderField?.type).toBe('doc-folder');
+  });
+
+  it('defaultConfig has null folder, filename template, json format', () => {
+    const t = documentTemplates[0];
+    expect(t.defaultConfig).toEqual({
+      folder: null,
+      filename: 'result-{i}.json',
+      format: 'json',
+    });
   });
 
   it('defaultConfig round-trips through JSON', () => {

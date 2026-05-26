@@ -32,7 +32,7 @@ export interface NodeTemplate {
 export interface ConfigFieldDef {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'string-list';
+  type: 'string' | 'number' | 'boolean' | 'select' | 'string-list' | 'doc-folder';
   options?: { value: string; label: string }[];
   /** Dispatch hint for the inspector bridge — mapped to InspectorMeta.type. */
   rendererHint?: string;

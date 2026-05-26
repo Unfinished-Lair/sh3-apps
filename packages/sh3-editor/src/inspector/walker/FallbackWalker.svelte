@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { PickerDocumentSource } from 'sh3-core';
   import type { InspectorMeta, InspectorApi, HistoryCommand, WalkerCommitOverride } from '../../types';
   import Field from '../primitives/Field.svelte';
   import EditablePrimitive from '../primitives/EditablePrimitive.svelte';
@@ -13,8 +14,10 @@
     api: InspectorApi;
     walkerOnCommit?: WalkerCommitOverride;
     basePath?: (string | number)[];
+    /** Host-supplied document source; forwarded into every <Inspect> recursion. */
+    documents?: PickerDocumentSource;
   }
-  let { value, meta, api, walkerOnCommit, basePath = [] }: Props = $props();
+  let { value, meta, api, walkerOnCommit, basePath = [], documents }: Props = $props();
 
   const coalesce = makeCoalesceState();
 
@@ -159,6 +162,7 @@
               onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
               walkerOnCommit={walkerOnCommit}
               basePath={[...basePath, entry.key]}
+              {documents}
             />
           </WalkerCell>
         </Field>
@@ -182,6 +186,7 @@
             onCommitCoalesced={isReadOnly ? undefined : coalescedCommitForField(entry.key)}
             walkerOnCommit={walkerOnCommit}
             basePath={[...basePath, entry.key]}
+            {documents}
           />
         </Field>
       {/if}

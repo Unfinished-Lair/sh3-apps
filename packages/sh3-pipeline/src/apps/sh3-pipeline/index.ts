@@ -1,4 +1,4 @@
-import type { SourceApp } from 'sh3-core';
+import { PERMISSION_DOCUMENTS_WRITE, type SourceApp } from 'sh3-core';
 
 export const app: SourceApp = {
   manifest: {
@@ -6,6 +6,7 @@ export const app: SourceApp = {
     icon: 'git-merge',
     label: 'Pipeline',
     requiredShards: ['sh3-pipeline', 'sh3-editor'],
+    permissions: [PERMISSION_DOCUMENTS_WRITE],
     layoutVersion: 6,
     menus: [
       { id: 'file',     label: 'File' },

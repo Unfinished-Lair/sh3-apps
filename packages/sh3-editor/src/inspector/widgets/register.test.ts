@@ -57,7 +57,7 @@ describe('registerBuiltinWidgets', () => {
     registerBuiltinWidgets(mockCtx(captured) as any);
     const tags = captured.map((c) => c.contribution.type).sort();
     expect(tags).toEqual([
-      'doc', 'file', 'icon-toggle', 'json', 'number', 'range', 'segmented',
+      'doc', 'doc-folder', 'file', 'icon-toggle', 'json', 'number', 'range', 'segmented',
       'select', 'slider', 'slider-group', 'string', 'string-list', 'text',
     ]);
   });

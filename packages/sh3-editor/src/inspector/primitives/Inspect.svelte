@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { PickerDocumentSource } from 'sh3-core';
   import type { InspectorMeta, InspectorApi, WalkerCommitOverride } from '../../types';
   import { resolveRenderer } from '../registry';
   import { attemptCommit } from '../walker/commit';
@@ -20,8 +21,11 @@
     walkerOnCommit?: WalkerCommitOverride;
     /** Path from the root inspected value to this node. Empty at root. */
     basePath?: (string | number)[];
+    /** Host-supplied document source; threaded from the Inspector View
+     *  (sh3-editor) and forwarded to every renderer/walker mount below. */
+    documents?: PickerDocumentSource;
   }
-  let { value, meta, api, onCommit, onCommitCoalesced, walkerOnCommit, basePath = [] }: Props = $props();
+  let { value, meta, api, onCommit, onCommitCoalesced, walkerOnCommit, basePath = [], documents }: Props = $props();
 
   let resolution = $derived(resolveRenderer(value, meta));
 
@@ -41,9 +45,9 @@
   <!-- hidden by meta; render nothing -->
 {:else if resolution.kind === 'custom'}
   {@const Renderer = resolution.component}
-  <Renderer {value} {meta} {api} onCommit={customRendererCommit} {onCommitCoalesced} />
+  <Renderer {value} {meta} {api} onCommit={customRendererCommit} {onCommitCoalesced} {documents} />
 {:else if resolution.kind === 'walker'}
-  <FallbackWalker {value} {meta} {api} {walkerOnCommit} {basePath} />
+  <FallbackWalker {value} {meta} {api} {walkerOnCommit} {basePath} {documents} />
 {:else}
   <ReadOnlyLeaf {value} />
 {/if}

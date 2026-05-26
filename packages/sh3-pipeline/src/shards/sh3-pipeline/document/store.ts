@@ -57,6 +57,7 @@ export async function load(ctx: ShardContext, docId: string): Promise<PipelineDo
     throw new Error(`Document domainId ${parsed.domainId} does not match ${DOMAIN_ID}`);
   }
   applyPrefetchSuffixFixup(parsed);
+  applyDocumentWriteFolderMigration(parsed);
   return parsed;
 }
 
@@ -74,6 +75,30 @@ export function applyPrefetchSuffixFixup(doc: PipelineDocument): void {
       if (!n.config) n.config = {};
       if (n.config.mode !== 'prefetch') n.config.mode = 'prefetch';
     }
+  }
+}
+
+/**
+ * In-place migration: document.write nodes saved before the folder-picker
+ * refactor used `{ targetShard, pathTemplate }`. Convert to
+ * `{ folder: { shardId, path }, filename }`. Idempotent — re-running on a
+ * normalised doc is a no-op.
+ */
+export function applyDocumentWriteFolderMigration(doc: PipelineDocument): void {
+  for (const n of doc.asset.nodes) {
+    if (n.type !== 'document.write') continue;
+    const cfg = (n.config ?? {}) as Record<string, unknown>;
+    if (typeof cfg.targetShard !== 'string' || typeof cfg.pathTemplate !== 'string') continue;
+    if (cfg.folder !== undefined) continue;
+    const template = cfg.pathTemplate;
+    const lastSlash = template.lastIndexOf('/');
+    const folderPath = lastSlash >= 0 ? template.slice(0, lastSlash) : '';
+    const filename   = lastSlash >= 0 ? template.slice(lastSlash + 1) : template;
+    n.config = {
+      folder: { shardId: cfg.targetShard, path: folderPath },
+      filename,
+      format: typeof cfg.format === 'string' ? cfg.format : 'json',
+    };
   }
 }
 

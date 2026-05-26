@@ -28,6 +28,7 @@ export function fieldsToInspectorMeta(fields: FieldDescriptor[]): InspectorMeta 
           break;
         case 'json':
         case 'doc':
+        case 'doc-folder':
           m.type = f.type;
           break;
         case 'string-list':

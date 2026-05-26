@@ -116,15 +116,14 @@ async function runActiveAsset(ctx: ShardContext, state: PipelineState): Promise<
       signal: state.abortController.signal,
       log: (e) => { state.log.push(e); consoleLog(e); },
       invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
-      writeDocument: async (targetShard, path, content) => {
-        // sh3-core 0.26: scope-rooted path; binary vs text routed by content type.
-        // Cross-shard writes still go through ctx.documents (the relaxed handle
-        // honours documents:write across boundIds in the active scope).
-        const full = `${targetShard}/${path}`;
+      writeDocument: async (fullPath, content) => {
+        // sh3-core 0.26: scope-rooted path; binary vs text routed by content
+        // type. The caller (document.write handler) assembles the full
+        // <shardId>/<path> from the picker-driven folder + filename.
         if (typeof content === 'string') {
-          await ctx.documents.writeText(full, content);
+          await ctx.documents.writeText(fullPath, content);
         } else {
-          await ctx.documents.writeBinary(full, content);
+          await ctx.documents.writeBinary(fullPath, content);
         }
       },
       loadSubGraph: (id) => loadDoc(ctx, id),
@@ -346,13 +345,12 @@ export const shard: SourceShard = {
             vctx.scrollback.push({ kind: 'status', text: e.message, level: e.level, ts: e.ts });
           },
           invokeVerb: (s, n, a, o) => ctx.sh3.runVerb(s, n, a, o),
-          writeDocument: async (targetShard, path, content) => {
-            // sh3-core 0.26 coalesced doc API — see runActiveAsset above.
-            const full = `${targetShard}/${path}`;
+          writeDocument: async (fullPath, content) => {
+            // Single full-path form — see runActiveAsset above.
             if (typeof content === 'string') {
-              await ctx.documents.writeText(full, content);
+              await ctx.documents.writeText(fullPath, content);
             } else {
-              await ctx.documents.writeBinary(full, content);
+              await ctx.documents.writeBinary(fullPath, content);
             }
           },
           loadSubGraph: (id) => loadDoc(ctx, id),

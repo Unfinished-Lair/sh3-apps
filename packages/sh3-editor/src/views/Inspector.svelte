@@ -88,7 +88,7 @@
     <Toolbar actions={toolbarActions} filePath={null} />
   {/if}
   <div class="inspector-body">
-    <Inspect {value} {meta} {api} walkerOnCommit={walkerOnCommit} basePath={[]} />
+    <Inspect {value} {meta} {api} documents={ctx?.documents} walkerOnCommit={walkerOnCommit} basePath={[]} />
   </div>
 </div>
 

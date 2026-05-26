@@ -21,10 +21,14 @@ export const documentTemplates: NodeTemplate[] = [
       port('run-out', 'output', 'run', ''),
       port('paths',   'output', 'array', 'paths'),
     ],
-    defaultConfig: { targetShard: '', pathTemplate: 'out/result-{i}.json', format: 'json' },
+    defaultConfig: {
+      folder: null,
+      filename: 'result-{i}.json',
+      format: 'json',
+    },
     configSchema: [
-      { key: 'targetShard',  label: 'Target shard',  type: 'string' },
-      { key: 'pathTemplate', label: 'Path template', type: 'string' },
+      { key: 'folder',   label: 'Folder',   type: 'doc-folder' },
+      { key: 'filename', label: 'Filename', type: 'string' },
       {
         key: 'format',
         label: 'Format',

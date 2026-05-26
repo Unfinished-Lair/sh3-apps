@@ -146,7 +146,7 @@ describe('runPipelineDocument — sub-graph fork', () => {
 
 describe('runPipelineDocument — document.write', () => {
   it('fans out an array input into one writeDocument call per item', async () => {
-    type WriteCall = { shard: string; path: string; content: string | ArrayBuffer };
+    type WriteCall = { path: string; content: string | ArrayBuffer };
     const writes: WriteCall[] = [];
 
     const doc: PipelineDocument = {
@@ -173,8 +173,8 @@ describe('runPipelineDocument — document.write', () => {
             id: 'w',
             type: 'document.write',
             config: {
-              targetShard: 'sh3-text',
-              pathTemplate: 'out/{name}.json',
+              folder: { shardId: 'sh3-text', path: 'out' },
+              filename: '{name}.json',
               format: 'json',
             },
             position: { x: 0, y: 0 },
@@ -217,16 +217,16 @@ describe('runPipelineDocument — document.write', () => {
       signal: new AbortController().signal,
       log: () => {},
       invokeVerb: async () => ({ result: undefined, scrollback: [] }),
-      writeDocument: async (shard, path, content) => {
-        writes.push({ shard, path, content });
+      writeDocument: async (path, content) => {
+        writes.push({ path, content });
       },
       loadSubGraph: async () => doc,
       handlers: customHandlers,
     });
 
-    expect(writes.map((w) => `${w.shard}:${w.path}`)).toEqual([
-      'sh3-text:out/alpha.json',
-      'sh3-text:out/beta.json',
+    expect(writes.map((w) => w.path)).toEqual([
+      'sh3-text/out/alpha.json',
+      'sh3-text/out/beta.json',
     ]);
   });
 });

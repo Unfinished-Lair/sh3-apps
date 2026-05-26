@@ -132,4 +132,19 @@ export const structuralTemplates: NodeTemplate[] = [
     defaultConfig: { key: '' },
     configSchema: [{ key: 'key', label: 'Key', type: 'string' }],
   },
+  {
+    type: 'print',
+    category: 'Debug',
+    label: 'Print',
+    ports: [
+      port('run-in',  'input',  'run',     ''),
+      port('value',   'input',  'unknown', 'value'),
+      port('run-out', 'output', 'run',     ''),
+    ],
+    defaultConfig: { path: '', label: '' },
+    configSchema: [
+      { key: 'path',  label: 'Path',  type: 'string' },
+      { key: 'label', label: 'Label', type: 'string' },
+    ],
+  },
 ];

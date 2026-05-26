@@ -1,5 +1,6 @@
 import type { ParamDef } from '../../domain/types';
 import type { HandlerRegistry, NodeHandler } from './index';
+import { makePrintHandler } from './print';
 
 const start: NodeHandler = async (ctx, inv) => {
   const params = Array.isArray(inv.config.params) ? (inv.config.params as ParamDef[]) : [];
@@ -91,6 +92,7 @@ export const structuralHandlers: HandlerRegistry = {
     ['literal.boolean', literal('boolean')],
     ['record.build',    recordBuild],
     ['record.get',      recordGet],
+    ['print',           makePrintHandler()],
   ]),
   prefixed: [],
 };

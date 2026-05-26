@@ -20,6 +20,7 @@ export const VISUALS: Record<string, NodeVisuals> = {
   getVar:         { ...BASE, label: 'Get Var',    borderColor: '#c4b5fd' },
   'record.build': { ...BASE, label: 'Record',     borderColor: '#c4b5fd' },
   'record.get':   { ...BASE, label: 'Record Get', borderColor: '#c4b5fd' },
+  print:          { ...BASE, label: 'Print',      borderColor: '#94a3b8' },
 };
 
 export const VERB_VISUAL: NodeVisuals = {

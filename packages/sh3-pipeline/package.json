@@ -1,6 +1,6 @@
 {
   "name": "sh3-pipeline",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "Programmatic pipeline",
   "author": "@unfinished-lair",
   "type": "module",
@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@unfinished-lair/sh3-editor": "^0.16.2",
+    "@unfinished-lair/sh3-editor": "^0.17.0",
     "sh3-core": "^0.26.0"
   },
   "devDependencies": {

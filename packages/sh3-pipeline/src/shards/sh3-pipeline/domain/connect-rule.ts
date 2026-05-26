@@ -1,13 +1,19 @@
-import type { PortRef } from '@unfinished-lair/sh3-editor/graph/types';
+import type { ConnectResolution, PortRef } from '@unfinished-lair/sh3-editor/graph/types';
+import { CONVERSIONS } from './data-types';
 
-export function hybridConnectRule(src: PortRef, tgt: PortRef): boolean {
+export function resolveConnect(src: PortRef, tgt: PortRef): ConnectResolution {
   if (src.direction !== 'output' || tgt.direction !== 'input') return false;
   if (src.nodeId === tgt.nodeId) return false;
 
-  const srcIsControl = src.dataType === 'control';
-  const tgtIsControl = tgt.dataType === 'control';
-  if (srcIsControl || tgtIsControl) return srcIsControl && tgtIsControl;
+  const srcIsRun = src.dataType === 'run';
+  const tgtIsRun = tgt.dataType === 'run';
+  if (srcIsRun || tgtIsRun) return srcIsRun && tgtIsRun;
 
   if (src.dataType === 'unknown' || tgt.dataType === 'unknown') return true;
-  return src.dataType === tgt.dataType;
+  if (src.dataType === tgt.dataType) return true;
+
+  const conv = CONVERSIONS.find(
+    (c) => c.from === src.dataType && c.to === tgt.dataType,
+  );
+  return conv ? { via: conv.id } : false;
 }

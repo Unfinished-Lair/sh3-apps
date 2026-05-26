@@ -1,41 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { hybridConnectRule } from './connect-rule';
+import type { PortRef } from '@unfinished-lair/sh3-editor/graph/types';
+import { resolveConnect } from './connect-rule';
 
-function port(direction: 'input' | 'output', dataType: string, nodeId = 'a', portId = 'p') {
-  return { nodeId, portId, direction, dataType };
+function src(dt: string): PortRef {
+  return { nodeId: 'a', portId: 'o', direction: 'output', dataType: dt };
+}
+function tgt(dt: string): PortRef {
+  return { nodeId: 'b', portId: 'i', direction: 'input',  dataType: dt };
 }
 
-describe('hybridConnectRule', () => {
-  it('allows control output → control input', () => {
-    expect(hybridConnectRule(port('output', 'control', 'a'), port('input', 'control', 'b'))).toBe(true);
+describe('resolveConnect', () => {
+  it('rejects when src is not output', () => {
+    expect(resolveConnect(
+      { nodeId: 'a', portId: 'i', direction: 'input', dataType: 'run' },
+      tgt('run'),
+    )).toBe(false);
   });
 
-  it('rejects control output → typed input', () => {
-    expect(hybridConnectRule(port('output', 'control', 'a'), port('input', 'string', 'b'))).toBe(false);
+  it('rejects self-connection', () => {
+    const s: PortRef = { nodeId: 'a', portId: 'o', direction: 'output', dataType: 'run' };
+    const t: PortRef = { nodeId: 'a', portId: 'i', direction: 'input',  dataType: 'run' };
+    expect(resolveConnect(s, t)).toBe(false);
   });
 
-  it('rejects typed output → control input', () => {
-    expect(hybridConnectRule(port('output', 'string', 'a'), port('input', 'control', 'b'))).toBe(false);
+  it('run only connects to run', () => {
+    expect(resolveConnect(src('run'),    tgt('run'))).toBe(true);
+    expect(resolveConnect(src('run'),    tgt('string'))).toBe(false);
+    expect(resolveConnect(src('string'), tgt('run'))).toBe(false);
   });
 
-  it('allows matching typed dataTypes', () => {
-    expect(hybridConnectRule(port('output', 'string', 'a'), port('input', 'string', 'b'))).toBe(true);
+  it('same-type accepts directly', () => {
+    expect(resolveConnect(src('string'), tgt('string'))).toBe(true);
   });
 
-  it('rejects mismatched typed dataTypes', () => {
-    expect(hybridConnectRule(port('output', 'string', 'a'), port('input', 'number', 'b'))).toBe(false);
+  it('unknown is a free-pass', () => {
+    expect(resolveConnect(src('unknown'), tgt('string'))).toBe(true);
+    expect(resolveConnect(src('string'), tgt('unknown'))).toBe(true);
   });
 
-  it('allows unknown on either side (escape hatch)', () => {
-    expect(hybridConnectRule(port('output', 'unknown', 'a'), port('input', 'string', 'b'))).toBe(true);
-    expect(hybridConnectRule(port('output', 'string', 'a'), port('input', 'unknown', 'b'))).toBe(true);
+  it('number → string routes via adapter', () => {
+    expect(resolveConnect(src('number'), tgt('string')))
+      .toEqual({ via: 'pipeline:number-to-string' });
   });
 
-  it('rejects same-node self-loops', () => {
-    expect(hybridConnectRule(port('output', 'control', 'a'), port('input', 'control', 'a'))).toBe(false);
+  it('boolean ↔ string routes via adapter', () => {
+    expect(resolveConnect(src('boolean'), tgt('string')))
+      .toEqual({ via: 'pipeline:boolean-to-string' });
+    expect(resolveConnect(src('string'), tgt('boolean')))
+      .toEqual({ via: 'pipeline:string-to-boolean' });
   });
 
-  it('rejects wrong direction (input→output)', () => {
-    expect(hybridConnectRule(port('input', 'control', 'a'), port('output', 'control', 'b'))).toBe(false);
+  it('no adapter declared → reject', () => {
+    expect(resolveConnect(src('record'), tgt('array'))).toBe(false);
   });
 });

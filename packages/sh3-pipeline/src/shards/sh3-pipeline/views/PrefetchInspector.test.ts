@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import PrefetchInspector from './PrefetchInspector.svelte';
 import type { PrefetchConfig } from '../domain/types';
+
+// sh3-core's Select widget calls sh3.popup.show when its trigger is clicked;
+// jsdom has no popup runtime. Stub it so the component renders without
+// blowing up. Tests interact with the hidden native <select> instead.
+vi.mock('sh3-core', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('sh3-core');
+  return {
+    ...actual,
+    sh3: { popup: { show: () => ({ close: () => {} }) } },
+  };
+});
 
 function baseCfg(): PrefetchConfig {
   return {
@@ -36,8 +47,10 @@ describe('PrefetchInspector', () => {
     const { container } = render(PrefetchInspector, {
       props: { cfg: baseCfg(), onCommit: () => {}, onRefresh: async () => {}, onToggleMode: () => {}, refreshing: false },
     });
-    const select = container.querySelector('select[data-role="selection"]') as HTMLSelectElement;
-    expect(select.options.length).toBe(2);
+    // Two Selects render two native <select>s; the second is the row picker.
+    const selects = container.querySelectorAll('select');
+    const rowSelect = selects[1] as HTMLSelectElement;
+    expect(rowSelect.options.length).toBe(2);
   });
 
   it('selecting a row calls onCommit with new selectedRowKey + lastSelectedRow', async () => {
@@ -51,8 +64,10 @@ describe('PrefetchInspector', () => {
         refreshing: false,
       },
     });
-    const select = container.querySelector('select[data-role="selection"]') as HTMLSelectElement;
-    await fireEvent.change(select, { target: { value: 'b' } });
+    const selects = container.querySelectorAll('select');
+    const rowSelect = selects[1] as HTMLSelectElement;
+    rowSelect.value = 'b';
+    await fireEvent.change(rowSelect);
     expect(committed?.selectedRowKey).toBe('b');
     expect(committed?.lastSelectedRow).toEqual({ id: 'b', name: 'Bravo' });
   });
@@ -86,8 +101,10 @@ describe('PrefetchInspector', () => {
         refreshing: false,
       },
     });
-    const valueFieldSelect = container.querySelector('select[data-role="value-field"]') as HTMLSelectElement;
-    await fireEvent.change(valueFieldSelect, { target: { value: 'name' } });
+    const selects = container.querySelectorAll('select');
+    const valueFieldSelect = selects[0] as HTMLSelectElement;
+    valueFieldSelect.value = 'name';
+    await fireEvent.change(valueFieldSelect);
     expect(committed?.valueField).toBe('name');
     expect(committed?.selectedRowKey).toBe('Acme');
   });

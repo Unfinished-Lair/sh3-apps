@@ -153,6 +153,14 @@ export function commitPrefetchConfig(state: PipelineState, nodeId: string, next:
   );
   state.asset = { ...state.asset, nodes };
   pushAssetToController(state.asset);
+  // setAsset routes through makeReplaceAssetCommand which clears
+  // state.selection silently (no emitSelection). Without this re-select,
+  // syncInspector never re-runs after a refresh / row-pick / args edit,
+  // so the inspector keeps showing the pre-commit value (e.g. an empty
+  // picker even though list.rows was just populated).
+  if (activeController) {
+    try { activeController.select([nodeId]); } catch { /* */ }
+  }
 }
 
 export function toggleNodeMode(state: PipelineState, nodeId: string): void {

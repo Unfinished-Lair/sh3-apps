@@ -147,4 +147,26 @@ export const structuralTemplates: NodeTemplate[] = [
       { key: 'label', label: 'Label', type: 'string' },
     ],
   },
+  {
+    type: 'record.toJson',
+    category: 'Data',
+    label: 'Record → JSON',
+    ports: [
+      port('record', 'input',  'record'),
+      port('json',   'output', 'string'),
+    ],
+    defaultConfig: { pretty: true },
+    configSchema: [{ key: 'pretty', label: 'Pretty-print', type: 'boolean' }],
+  },
+  {
+    type: 'array.toJson',
+    category: 'Data',
+    label: 'Array → JSON',
+    ports: [
+      port('array', 'input',  'array'),
+      port('json',  'output', 'string'),
+    ],
+    defaultConfig: { pretty: true },
+    configSchema: [{ key: 'pretty', label: 'Pretty-print', type: 'boolean' }],
+  },
 ];

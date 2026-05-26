@@ -1,6 +1,9 @@
 import type { ParamDef } from '../../domain/types';
 import type { HandlerRegistry, NodeHandler } from './index';
 import { makePrintHandler } from './print';
+import { makeJsonifyHandler } from './jsonify';
+
+const jsonifyHandler = makeJsonifyHandler();
 
 const start: NodeHandler = async (ctx, inv) => {
   const params = Array.isArray(inv.config.params) ? (inv.config.params as ParamDef[]) : [];
@@ -93,6 +96,8 @@ export const structuralHandlers: HandlerRegistry = {
     ['record.build',    recordBuild],
     ['record.get',      recordGet],
     ['print',           makePrintHandler()],
+    ['record.toJson',   jsonifyHandler],
+    ['array.toJson',    jsonifyHandler],
   ]),
   prefixed: [],
 };

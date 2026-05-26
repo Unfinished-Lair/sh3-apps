@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import type { ConversionDef } from '@unfinished-lair/sh3-editor/graph/types';
 import { runGraph, type RunnerGraph } from './runner';
 import { createRunContext } from './context';
 import { structuralHandlers } from './handlers/structural';
-import type { RunContext } from '../domain/types';
+import type { RunContext, RunLogEntry } from '../domain/types';
+import type { NodeHandler, HandlerRegistry } from './handlers';
 
 function makeCtx(overrides: Partial<Parameters<typeof createRunContext>[0]> = {}): RunContext {
   return createRunContext({
@@ -98,6 +100,90 @@ describe('runGraph — missing start', () => {
     await expect(
       runGraph({ graph, ctx: makeCtx(), handlers }),
     ).rejects.toThrow(/start/i);
+  });
+});
+
+describe('runGraph — edge adapter', () => {
+  it('applies edge adapter when reading upstream output', async () => {
+    const conversions: ConversionDef[] = [
+      { id: 'pipeline:number-to-string', from: 'number', to: 'string', adapt: (v) => String(v) },
+    ];
+
+    let captured: unknown = null;
+    const captureHandler: NodeHandler = async (_ctx, inv) => {
+      captured = inv.inputs.value;
+      return { outputs: {}, next: 'run-out' };
+    };
+
+    const customHandlers: HandlerRegistry = {
+      exact: new Map([
+        ...structuralHandlers.exact,
+        ['__capture__', captureHandler],
+      ]),
+      prefixed: structuralHandlers.prefixed,
+    };
+
+    const graph: RunnerGraph = {
+      nodes: [
+        { id: 's',    type: 'start',          config: { params: [] } },
+        { id: 'lit',  type: 'literal.number', config: { value: 42 } },
+        { id: 'sink', type: '__capture__',    config: {} },
+        { id: 'e',    type: 'end',            config: { returns: [] } },
+      ],
+      edges: [
+        { from: { node: 's',    port: 'run' },     to: { node: 'sink', port: 'run-in' } },
+        { from: { node: 'lit',  port: 'value' },   to: { node: 'sink', port: 'value' }, adapter: 'pipeline:number-to-string' },
+        { from: { node: 'sink', port: 'run-out' }, to: { node: 'e',    port: 'run' } },
+      ],
+    };
+
+    await runGraph({ graph, ctx: makeCtx(), handlers: customHandlers, conversions });
+    expect(captured).toBe('42');
+  });
+
+  it('adapter throw yields undefined input and logs error', async () => {
+    const conversions: ConversionDef[] = [
+      { id: 'pipeline:fail', from: 'number', to: 'string',
+        adapt: () => { throw new Error('boom'); } },
+    ];
+
+    let captured: unknown = 'unset';
+    const captureHandler: NodeHandler = async (_ctx, inv) => {
+      captured = inv.inputs.value;
+      return { outputs: {}, next: 'run-out' };
+    };
+
+    const errors: RunLogEntry[] = [];
+    const customHandlers: HandlerRegistry = {
+      exact: new Map([
+        ...structuralHandlers.exact,
+        ['__capture__', captureHandler],
+      ]),
+      prefixed: structuralHandlers.prefixed,
+    };
+
+    const graph: RunnerGraph = {
+      nodes: [
+        { id: 's',    type: 'start',          config: { params: [] } },
+        { id: 'lit',  type: 'literal.number', config: { value: 42 } },
+        { id: 'sink', type: '__capture__',    config: {} },
+        { id: 'e',    type: 'end',            config: { returns: [] } },
+      ],
+      edges: [
+        { from: { node: 's',    port: 'run' },     to: { node: 'sink', port: 'run-in' } },
+        { from: { node: 'lit',  port: 'value' },   to: { node: 'sink', port: 'value' }, adapter: 'pipeline:fail' },
+        { from: { node: 'sink', port: 'run-out' }, to: { node: 'e',    port: 'run' } },
+      ],
+    };
+
+    await runGraph({
+      graph,
+      ctx: makeCtx({ log: (e) => { if (e.level === 'error') errors.push(e); } }),
+      handlers: customHandlers,
+      conversions,
+    });
+    expect(captured).toBeUndefined();
+    expect(errors.length).toBeGreaterThan(0);
   });
 });
 

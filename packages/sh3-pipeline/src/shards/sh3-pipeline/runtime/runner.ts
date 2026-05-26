@@ -1,3 +1,4 @@
+import type { ConversionDef } from '@unfinished-lair/sh3-editor/graph/types';
 import type { RunContext } from '../domain/types';
 import { lookupHandler, type HandlerRegistry, type NodeOutcome } from './handlers';
 
@@ -10,6 +11,8 @@ export interface RunnerNode {
 export interface RunnerEdge {
   from: { node: string; port: string };
   to: { node: string; port: string };
+  /** Conversion id mirrored from GraphAssetEdge.adapter. */
+  adapter?: string;
 }
 
 export interface RunnerGraph {
@@ -21,6 +24,8 @@ export interface RunOptions {
   graph: RunnerGraph;
   ctx: RunContext;
   handlers: HandlerRegistry;
+  /** Optional adapter table — keyed by ConversionDef.id at runtime. */
+  conversions?: ReadonlyArray<ConversionDef>;
 }
 
 export interface RunResult {
@@ -40,6 +45,8 @@ export async function runGraph(opts: RunOptions): Promise<RunResult> {
   const incoming = indexEdgesByTo(graph.edges);
 
   const valueCache = new Map<string, Record<string, unknown>>();
+  const conversionsById = new Map<string, ConversionDef>();
+  for (const c of opts.conversions ?? []) conversionsById.set(c.id, c);
 
   await runFromNode(startNode.id, ctx, {
     nodesById,
@@ -47,6 +54,7 @@ export async function runGraph(opts: RunOptions): Promise<RunResult> {
     incoming,
     handlers,
     valueCache,
+    conversionsById,
   });
 
   const endNode = graph.nodes.find((n) => n.type === 'end');
@@ -70,6 +78,7 @@ interface RunState {
   incoming: Map<string, RunnerEdge[]>;
   handlers: HandlerRegistry;
   valueCache: Map<string, Record<string, unknown>>;
+  conversionsById: Map<string, ConversionDef>;
 }
 
 async function runFromNode(nodeId: string, ctx: RunContext, state: RunState): Promise<void> {
@@ -114,6 +123,37 @@ async function runFromNode(nodeId: string, ctx: RunContext, state: RunState): Pr
   }
 }
 
+function readEdgeValue(
+  edge: RunnerEdge,
+  upstream: Record<string, unknown> | undefined,
+  conversionsById: Map<string, ConversionDef>,
+  ctx: RunContext,
+): unknown {
+  const raw = upstream?.[edge.from.port];
+  if (!edge.adapter) return raw;
+  const conv = conversionsById.get(edge.adapter);
+  if (!conv) {
+    ctx.log({
+      ts: Date.now(),
+      nodeId: edge.to.node,
+      level: 'warn',
+      message: `unknown adapter "${edge.adapter}" on edge ${edge.from.node}.${edge.from.port} -> ${edge.to.node}.${edge.to.port}`,
+    });
+    return raw;
+  }
+  try {
+    return conv.adapt(raw);
+  } catch (e) {
+    ctx.log({
+      ts: Date.now(),
+      nodeId: edge.to.node,
+      level: 'error',
+      message: `adapter "${edge.adapter}" failed: ${String((e as Error).message ?? e)}`,
+    });
+    return undefined;
+  }
+}
+
 async function resolveInputs(
   node: RunnerNode,
   ctx: RunContext,
@@ -144,7 +184,7 @@ async function resolveInputs(
       state.valueCache.set(upstreamNode.id, result.outputs);
       upstream = result.outputs;
     }
-    inputs[edge.to.port] = upstream?.[edge.from.port];
+    inputs[edge.to.port] = readEdgeValue(edge, upstream, state.conversionsById, ctx);
   }
   return inputs;
 }

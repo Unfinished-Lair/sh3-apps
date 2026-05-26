@@ -1,4 +1,5 @@
 import type {
+  ConversionDef,
   GraphAsset,
   GraphAssetNode,
   GraphAssetEdge,
@@ -8,6 +9,7 @@ import type { PipelineDocument } from '../document/format';
 import { createRunContext } from '../runtime/context';
 import { runGraph, type RunnerGraph } from '../runtime/runner';
 import type { HandlerRegistry } from '../runtime/handlers';
+import { CONVERSIONS } from '../domain/data-types';
 
 export interface RunPipelineOptions {
   doc: PipelineDocument;
@@ -22,12 +24,15 @@ export interface RunPipelineOptions {
   handlers: HandlerRegistry;
   /** Test hook: called whenever a sub-graph context is constructed. */
   onChildContextCreated?: (ctx: RunContext) => void;
+  /** Optional override; defaults to domain conversions. */
+  conversions?: ReadonlyArray<ConversionDef>;
 }
 
 export async function runPipelineDocument(
   opts: RunPipelineOptions,
 ): Promise<{ outputs: Record<string, unknown> }> {
   const runner: RunnerGraph = projectAsset(opts.doc.asset);
+  const conversions = opts.conversions ?? CONVERSIONS;
 
   const runSubGraph = async (
     docId: string,
@@ -46,7 +51,7 @@ export async function runPipelineDocument(
     });
     opts.onChildContextCreated?.(child);
     const childGraph = projectAsset(childDoc.asset);
-    return runGraph({ graph: childGraph, ctx: child, handlers: opts.handlers });
+    return runGraph({ graph: childGraph, ctx: child, handlers: opts.handlers, conversions });
   };
 
   const ctx = createRunContext({
@@ -60,7 +65,7 @@ export async function runPipelineDocument(
     writeDocument: opts.writeDocument,
   });
 
-  return runGraph({ graph: runner, ctx, handlers: opts.handlers });
+  return runGraph({ graph: runner, ctx, handlers: opts.handlers, conversions });
 }
 
 function stripNodePrefix(portId: string, nodeId: string): string {
@@ -76,6 +81,7 @@ export function projectAsset(asset: GraphAsset): RunnerGraph {
     edges: edges.map((e) => ({
       from: { node: e.sourceNodeId, port: stripNodePrefix(e.sourcePortId, e.sourceNodeId) },
       to:   { node: e.targetNodeId, port: stripNodePrefix(e.targetPortId, e.targetNodeId) },
+      ...(e.adapter !== undefined ? { adapter: e.adapter } : {}),
     })),
   };
 }

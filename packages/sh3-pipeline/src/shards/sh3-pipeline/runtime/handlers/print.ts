@@ -42,7 +42,7 @@ export function makePrintHandler(): NodeHandler {
     }
 
     ctx.log({ ts: Date.now(), nodeId: inv.nodeId, level: 'info',
-      message: `${prefix}${toDisplay(resolved)}`, data: resolved });
+      message: `${prefix}${toDisplay(resolved)}` });
     return { outputs: {}, next: 'run-out' };
   };
 }

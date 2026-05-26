@@ -53,6 +53,19 @@ When a package has never been tagged, the suffix is omitted and the artifact shi
 
 Requires `sh3-core@>=0.26.2` for `tagPattern` support.
 
+## Shard-in-app permission rotation
+
+A shard contributed to an app via `App.manifest.requiredShards` runs inside the **host app's namespace and permission set**, not its own. Specifically:
+
+- **boundId** — `ctx.documents.boundId` resolves to the app id (e.g. `sh3-pipeline`) while the shard is bound, not the shard's own id.
+- **grants** — `ctx.documents.grants.browse` / `.write` resolve from the **host app's** `manifest.permissions`, not the shard's. While unbound, the shard's own manifest applies.
+
+Practical implication: a generic-purpose shard like `sh3-editor` (manifest declares `permissions: []`) gains the host app's `documents:*` capabilities while running inside that app. The inspector's `<DocumentOpener>` then browses the full active scope. There is no need to declare `documents:browse` on every reusable shard "just in case"; declare the permission on the app(s) that genuinely need it.
+
+The flip side: a shard cannot rely on its own declared permissions while bound — the host app overrides. Standalone usage (autostart or solo activation) still consults the shard manifest.
+
+Requires `sh3-core@>=0.26.3`. See ADR-025 (Amendment 2026-05-27) for the design rationale.
+
 ## Overrides
 
 `package.json` overrides `sh3-core` to the sibling working tree (`file:../SH3/packages/sh3-core`). Both repos must be checked out side-by-side for `npm install` to work locally. The CI workflow checks out the private `Unfinished-Lair/sh3` repo into a sibling path before installing.

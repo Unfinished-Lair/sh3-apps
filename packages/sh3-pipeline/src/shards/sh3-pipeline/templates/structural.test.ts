@@ -18,44 +18,44 @@ describe('structuralTemplates', () => {
     expect(types).toContain('record.get');
   });
 
-  it('start has one control output and no inputs initially', () => {
+  it('start has one run output and no inputs initially', () => {
     const start = structuralTemplates.find((t) => t.type === 'start')!;
     expect(start.ports.filter((p) => p.direction === 'input')).toHaveLength(0);
-    expect(start.ports.filter((p) => p.direction === 'output' && p.dataType === 'control')).toHaveLength(1);
+    expect(start.ports.filter((p) => p.direction === 'output' && p.dataType === 'run')).toHaveLength(1);
   });
 
-  it('end has one control input and no outputs initially', () => {
+  it('end has one run input and no outputs initially', () => {
     const end = structuralTemplates.find((t) => t.type === 'end')!;
     expect(end.ports.filter((p) => p.direction === 'output')).toHaveLength(0);
-    expect(end.ports.filter((p) => p.direction === 'input' && p.dataType === 'control')).toHaveLength(1);
+    expect(end.ports.filter((p) => p.direction === 'input' && p.dataType === 'run')).toHaveLength(1);
   });
 
-  it('branch has 1 control in, 1 boolean in, 2 control outs (then, else)', () => {
+  it('branch has 1 run in, 1 boolean in, 2 run outs (then, else)', () => {
     const b = structuralTemplates.find((t) => t.type === 'branch')!;
-    const ctrlIns = b.ports.filter((p) => p.direction === 'input' && p.dataType === 'control');
-    const ctrlOuts = b.ports.filter((p) => p.direction === 'output' && p.dataType === 'control');
+    const runIns = b.ports.filter((p) => p.direction === 'input' && p.dataType === 'run');
+    const runOuts = b.ports.filter((p) => p.direction === 'output' && p.dataType === 'run');
     const boolIn = b.ports.filter((p) => p.direction === 'input' && p.dataType === 'boolean');
-    expect(ctrlIns).toHaveLength(1);
-    expect(ctrlOuts).toHaveLength(2);
+    expect(runIns).toHaveLength(1);
+    expect(runOuts).toHaveLength(2);
     expect(boolIn).toHaveLength(1);
-    expect(ctrlOuts.map((p) => p.id).sort()).toEqual(['else', 'then']);
+    expect(runOuts.map((p) => p.id).sort()).toEqual(['else', 'then']);
   });
 
-  it('literal.string has no control ports and a single string output', () => {
+  it('literal.string has no run ports and a single string output', () => {
     const lit = structuralTemplates.find((t) => t.type === 'literal.string')!;
-    expect(lit.ports.every((p) => p.dataType !== 'control')).toBe(true);
+    expect(lit.ports.every((p) => p.dataType !== 'run')).toBe(true);
     const outs = lit.ports.filter((p) => p.direction === 'output');
     expect(outs).toHaveLength(1);
     expect(outs[0].dataType).toBe('string');
   });
 
-  it('setVar has unique control in/out port ids + a value input', () => {
+  it('setVar has unique run in/out port ids + a value input', () => {
     const sv = structuralTemplates.find((t) => t.type === 'setVar')!;
-    const ctrlIn = sv.ports.find((p) => p.direction === 'input' && p.dataType === 'control');
-    const ctrlOut = sv.ports.find((p) => p.direction === 'output' && p.dataType === 'control');
-    expect(ctrlIn).toBeDefined();
-    expect(ctrlOut).toBeDefined();
-    expect(ctrlIn!.id).not.toBe(ctrlOut!.id);
+    const runIn = sv.ports.find((p) => p.direction === 'input' && p.dataType === 'run');
+    const runOut = sv.ports.find((p) => p.direction === 'output' && p.dataType === 'run');
+    expect(runIn).toBeDefined();
+    expect(runOut).toBeDefined();
+    expect(runIn!.id).not.toBe(runOut!.id);
     expect(sv.ports.find((p) => p.direction === 'input' && p.id === 'value')).toBeDefined();
   });
 

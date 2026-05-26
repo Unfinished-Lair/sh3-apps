@@ -2,6 +2,7 @@ import type { ParamDef } from '../../domain/types';
 import type { HandlerRegistry, NodeHandler } from './index';
 import { makePrintHandler } from './print';
 import { makeJsonifyHandler } from './jsonify';
+import { toDisplay } from './pretty';
 
 const jsonifyHandler = makeJsonifyHandler();
 
@@ -45,6 +46,10 @@ const setVar: NodeHandler = async (ctx, inv) => {
     ctx.log({ ts: Date.now(), nodeId: inv.nodeId, level: 'warn', message: 'setVar: empty key' });
   } else {
     ctx.vars.set(key, inv.inputs.value);
+    ctx.log({
+      ts: Date.now(), nodeId: inv.nodeId, level: 'info',
+      message: `setVar ${key}: ${toDisplay(inv.inputs.value)}`,
+    });
   }
   return { outputs: {}, next: 'run-out' };
 };
@@ -67,8 +72,13 @@ function literal(type: 'string' | 'number' | 'boolean'): NodeHandler {
   };
 }
 
-const recordBuild: NodeHandler = async (_ctx, inv) => {
-  return { outputs: { record: { ...inv.inputs } }, next: null };
+const recordBuild: NodeHandler = async (ctx, inv) => {
+  const record = { ...inv.inputs };
+  ctx.log({
+    ts: Date.now(), nodeId: inv.nodeId, level: 'info',
+    message: `record.build: ${toDisplay(record)}`,
+  });
+  return { outputs: { record }, next: null };
 };
 
 const recordGet: NodeHandler = async (_ctx, inv) => {

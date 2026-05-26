@@ -1,17 +1,6 @@
 import type { NodeHandler } from './index';
 import { resolvePath } from './print-path';
-
-function toDisplay(v: unknown): string {
-  if (v === null) return 'null';
-  if (v === undefined) return 'undefined';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  if (typeof v === 'object') {
-    try { return JSON.stringify(v, null, 2); }
-    catch { return String(v); }
-  }
-  return String(v);
-}
+import { toDisplay } from './pretty';
 
 export function makePrintHandler(): NodeHandler {
   return async (ctx, inv) => {

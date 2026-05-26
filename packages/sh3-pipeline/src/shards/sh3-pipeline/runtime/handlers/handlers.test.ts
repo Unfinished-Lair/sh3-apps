@@ -95,6 +95,43 @@ describe('structuralHandlers.setVar / getVar', () => {
     });
     expect(get.outputs).toEqual({ value: 42 });
   });
+
+  it('setVar logs the stored value pretty-printed at info level', async () => {
+    const logs: { level: string; message: string }[] = [];
+    const ctx = ctxStub({ log: (e) => logs.push({ level: e.level, message: e.message }) });
+    await structuralHandlers.exact.get('setVar')!(ctx, {
+      nodeId: 'sv', type: 'setVar', config: { key: 'workspace' },
+      inputs: { value: { id: 'sq', name: 'Square-Survivor' } },
+    });
+    const entry = logs.find((l) => l.level === 'info');
+    expect(entry?.message).toBe('setVar workspace: {\n  "id": "sq",\n  "name": "Square-Survivor"\n}');
+  });
+
+  it('setVar with empty key skips the storage log and warns instead', async () => {
+    const logs: { level: string; message: string }[] = [];
+    const ctx = ctxStub({ log: (e) => logs.push({ level: e.level, message: e.message }) });
+    await structuralHandlers.exact.get('setVar')!(ctx, {
+      nodeId: 'sv', type: 'setVar', config: { key: '' }, inputs: { value: 1 },
+    });
+    expect(logs.find((l) => l.level === 'warn')).toBeTruthy();
+    expect(logs.find((l) => l.level === 'info')).toBeUndefined();
+  });
+});
+
+describe('structuralHandlers.record.build', () => {
+  it('logs the built record at info level', async () => {
+    const logs: { level: string; message: string }[] = [];
+    const ctx = ctxStub({ log: (e) => logs.push({ level: e.level, message: e.message }) });
+    const out = await structuralHandlers.exact.get('record.build')!(ctx, {
+      nodeId: 'rb', type: 'record.build', config: {},
+      inputs: { name: 'a', count: 3 },
+    });
+    expect(out.outputs.record).toEqual({ name: 'a', count: 3 });
+    const entry = logs.find((l) => l.level === 'info');
+    expect(entry?.message).toContain('record.build:');
+    expect(entry?.message).toContain('"name": "a"');
+    expect(entry?.message).toContain('"count": 3');
+  });
 });
 
 describe('structuralHandlers.literal.*', () => {

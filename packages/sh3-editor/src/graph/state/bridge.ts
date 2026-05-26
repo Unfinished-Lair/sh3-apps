@@ -75,6 +75,7 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
       sourcePortId: shortPortId(e.sourceNodeId, e.sourcePortId),
       targetNodeId: e.targetNodeId,
       targetPortId: shortPortId(e.targetNodeId, e.targetPortId),
+      ...(e.adapter !== undefined ? { adapter: e.adapter } : {}),
     });
   }
 
@@ -178,6 +179,7 @@ export function graphStateToAsset(state: GraphState): GraphAsset {
       sourcePortId: fullPortId(e.sourceNodeId, e.sourcePortId),
       targetNodeId: e.targetNodeId,
       targetPortId: fullPortId(e.targetNodeId, e.targetPortId),
+      ...(e.adapter !== undefined ? { adapter: e.adapter } : {}),
     });
   }
   const out: GraphAsset = {

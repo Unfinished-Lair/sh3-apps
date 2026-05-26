@@ -12,6 +12,7 @@
   } from '../history/commands';
   import { effectivePorts } from '../domain/effective-ports';
   import { resolvePortColor } from './port-color';
+  import { decideConnect } from './connect-resolution';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
   import {
@@ -233,10 +234,11 @@
 
     if (props.domain.edgeSemantics === 'oriented' && src.direction !== 'output') return;
     if (src.nodeId === targetNodeId) return;
-    if (props.domain.canConnect && !props.domain.canConnect(
+    const decision = decideConnect(props.domain,
       { nodeId: src.nodeId, portId: src.portId, direction: src.direction, dataType: src.dataType },
       { nodeId: targetNodeId, portId: targetPortId, direction: targetPort.direction, dataType: targetPort.dataType },
-    )) return;
+    );
+    if (decision.kind === 'reject') return;
 
     const id = `e_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const cmd = makeAddEdgeCommand(props.state, {
@@ -245,6 +247,7 @@
       sourcePortId: src.portId,
       targetNodeId,
       targetPortId,
+      ...(decision.adapter ? { adapter: decision.adapter } : {}),
     });
     cmd.apply();
     props.history.push(cmd);

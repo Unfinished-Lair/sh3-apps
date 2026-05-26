@@ -67,4 +67,9 @@ export interface EdgeState {
   sourcePortId: PortShortId;
   targetNodeId: NodeId;
   targetPortId: PortShortId;
+  /**
+   * Conversion id recorded when the domain's `resolveConnect` returned
+   * `{ via }`. Mirrors GraphAssetEdge.adapter through the in-memory state.
+   */
+  adapter?: string;
 }

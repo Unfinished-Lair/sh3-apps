@@ -3,6 +3,18 @@
     getActiveGraph, onActiveGraphChange, type ActiveGraphRef,
   } from '../active';
   import type { NodeTemplate } from '../domain/types';
+  import { sh3 } from 'sh3-core';
+
+  interface Props {
+    /** When true, close the hosting float after a template is picked. */
+    autoClose?: boolean;
+    /**
+     * MountContext.location snapshot used to discover the hosting float id
+     * when `autoClose` is set. Passed through from the view factory.
+     */
+    location?: () => { kind: 'float'; floatId: string } | { kind: 'docked' } | null;
+  }
+  const props: Props = $props();
 
   // ---- Active-graph tracking -----------------------------------------------
   let active: ActiveGraphRef | null = $state(getActiveGraph());
@@ -42,6 +54,10 @@
 
   function onItemClick(t: NodeTemplate) {
     active?.insertNodeFromTemplate(t.type);
+    if (props.autoClose) {
+      const loc = props.location?.();
+      if (loc?.kind === 'float') sh3.float.close(loc.floatId);
+    }
   }
 
   function onItemDragStart(t: NodeTemplate, ev: DragEvent) {

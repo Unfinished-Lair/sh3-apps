@@ -1,10 +1,10 @@
 <script lang="ts">
   import GraphNode from './GraphNode.svelte';
   import GraphEdge from './GraphEdge.svelte';
-  import GraphPalette from './GraphPalette.svelte';
   import GraphToolbar from './GraphToolbar.svelte';
+  import { cubicEdgePath } from './edge-path';
   import type { GraphState, NodeState, EdgeState, PortDefinition } from '../state/types';
-  import type { GraphDomain, NodeVisuals, NodeTemplate } from '../domain/types';
+  import type { GraphDomain, NodeVisuals } from '../domain/types';
   import type { HistoryController } from '../../types';
   import type { GraphAssetNode, GraphAssetPort } from '../asset/types';
   import {
@@ -267,7 +267,6 @@
     }
   }
 
-  let palette: { x: number; y: number } | null = $state(null);
   let viewport: Viewport = $state({ x: 0, y: 0, zoom: 1 });
   let canvasEl: HTMLDivElement | null = $state(null);
 
@@ -328,11 +327,9 @@
     const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
     paletteDropAtTimestamp = Date.now();
+    paletteDropAt = g;
     if (props.domain.useNodePalette) {
-      // Keep palette anchor in screen-pixel space for layout (palette is outside .viewport),
-      // but stash the graph-space drop point for onPalettePick.
-      palette = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
-      paletteDropAt = g;
+      openPickerAt(ev.clientX, ev.clientY);
     } else {
       addFreeformAt(g);
     }
@@ -406,14 +403,6 @@
     props.onSelectionChange?.([id]);
   }
 
-  function onPalettePick(t: NodeTemplate) {
-    const drop = paletteDropAt;
-    if (!drop) return;
-    insertNodeFromTemplate(t.type, drop);
-    palette = null;
-    paletteDropAt = null;
-  }
-
   // Reading state.revision (a tracked $state field bumped by every
   // mutation) is the single subscription point for graph-state changes.
   // The data layer uses plain Map/Set — no svelte/reactivity dependency.
@@ -450,7 +439,7 @@
     );
     viewport = vp;
   }
-  function dismissPalette() { palette = null; paletteDropAt = null; }
+  function dismissPalette() { paletteDropAt = null; }
 
   const PICKER_VIEW_ID = 'sh3-editor:graph-node-picker';
 
@@ -469,6 +458,7 @@
   }
 
   function openNodePicker(): void {
+    // Toolbar-opened picker: docked-style float (non-dismissable, draggable).
     const existing = sh3.float.list().find((f) => floatHostsPicker(f.content));
     if (existing) {
       sh3.float.focus(existing.id);
@@ -477,6 +467,26 @@
     sh3.float.open(PICKER_VIEW_ID, {
       title: 'Nodes',
       size: { w: 280, h: 420 },
+    });
+  }
+
+  function openPickerAt(clientX: number, clientY: number): void {
+    // Empty-canvas picker: dismissable float, anchored to the canvas so the
+    // frame portals into the same overlay host (e.g. when the graph view
+    // itself lives inside another float). `autoClose` instructs the picker
+    // view to close itself after a template is picked.
+    const PICKER_W = 280;
+    const PICKER_H = 360;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : Infinity;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : Infinity;
+    const x = Math.max(0, Math.min(clientX, vw - PICKER_W));
+    const y = Math.max(0, Math.min(clientY, vh - PICKER_H));
+    sh3.float.open(PICKER_VIEW_ID, {
+      size: { w: PICKER_W, h: PICKER_H },
+      position: { x, y },
+      dismissable: true,
+      ...(canvasEl ? { anchor: canvasEl } : {}),
+      props: { autoClose: true },
     });
   }
 
@@ -536,8 +546,6 @@
 
   function onCanvasWheel(ev: WheelEvent) {
     if (!canvasEl) return;
-    // Let wheel events inside the palette popup scroll its list natively.
-    if (ev.target instanceof Element && ev.target.closest('.palette')) return;
     ev.preventDefault();
     const rect = canvasEl.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
@@ -578,12 +586,7 @@
      onclick={(ev) => {
        if (ev.target === ev.currentTarget) {
          clearSelection();
-         if (palette) {
-           palette = null;
-           paletteDropAt = null;
-         } else {
-           onCanvasEmptyClick(ev);
-         }
+         onCanvasEmptyClick(ev);
        }
      }}>
   <div class="viewport"
@@ -608,8 +611,11 @@
           {@const measured = portCenters.get(`${edgeDrag.source.nodeId}:${edgeDrag.source.portId}`)}
           {@const start = measured ?? fallbackEndpoint(sourceNode, edgeDrag.source.portId,
                                       edgeDrag.source.direction === 'output' ? 'output' : 'input')}
+          {@const ghostPath = edgeDrag.source.direction === 'output'
+                                ? cubicEdgePath(start, edgeDrag.cursor)
+                                : cubicEdgePath(edgeDrag.cursor, start)}
           <path class="edge-ghost" stroke="var(--sh3-accent, #4a9eff)" fill="none" stroke-dasharray="4 3"
-                d={`M ${start.x} ${start.y} L ${edgeDrag.cursor.x} ${edgeDrag.cursor.y}`} />
+                d={ghostPath} />
         {/if}
       {/if}
     </svg>
@@ -626,15 +632,6 @@
       />
     {/each}
   </div>
-  {#if palette}
-    <GraphPalette
-      byCategory={props.domain.getTemplatesByCategory()}
-      x={palette.x}
-      y={palette.y}
-      onPick={onPalettePick}
-      onClose={() => palette = null}
-    />
-  {/if}
   <GraphToolbar
     zoom={viewport.zoom}
     showNodePicker={props.showNodePicker ?? true}

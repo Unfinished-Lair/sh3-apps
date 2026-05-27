@@ -439,8 +439,15 @@ export const shard: SourceShard = {
     });
 
     ctx.registerView('sh3-editor:graph-node-picker', {
-      mount(container) {
-        const component = mount(GraphNodePicker, { target: container, props: {} });
+      mount(container, context) {
+        const autoClose = context.props?.autoClose === true;
+        const component = mount(GraphNodePicker, {
+          target: container,
+          props: {
+            autoClose,
+            location: () => context.location(),
+          },
+        });
         return {
           closable: true,
           unmount() { unmount(component); },

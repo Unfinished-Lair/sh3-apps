@@ -8,13 +8,14 @@
   import type { HistoryController } from '../../types';
   import type { GraphAssetNode, GraphAssetPort } from '../asset/types';
   import {
-    makeMoveNodeCommand, makeAddEdgeCommand, makeAddNodeCommand,
+    makeMoveNodesCommand, makeAddEdgeCommand, makeAddNodeCommand,
   } from '../history/commands';
   import { effectivePorts } from '../domain/effective-ports';
   import { resolvePortColor } from './port-color';
   import { decideConnect } from './connect-resolution';
   import { setActiveGraph, clearActiveGraphIf, type ActiveGraphRef } from '../active';
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
+  import { normalizeRect, nodesInRect, type Rect } from './marquee';
   import {
     getEditorPrefs, subscribeEditorPrefs, type GridStyle,
   } from '../../settings/editor-prefs';
@@ -135,40 +136,80 @@
     props.onSelectionChange?.([]);
   }
 
-  let dragState: { nodeId: string; start: { x: number; y: number };
-                   origin: { x: number; y: number } } | null = $state(null);
+  type NodeId = string;
+  let dragState: {
+    pointerId: number;
+    anchor: { x: number; y: number };
+    origins: Map<NodeId, { x: number; y: number }>;
+  } | null = $state(null);
 
   function onHeaderPointerDown(node: NodeState, ev: PointerEvent) {
     if (props.state.readonly) return;
     ev.stopPropagation();
     (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+
+    const origins = new Map<NodeId, { x: number; y: number }>();
+    const grabbedInSelection = props.state.selection.has(node.id);
+    const selSize = props.state.selection.size;
+
+    if (grabbedInSelection && selSize > 1) {
+      // Drag the whole selection; selection unchanged.
+      for (const id of props.state.selection) {
+        const n = props.state.nodes.get(id);
+        if (n) origins.set(id, { ...n.position });
+      }
+    } else if (grabbedInSelection && selSize === 1) {
+      // Grabbed node is the sole selected item; drag it, no selection mutation.
+      origins.set(node.id, { ...node.position });
+    } else {
+      // Grabbed node is not in the selection; replace selection with it.
+      props.state.selection.clear();
+      props.state.selection.add(node.id);
+      props.state.revision++;
+      props.onSelectionChange?.([node.id]);
+      origins.set(node.id, { ...node.position });
+    }
+
     dragState = {
-      nodeId: node.id,
-      start: { x: ev.clientX, y: ev.clientY },
-      origin: { ...node.position },
+      pointerId: ev.pointerId,
+      anchor: { x: ev.clientX, y: ev.clientY },
+      origins,
     };
   }
 
   function onHeaderPointerMove(ev: PointerEvent) {
     if (!dragState) return;
-    const n = props.state.nodes.get(dragState.nodeId);
-    if (!n) return;
-    const dx = (ev.clientX - dragState.start.x) / viewport.zoom;
-    const dy = (ev.clientY - dragState.start.y) / viewport.zoom;
-    props.state.nodes.set(dragState.nodeId, {
-      ...n,
-      position: { x: dragState.origin.x + dx, y: dragState.origin.y + dy },
-    });
+    const dx = (ev.clientX - dragState.anchor.x) / viewport.zoom;
+    const dy = (ev.clientY - dragState.anchor.y) / viewport.zoom;
+    for (const [id, origin] of dragState.origins) {
+      const n = props.state.nodes.get(id);
+      if (!n) continue;
+      props.state.nodes.set(id, {
+        ...n,
+        position: { x: origin.x + dx, y: origin.y + dy },
+      });
+    }
     props.state.revision++;
   }
 
   function onHeaderPointerUp(_ev: PointerEvent) {
     if (!dragState) return;
-    const n = props.state.nodes.get(dragState.nodeId);
-    if (n && (n.position.x !== dragState.origin.x || n.position.y !== dragState.origin.y)) {
-      const cmd = makeMoveNodeCommand(props.state, dragState.nodeId, dragState.origin, { ...n.position });
+    const moves: { id: NodeId; before: { x: number; y: number }; after: { x: number; y: number } }[] = [];
+    for (const [id, before] of dragState.origins) {
+      const n = props.state.nodes.get(id);
+      if (!n) continue;
+      if (n.position.x !== before.x || n.position.y !== before.y) {
+        moves.push({ id, before: { ...before }, after: { ...n.position } });
+      }
+    }
+    if (moves.length > 0) {
+      const cmd = makeMoveNodesCommand(props.state, moves);
       props.history.push(cmd);
       props.onAssetChanged?.();
+      // The synthetic click that follows pointerup would otherwise fire
+      // GraphNode.onSelectClick and collapse a multi-selection to just the
+      // grabbed node. Swallow it.
+      suppressNextNodeSelectClick = true;
     }
     dragState = null;
   }
@@ -204,6 +245,15 @@
       }
       if (panState.panning) {
         viewport = { ...viewport, x: panState.originVx + dx, y: panState.originVy + dy };
+      }
+    }
+    if (marqueeState && marqueeState.pointerId === ev.pointerId && canvasEl) {
+      const rect = canvasEl.getBoundingClientRect();
+      marqueeState.currentG = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+      const dx = (marqueeState.currentG.x - marqueeState.startG.x) * viewport.zoom;
+      const dy = (marqueeState.currentG.y - marqueeState.startG.y) * viewport.zoom;
+      if (!marqueeState.active && Math.abs(dx) + Math.abs(dy) > PAN_THRESHOLD_PX) {
+        marqueeState.active = true;
       }
     }
   }
@@ -261,7 +311,27 @@
       const wasPanning = panState.panning;
       panState = null;
       if (wasPanning) {
-        // Suppress the synthetic click that would otherwise open the palette.
+        suppressNextEmptyClick = true;
+        suppressNextContextMenu = true;
+      }
+    }
+    if (marqueeState && marqueeState.pointerId === ev.pointerId) {
+      const wasActive = marqueeState.active;
+      const shift = marqueeState.shift;
+      const rect = normalizeRect(marqueeState.startG, marqueeState.currentG);
+      marqueeState = null;
+      if (wasActive) {
+        const hits = nodesInRect(
+          Array.from(props.state.nodes.values()).map((n) => ({
+            id: n.id, position: n.position, width: n.width, height: n.height,
+          })),
+          rect,
+        );
+        if (!shift) props.state.selection.clear();
+        for (const id of hits) props.state.selection.add(id);
+        props.state.revision++;
+        props.onSelectionChange?.(Array.from(props.state.selection));
+        // Marquee swallowed the click — don't let onCanvasEmptyClick fire.
         suppressNextEmptyClick = true;
       }
     }
@@ -306,24 +376,67 @@
   } | null = $state(null);
 
   let suppressNextEmptyClick = $state(false);
+  let suppressNextContextMenu = $state(false);
+  let suppressNextNodeSelectClick = $state(false);
+
+  let marqueeState: {
+    pointerId: number;
+    startG: { x: number; y: number };
+    currentG: { x: number; y: number };
+    shift: boolean;
+    active: boolean;
+  } | null = $state(null);
+
+  // Live preview of which nodes the marquee would select. Recomputed each
+  // pointermove via Svelte reactivity on marqueeState.currentG.
+  const marqueePreviewIds = $derived.by(() => {
+    void props.state.revision;
+    if (!marqueeState || !marqueeState.active) return new Set<string>();
+    const rect = normalizeRect(marqueeState.startG, marqueeState.currentG);
+    return new Set(nodesInRect(
+      Array.from(props.state.nodes.values()).map((n) => ({
+        id: n.id, position: n.position, width: n.width, height: n.height,
+      })),
+      rect,
+    ));
+  });
 
   function onCanvasPointerDown(ev: PointerEvent) {
-    // Pan only when the empty canvas itself was hit with primary button.
     if (ev.target !== ev.currentTarget) return;
-    if (ev.button !== 0) return;
-    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
-    panState = {
-      pointerId: ev.pointerId,
-      startX: ev.clientX, startY: ev.clientY,
-      originVx: viewport.x, originVy: viewport.y,
-      panning: false,
-    };
+
+    if (ev.button === 0) {
+      (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+      if (canvasEl) {
+        const rect = canvasEl.getBoundingClientRect();
+        const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+        marqueeState = {
+          pointerId: ev.pointerId,
+          startG: g,
+          currentG: g,
+          shift: ev.shiftKey,
+          active: false,
+        };
+      }
+      return;
+    }
+
+    if (ev.button === 2) {
+      (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+      panState = {
+        pointerId: ev.pointerId,
+        startX: ev.clientX, startY: ev.clientY,
+        originVx: viewport.x, originVy: viewport.y,
+        panning: false,
+      };
+      return;
+    }
   }
 
   function onCanvasEmptyClick(ev: MouseEvent) {
     if (suppressNextEmptyClick) { suppressNextEmptyClick = false; return; }
     if (props.state.readonly) return;
     if (ev.target !== ev.currentTarget) return;
+    clearSelection();
     const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
     paletteDropAtTimestamp = Date.now();
@@ -567,6 +680,49 @@
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
   });
+
+  // Picker-reopen suppression. sh3-core's floatDismiss listener runs at
+  // document+capture and synchronously closes the dismissable picker on
+  // outside-click — by the time our canvas onpointerdown fires (bubble),
+  // sh3.float.list() no longer reports the picker, so checking there is
+  // too late. We install our own document+capture listener (registered
+  // here at Graph mount, before any picker is ever opened) so it runs
+  // before sh3-core's and observes the picker still in the list.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const handler = (ev: PointerEvent) => {
+      if (ev.button !== 0) return;
+      if (!canvasEl) return;
+      if (ev.target !== canvasEl) return;
+      if (sh3.float.list().some((f) => floatHostsPicker(f.content))) {
+        suppressNextEmptyClick = true;
+      }
+    };
+    document.addEventListener('pointerdown', handler, true);
+    return () => document.removeEventListener('pointerdown', handler, true);
+  });
+
+  // Right-button drag pan suppresses the contextmenu that would otherwise
+  // open on right-button release. sh3-core's contextmenu listener is on
+  // document+bubble and opens the SH3 action context menu — preventDefault
+  // alone only suppresses the native OS menu, so we also stopPropagation
+  // (capture phase) to keep the event from reaching that bubble listener.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const handler = (ev: Event) => {
+      if (!canvasEl) return;
+      const t = ev.target as Node | null;
+      if (!t || !canvasEl.contains(t)) return;
+      const shouldSuppress =
+        (panState && panState.panning) || suppressNextContextMenu;
+      if (!shouldSuppress) return;
+      if (suppressNextContextMenu) suppressNextContextMenu = false;
+      ev.preventDefault();
+      ev.stopPropagation();
+    };
+    document.addEventListener('contextmenu', handler, true);
+    return () => document.removeEventListener('contextmenu', handler, true);
+  });
 </script>
 
 <div class="graph-canvas"
@@ -585,7 +741,6 @@
      ondrop={onCanvasDrop}
      onclick={(ev) => {
        if (ev.target === ev.currentTarget) {
-         clearSelection();
          onCanvasEmptyClick(ev);
        }
      }}>
@@ -602,7 +757,7 @@
           oriented={oriented}
           selected={isSelected(e.id)}
           adapter={e.adapter}
-          onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.ctrlKey || ev.metaKey); }}
+          onClick={(ev) => { ev.stopPropagation(); selectOne(e.id, ev.shiftKey); }}
         />
       {/each}
       {#if edgeDrag}
@@ -624,13 +779,32 @@
         node={n}
         visuals={visualsFor(n)}
         selected={isSelected(n.id)}
+        marqueePreview={marqueePreviewIds.has(n.id)}
         portColor={(p) => portColorFor(n, p)}
-        onSelectClick={(ev) => { ev.stopPropagation(); selectOne(n.id, ev.ctrlKey || ev.metaKey); }}
+        onSelectClick={(ev) => {
+          ev.stopPropagation();
+          if (suppressNextNodeSelectClick) { suppressNextNodeSelectClick = false; return; }
+          selectOne(n.id, ev.shiftKey);
+        }}
         onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
         onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}
         onPortPointerUp={(p, ev) => onPortPointerUp(n, p, ev)}
       />
     {/each}
+    {#if marqueeState && marqueeState.active}
+      {@const r = normalizeRect(marqueeState.startG, marqueeState.currentG)}
+      <svg class="marquee-overlay">
+        <rect
+          class="marquee"
+          x={r.x} y={r.y} width={r.w} height={r.h}
+          fill="var(--sh3-accent, #4a9eff)"
+          fill-opacity="0.15"
+          stroke="var(--sh3-accent, #4a9eff)"
+          stroke-dasharray="4 3"
+          vector-effect="non-scaling-stroke"
+        />
+      </svg>
+    {/if}
   </div>
   <GraphToolbar
     zoom={viewport.zoom}
@@ -654,6 +828,11 @@
   .edge-overlay { position: absolute; inset: 0; width: 100%; height: 100%;
                   overflow: visible; pointer-events: none; }
   .edge-overlay :global(g.edge) { pointer-events: stroke; }
+  /* Marquee renders in its own overlay after the nodes in document order
+     so it paints on top of them. Same pointer-events:none + overflow:visible
+     contract as .edge-overlay. */
+  .marquee-overlay { position: absolute; inset: 0; width: 100%; height: 100%;
+                     overflow: visible; pointer-events: none; }
   /* pointer-events:none lets clicks/drags inside the viewport's transformed
      bounds fall through to .graph-canvas (for pan + empty-click + palette
      dismiss). Children (.graph-node, g.edge stroke) opt back in via their

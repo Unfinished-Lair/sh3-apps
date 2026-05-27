@@ -9,6 +9,7 @@ export type GraphCommandKind =
   | 'add-many'
   | 'remove-node'
   | 'move-node'
+  | 'move-nodes'
   | 'set-node-config'
   | 'add-edge'
   | 'remove-edge'
@@ -148,6 +149,29 @@ export function makeMoveNodeCommand(
     revert() {
       const n = state.nodes.get(nodeId);
       if (n) state.nodes.set(nodeId, { ...n, position: { ...before } });
+      state.revision++;
+    },
+  };
+}
+
+export function makeMoveNodesCommand(
+  state: GraphState,
+  moves: { id: NodeId; before: { x: number; y: number }; after: { x: number; y: number } }[],
+): GraphCommand {
+  return {
+    meta: { kind: 'move-nodes' },
+    apply() {
+      for (const m of moves) {
+        const n = state.nodes.get(m.id);
+        if (n) state.nodes.set(m.id, { ...n, position: { ...m.after } });
+      }
+      state.revision++;
+    },
+    revert() {
+      for (const m of moves) {
+        const n = state.nodes.get(m.id);
+        if (n) state.nodes.set(m.id, { ...n, position: { ...m.before } });
+      }
       state.revision++;
     },
   };

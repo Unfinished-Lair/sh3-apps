@@ -6,6 +6,8 @@
     node: NodeState;
     visuals: NodeVisuals;
     selected: boolean;
+    /** True while an in-progress marquee covers this node; shows a preview outline. */
+    marqueePreview?: boolean;
     /** Resolver injected by Graph.svelte. Returns hex, or null to inherit border. */
     portColor?: (port: PortDefinition) => string | null;
     onHeaderPointerDown?: (ev: PointerEvent) => void;
@@ -26,6 +28,7 @@
 <div
   class="graph-node"
   class:selected={props.selected}
+  class:marquee-preview={props.marqueePreview && !props.selected}
   style:left="{props.node.position.x}px"
   style:top="{props.node.position.y}px"
   style:width="{props.node.width}px"
@@ -87,6 +90,10 @@
     pointer-events: auto;
   }
   .graph-node.selected { outline: 2px solid var(--sh3-accent, #4a9eff); outline-offset: 1px; }
+  .graph-node.marquee-preview {
+    outline: 2px dashed var(--sh3-accent, #4a9eff);
+    outline-offset: 1px;
+  }
   .header { padding: 4px 8px; cursor: grab; font-weight: 600; border-bottom: 1px solid var(--border-color); display: flex; gap: 6px; align-items: center; }
   .header:active { cursor: grabbing; }
   .ports { display: flex; justify-content: space-between; padding: 6px 0; }

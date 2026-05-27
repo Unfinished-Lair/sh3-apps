@@ -3,6 +3,7 @@ import {
   makeAddNodeCommand,
   makeRemoveNodeCommand,
   makeMoveNodeCommand,
+  makeMoveNodesCommand,
   makeSetNodeConfigCommand,
   makeAddEdgeCommand,
   makeRemoveEdgeCommand,
@@ -268,6 +269,66 @@ describe('makeSetNodeConfigCommand — dynamic ports', () => {
 
     const node = s.nodes.get('rec1')!;
     expect(node.ports.map(p => p.shortId).sort()).toEqual(['a', 'b', 'record']);
+  });
+});
+
+describe('move-nodes command', () => {
+  it('applies all moves in one shot', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [
+        { id: 'a', type: 't', position: { x: 0, y: 0 }, config: {}, ports: [] },
+        { id: 'b', type: 't', position: { x: 10, y: 10 }, config: {}, ports: [] },
+      ],
+      edges: [],
+    }, dom);
+    const cmd = makeMoveNodesCommand(s, [
+      { id: 'a', before: { x: 0, y: 0 }, after: { x: 50, y: 50 } },
+      { id: 'b', before: { x: 10, y: 10 }, after: { x: 60, y: 60 } },
+    ]);
+    cmd.apply();
+    expect(s.nodes.get('a')!.position).toEqual({ x: 50, y: 50 });
+    expect(s.nodes.get('b')!.position).toEqual({ x: 60, y: 60 });
+  });
+
+  it('reverts all moves in one shot', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [
+        { id: 'a', type: 't', position: { x: 50, y: 50 }, config: {}, ports: [] },
+        { id: 'b', type: 't', position: { x: 60, y: 60 }, config: {}, ports: [] },
+      ],
+      edges: [],
+    }, dom);
+    const cmd = makeMoveNodesCommand(s, [
+      { id: 'a', before: { x: 0, y: 0 }, after: { x: 50, y: 50 } },
+      { id: 'b', before: { x: 10, y: 10 }, after: { x: 60, y: 60 } },
+    ]);
+    cmd.revert();
+    expect(s.nodes.get('a')!.position).toEqual({ x: 0, y: 0 });
+    expect(s.nodes.get('b')!.position).toEqual({ x: 10, y: 10 });
+  });
+
+  it('meta.kind is move-nodes', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1, nodes: [], edges: [],
+    }, dom);
+    const cmd = makeMoveNodesCommand(s, []);
+    expect(cmd.meta?.kind).toBe('move-nodes');
+  });
+
+  it('skips entries whose node no longer exists', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'a', type: 't', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom);
+    const cmd = makeMoveNodesCommand(s, [
+      { id: 'a', before: { x: 0, y: 0 }, after: { x: 5, y: 5 } },
+      { id: 'ghost', before: { x: 0, y: 0 }, after: { x: 99, y: 99 } },
+    ]);
+    expect(() => cmd.apply()).not.toThrow();
+    expect(s.nodes.get('a')!.position).toEqual({ x: 5, y: 5 });
   });
 });
 

@@ -10,6 +10,7 @@ import {
   makeRemoveSelectionCommand,
   makeAddManyCommand,
   makeReplaceAssetCommand,
+  makeResizeNodeCommand,
 } from './commands';
 import { graphAssetToState, graphStateToAsset } from '../state/bridge';
 import { createGraphDomain } from '../domain/create';
@@ -329,6 +330,51 @@ describe('move-nodes command', () => {
     ]);
     expect(() => cmd.apply()).not.toThrow();
     expect(s.nodes.get('a')!.position).toEqual({ x: 5, y: 5 });
+  });
+});
+
+describe('resize-node command', () => {
+  it('applies new dimensions', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 't', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom);
+    const before = { w: s.nodes.get('n')!.width, h: s.nodes.get('n')!.height };
+    const cmd = makeResizeNodeCommand(s, 'n', before, { w: 300, h: 200 });
+    cmd.apply();
+    expect(s.nodes.get('n')!.width).toBe(300);
+    expect(s.nodes.get('n')!.height).toBe(200);
+  });
+
+  it('reverts to before dimensions', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 't', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom);
+    const before = { w: s.nodes.get('n')!.width, h: s.nodes.get('n')!.height };
+    const cmd = makeResizeNodeCommand(s, 'n', before, { w: 300, h: 200 });
+    cmd.apply();
+    cmd.revert();
+    expect(s.nodes.get('n')!.width).toBe(before.w);
+    expect(s.nodes.get('n')!.height).toBe(before.h);
+  });
+
+  it('meta.kind is resize-node', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1, nodes: [], edges: [],
+    }, dom);
+    const cmd = makeResizeNodeCommand(s, 'absent', { w: 0, h: 0 }, { w: 0, h: 0 });
+    expect(cmd.meta?.kind).toBe('resize-node');
+  });
+
+  it('is a no-op on a missing node', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1, nodes: [], edges: [],
+    }, dom);
+    const cmd = makeResizeNodeCommand(s, 'absent', { w: 10, h: 10 }, { w: 99, h: 99 });
+    expect(() => cmd.apply()).not.toThrow();
   });
 });
 

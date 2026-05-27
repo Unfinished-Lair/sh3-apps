@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-05-27 — Comment node body + prefetch in-node select
+
+### Added
+
+- **Comment node body.** The Flow → Comment node now renders an editable textarea inline and is resizable on both axes (minW 80, minH 40). Default size grows from 200×60 to 200×100 to give the textarea breathing room.
+- **Prefetch in-node selection.** Prefetch verb nodes (`config.mode === 'prefetch'`) now expose the row picker directly in the node body via a new `sh3-pipeline:prefetch-node-body` inspector renderer. Error and orphan badges render conditionally next to the select. The renderer is only mounted while the node is in prefetch mode (via `bodySchema[].show`).
+
+Requires `@unfinished-lair/sh3-editor` ≥ 0.18.0 for the body slot and `badge` widget contributions.
+
 ## Unreleased
 
 ### Fixed

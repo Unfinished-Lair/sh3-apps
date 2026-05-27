@@ -9,5 +9,6 @@ export type {
   GraphDomain, GraphDomainHost, NodeTemplate, ConfigFieldDef,
   NodeVisuals, EdgeSemantics, PortRef,
   DataTypeDef, ConversionDef, ConnectResolution,
+  BodyFieldDef, ResizeOptions,
 } from './domain/types';
 export { createGraphDomain, type GraphDomainSpec } from './domain/create';

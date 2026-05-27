@@ -59,6 +59,10 @@ export interface NodeState {
   // editor-only
   width: number;
   height: number;
+  /** Visuals defaults captured at bridge/command build time so
+   *  graphStateToAsset can decide whether to omit width/height on
+   *  serialization. Not for runtime layout — runtime reads width/height. */
+  defaultsForSerialization: { width: number; height: number };
 }
 
 export interface EdgeState {

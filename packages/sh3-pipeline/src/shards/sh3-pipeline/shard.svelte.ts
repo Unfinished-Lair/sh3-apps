@@ -22,6 +22,7 @@ import type {
   InspectorRenderer,
 } from '@unfinished-lair/sh3-editor/inspector/contributions';
 import PrefetchInspectorAdapter from './views/PrefetchInspectorAdapter.svelte';
+import PrefetchBody from './views/PrefetchBody.svelte';
 import {
   bindPrefetchActions,
   unbindPrefetchActions,
@@ -497,6 +498,15 @@ export const shard: SourceShard = {
       priority: 100,
     };
     ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, prefetchRenderer);
+
+    // In-node body renderer for prefetch verb nodes. Renders the row picker
+    // inline in the node's body slot via NodeVisuals.bodySchema.
+    ctx.contributions.register<InspectorRenderer>(INSPECTOR_RENDERER_POINT, {
+      id: 'sh3-pipeline:prefetch-node-body',
+      type: 'sh3-pipeline:prefetch-node-body',
+      component: PrefetchBody as never,
+      priority: 100,
+    });
 
     const inspectorContribution: InspectorInstanceContribution = {
       slotId: INSPECTOR_SLOT_ID,

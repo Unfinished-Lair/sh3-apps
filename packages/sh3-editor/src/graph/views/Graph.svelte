@@ -9,6 +9,7 @@
   import type { GraphAssetNode, GraphAssetPort } from '../asset/types';
   import {
     makeMoveNodesCommand, makeAddEdgeCommand, makeAddNodeCommand,
+    makeResizeNodeCommand,
   } from '../history/commands';
   import { effectivePorts } from '../domain/effective-ports';
   import { resolvePortColor } from './port-color';
@@ -143,6 +144,69 @@
     origins: Map<NodeId, { x: number; y: number }>;
   } | null = $state(null);
 
+  let resizeState: {
+    nodeId: NodeId;
+    pointerId: number;
+    edge: 'e' | 's' | 'se';
+    anchor: { x: number; y: number };
+    origin: { w: number; h: number };
+    constraints: { minW: number; minH: number; maxW: number; maxH: number };
+  } | null = $state(null);
+
+  function onResizePointerDown(node: NodeState, edge: 'e' | 's' | 'se', ev: PointerEvent) {
+    if (props.state.readonly) return;
+    ev.stopPropagation();
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+    const visuals = props.domain.getNodeVisuals(node.type);
+    const r = visuals.resize ?? {};
+    resizeState = {
+      nodeId: node.id,
+      pointerId: ev.pointerId,
+      edge,
+      anchor: { x: ev.clientX, y: ev.clientY },
+      origin: { w: node.width, h: node.height },
+      constraints: {
+        minW: r.minW ?? 40,
+        minH: r.minH ?? 24,
+        maxW: r.maxW ?? Infinity,
+        maxH: r.maxH ?? Infinity,
+      },
+    };
+  }
+
+  function onResizePointerMove(ev: PointerEvent) {
+    if (!resizeState || resizeState.pointerId !== ev.pointerId) return;
+    const dx = (ev.clientX - resizeState.anchor.x) / viewport.zoom;
+    const dy = (ev.clientY - resizeState.anchor.y) / viewport.zoom;
+    const { minW, minH, maxW, maxH } = resizeState.constraints;
+    const n = props.state.nodes.get(resizeState.nodeId);
+    if (!n) return;
+    const nextW = resizeState.edge === 's'
+        ? n.width
+        : Math.max(minW, Math.min(maxW, resizeState.origin.w + dx));
+    const nextH = resizeState.edge === 'e'
+        ? n.height
+        : Math.max(minH, Math.min(maxH, resizeState.origin.h + dy));
+    props.state.nodes.set(resizeState.nodeId, { ...n, width: nextW, height: nextH });
+    props.state.revision++;
+  }
+
+  function onResizePointerUp(_ev: PointerEvent) {
+    if (!resizeState) return;
+    const n = props.state.nodes.get(resizeState.nodeId);
+    if (n && (n.width !== resizeState.origin.w || n.height !== resizeState.origin.h)) {
+      const cmd = makeResizeNodeCommand(
+        props.state, resizeState.nodeId,
+        { w: resizeState.origin.w, h: resizeState.origin.h },
+        { w: n.width, h: n.height },
+      );
+      props.history.push(cmd);
+      props.onAssetChanged?.();
+      suppressNextNodeSelectClick = true;
+    }
+    resizeState = null;
+  }
+
   function onHeaderPointerDown(node: NodeState, ev: PointerEvent) {
     if (props.state.readonly) return;
     ev.stopPropagation();
@@ -231,6 +295,7 @@
 
   function onCanvasPointerMove(ev: PointerEvent) {
     onHeaderPointerMove(ev);
+    onResizePointerMove(ev);
     if (edgeDrag) {
       if (canvasEl) {
         const rect = canvasEl.getBoundingClientRect();
@@ -306,6 +371,7 @@
 
   function onCanvasPointerUp(ev: PointerEvent) {
     onHeaderPointerUp(ev);
+    onResizePointerUp(ev);
     edgeDrag = null;
     if (panState && panState.pointerId === ev.pointerId) {
       const wasPanning = panState.panning;
@@ -781,6 +847,9 @@
         selected={isSelected(n.id)}
         marqueePreview={marqueePreviewIds.has(n.id)}
         portColor={(p) => portColorFor(n, p)}
+        state={props.state}
+        domain={props.domain}
+        history={props.history}
         onSelectClick={(ev) => {
           ev.stopPropagation();
           if (suppressNextNodeSelectClick) { suppressNextNodeSelectClick = false; return; }
@@ -789,6 +858,7 @@
         onHeaderPointerDown={(ev) => onHeaderPointerDown(n, ev)}
         onPortPointerDown={(p, ev) => onPortPointerDown(n, p, ev)}
         onPortPointerUp={(p, ev) => onPortPointerUp(n, p, ev)}
+        onResizePointerDown={(edge, ev) => onResizePointerDown(n, edge, ev)}
       />
     {/each}
     {#if marqueeState && marqueeState.active}

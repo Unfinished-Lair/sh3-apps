@@ -65,6 +65,23 @@ export function getApi(): EditorApi | null {
   return apiRef;
 }
 
+/** True when an editable element (input/textarea/select/[contenteditable])
+ *  inside a focused .graph-canvas currently holds focus. Used to skip
+ *  graph-scoped shortcuts (Delete, Mod+Z, Escape, …) while the user is
+ *  typing inside a node body widget. */
+function isEditableFocusedInsideCanvas(): boolean {
+  if (typeof document === 'undefined') return false;
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  const editable =
+    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+    el.isContentEditable;
+  if (!editable) return false;
+  const canvas = document.querySelector('.graph-canvas:focus-within');
+  return !!canvas && canvas.contains(el);
+}
+
 export const shard: SourceShard = {
   manifest: {
     id: 'sh3-editor',
@@ -539,6 +556,7 @@ export const shard: SourceShard = {
       contextItem: true,
       group: 'Graph',
       run() {
+        if (isEditableFocusedInsideCanvas()) return;
         const g = getActiveGraph();
         if (!g || g.state.readonly || g.state.selection.size === 0) return;
         const ids = Array.from(g.state.selection);
@@ -559,6 +577,7 @@ export const shard: SourceShard = {
       contextItem: false,
       group: 'Graph',
       run() {
+        if (isEditableFocusedInsideCanvas()) return;
         const g = getActiveGraph();
         if (!g || g.state.readonly) return;
         if (g.history.undo()) g.onAssetChanged();
@@ -574,6 +593,7 @@ export const shard: SourceShard = {
       contextItem: false,
       group: 'Graph',
       run() {
+        if (isEditableFocusedInsideCanvas()) return;
         const g = getActiveGraph();
         if (!g || g.state.readonly) return;
         if (g.history.redo()) g.onAssetChanged();
@@ -590,6 +610,7 @@ export const shard: SourceShard = {
       paletteItem: false,
       contextItem: false,
       run() {
+        if (isEditableFocusedInsideCanvas()) return;
         const g = getActiveGraph();
         if (!g || g.state.readonly) return;
         if (g.history.redo()) g.onAssetChanged();
@@ -604,7 +625,10 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'Graph',
-      run() { getActiveGraph()?.zoomIn(); },
+      run() {
+        if (isEditableFocusedInsideCanvas()) return;
+        getActiveGraph()?.zoomIn();
+      },
     });
 
     ctx.actions.register({
@@ -615,7 +639,10 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'Graph',
-      run() { getActiveGraph()?.zoomOut(); },
+      run() {
+        if (isEditableFocusedInsideCanvas()) return;
+        getActiveGraph()?.zoomOut();
+      },
     });
 
     ctx.actions.register({
@@ -626,7 +653,10 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'Graph',
-      run() { getActiveGraph()?.zoomReset(); },
+      run() {
+        if (isEditableFocusedInsideCanvas()) return;
+        getActiveGraph()?.zoomReset();
+      },
     });
 
     ctx.actions.register({
@@ -637,7 +667,10 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'Graph',
-      run() { getActiveGraph()?.fitContent(); },
+      run() {
+        if (isEditableFocusedInsideCanvas()) return;
+        getActiveGraph()?.fitContent();
+      },
     });
 
     ctx.actions.register({
@@ -649,7 +682,10 @@ export const shard: SourceShard = {
       paletteItem: false,
       contextItem: false,
       group: 'Graph',
-      run() { getActiveGraph()?.dismissPalette(); },
+      run() {
+        if (isEditableFocusedInsideCanvas()) return;
+        getActiveGraph()?.dismissPalette();
+      },
     });
   },
 

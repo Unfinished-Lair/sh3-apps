@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { graphAssetToState, graphStateToAsset, buildConfigFields } from './bridge';
+import { createGraphDomain } from '../domain/create';
 import type { GraphAsset } from '../asset/types';
 import type { GraphDomain, NodeTemplate } from '../domain/types';
 
@@ -254,5 +255,62 @@ describe('buildConfigFields', () => {
     };
     const fields = buildConfigFields(template, {}, new Set());
     expect(fields).toEqual([{ key: 'document', label: 'Document', type: 'doc', disabled: false }]);
+  });
+});
+
+describe('node width/height round-trip', () => {
+  function dom() {
+    return createGraphDomain({
+      id: 't', label: 't',
+      defaultNodeWidth: 180, defaultNodeHeight: 80,
+      templates: [{ type: 'x', category: 'C', label: 'X', ports: [], defaultConfig: {} }],
+      visuals: { x: { label: 'X', borderColor: '#ccc',
+                      defaultWidth: 200, defaultHeight: 100 } },
+    });
+  }
+
+  it('asset without width/height → state populates from visuals', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 'x', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom());
+    expect(s.nodes.get('n')!.width).toBe(200);
+    expect(s.nodes.get('n')!.height).toBe(100);
+  });
+
+  it('asset with explicit width/height → state matches asset', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 'x', position: { x: 0, y: 0 }, config: {}, ports: [],
+                width: 250, height: 140 }],
+      edges: [],
+    }, dom());
+    expect(s.nodes.get('n')!.width).toBe(250);
+    expect(s.nodes.get('n')!.height).toBe(140);
+  });
+
+  it('state → asset omits width/height when equal to visuals defaults', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 'x', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom());
+    const out = graphStateToAsset(s);
+    expect(out.nodes[0].width).toBeUndefined();
+    expect(out.nodes[0].height).toBeUndefined();
+  });
+
+  it('state → asset includes width/height when divergent from visuals', () => {
+    const s = graphAssetToState({
+      id: 'g', name: '', domain: 't', version: 1,
+      nodes: [{ id: 'n', type: 'x', position: { x: 0, y: 0 }, config: {}, ports: [] }],
+      edges: [],
+    }, dom());
+    const n = s.nodes.get('n')!;
+    s.nodes.set('n', { ...n, width: 333, height: 222 });
+    const out = graphStateToAsset(s);
+    expect(out.nodes[0].width).toBe(333);
+    expect(out.nodes[0].height).toBe(222);
   });
 });

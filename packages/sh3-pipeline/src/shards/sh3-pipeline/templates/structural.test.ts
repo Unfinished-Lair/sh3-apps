@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { structuralTemplates } from './structural';
+import { VISUALS as nodeVisuals } from '../domain/visuals';
 
 describe('structuralTemplates', () => {
   it('produces a stable set covering all built-in node types', () => {
@@ -65,6 +66,19 @@ describe('structuralTemplates', () => {
       const unique = new Set(ids);
       expect(unique.size).toBe(ids.length);
     }
+  });
+});
+
+describe('comment node visuals', () => {
+  it('declares bodySchema bound to text', () => {
+    const v = nodeVisuals.comment;
+    expect(v.bodySchema).toEqual([
+      { key: 'text', meta: { type: 'text', widget: { type: 'text', placeholder: 'Comment…', rows: 3 } } },
+    ]);
+  });
+  it('declares resize options', () => {
+    const v = nodeVisuals.comment;
+    expect(v.resize).toEqual({ axes: 'both', minW: 80, minH: 40 });
   });
 });
 

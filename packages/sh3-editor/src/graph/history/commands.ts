@@ -14,7 +14,8 @@ export type GraphCommandKind =
   | 'add-edge'
   | 'remove-edge'
   | 'remove-selection'
-  | 'replace-asset';
+  | 'replace-asset'
+  | 'resize-node';
 
 export interface GraphCommand {
   apply(): void;
@@ -31,6 +32,8 @@ function buildNodeState(n: GraphAssetNode, dom: GraphDomain, connectedShortIds: 
   const visuals = dom.getNodeVisuals(n.type);
   const ports: PortDefinition[] = n.ports.map((p) => ({ ...p, shortId: shortPortId(n.id, p.id) }));
   const tmpl = dom.getTemplates().find((t) => t.type === n.type);
+  const defaultW = visuals.defaultWidth  ?? dom.defaultNodeWidth;
+  const defaultH = visuals.defaultHeight ?? dom.defaultNodeHeight;
   return {
     id: n.id,
     type: n.type,
@@ -39,8 +42,9 @@ function buildNodeState(n: GraphAssetNode, dom: GraphDomain, connectedShortIds: 
     config: { ...n.config },
     configFields: tmpl ? buildConfigFields(tmpl, n.config, connectedShortIds) : [],
     position: { ...n.position },
-    width: visuals.defaultWidth ?? dom.defaultNodeWidth,
-    height: visuals.defaultHeight ?? dom.defaultNodeHeight,
+    width:  n.width  ?? defaultW,
+    height: n.height ?? defaultH,
+    defaultsForSerialization: { width: defaultW, height: defaultH },
   };
 }
 
@@ -183,7 +187,13 @@ export function makeSetNodeConfigCommand(
 ): GraphCommand {
   function withWrite(n: NodeState, value: unknown): NodeState {
     if (path.length === 0) return n;
-    const newConfig = structuredClone(n.config) as Record<string, unknown>;
+    // JSON deep-clone — the asset contract guarantees config is JSON-shaped
+    // (Record<string, unknown>), and JSON serialization transparently walks
+    // through Svelte 5 $state proxies where structuredClone would throw
+    // "Proxy object could not be cloned" (DOMException). Plain Maps inside
+    // GraphState are opaque to Svelte's proxy, but `props.node.config`
+    // arriving via $props at a component boundary is proxied.
+    const newConfig = JSON.parse(JSON.stringify(n.config)) as Record<string, unknown>;
     let cursor: any = newConfig;
     for (let i = 0; i < path.length - 1; i++) cursor = cursor[path[i] as any];
     cursor[path[path.length - 1] as any] = value;
@@ -337,6 +347,27 @@ export function makeRemoveSelectionCommand(
       for (const n of removedNodes) state.nodes.set(n.id, n);
       for (const e of removedEdges) state.edges.set(e.id, e);
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
+      state.revision++;
+    },
+  };
+}
+
+export function makeResizeNodeCommand(
+  state: GraphState,
+  nodeId: NodeId,
+  before: { w: number; h: number },
+  after:  { w: number; h: number },
+): GraphCommand {
+  return {
+    meta: { kind: 'resize-node' },
+    apply() {
+      const n = state.nodes.get(nodeId);
+      if (n) state.nodes.set(nodeId, { ...n, width: after.w, height: after.h });
+      state.revision++;
+    },
+    revert() {
+      const n = state.nodes.get(nodeId);
+      if (n) state.nodes.set(nodeId, { ...n, width: before.w, height: before.h });
       state.revision++;
     },
   };

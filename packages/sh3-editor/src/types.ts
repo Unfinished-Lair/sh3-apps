@@ -146,6 +146,12 @@ export type InspectorWidget =
     }
   | { type: 'file';
       accept?: string; multiple?: boolean;
+    }
+  | { type: 'badge';
+      /** Visual level. Controls colour. Default 'info'. */
+      level?: 'info' | 'warn' | 'error';
+      /** Optional icon glyph; falls back to a level-default. */
+      icon?: string;
     };
 
 /** Recursive meta tree — per-field hints keyed alongside the inspected value. */

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.18.0 — 2026-05-27 — Inline body slot + resizable graph nodes
+
+### Added
+
+- **Inline body content for graph nodes.** Templates can declare `NodeVisuals.bodySchema` — a list of widget entries that render between the input and output port columns. Each entry dispatches through `INSPECTOR_RENDERER_POINT` using the inspector's existing widget contract; the body slot stops pointer events at its boundary so node selection/drag remain header-only. Canvas keyboard shortcuts (Delete, Mod+Z/Y/Shift+Z, viewport ops, Escape) skip when an editable element inside the canvas holds focus.
+- **Resizable graph nodes.** Templates opt in via `NodeVisuals.resize` (`{ axes, minW, minH, maxW, maxH }`). Three handles render: right edge (`ew-resize`), bottom edge (`ns-resize`), bottom-right corner (`nwse-resize`). New `resize-node` history command — one push per drag (zero-delta gestures are no-ops).
+- **Optional `GraphAssetNode.width` / `height`.** Bridge fills them from `visuals.defaultWidth` / `defaultHeight` when absent; `graphStateToAsset` serializes only when they diverge from those defaults, so unmodified nodes don't bloat the asset.
+- **Built-in `badge` widget** (`meta.type: 'badge'`) — icon + text + level (`info` / `warn` / `error`). Useful in both inspector and body contexts.
+- Public type exports: `BodyFieldDef`, `ResizeOptions` via `./graph/types`.
+
+### Internal
+
+- `NodeState.defaultsForSerialization` carries visuals defaults forward from bridge / command construction so `graphStateToAsset` can decide whether to omit width/height without a domain reference.
+- `BodyBridge.svelte` dispatches body schema entries with per-bridge coalesce state so consecutive commits with the same key replace the top history entry (matches inspector walker semantics).
+
 ## 0.16.2 — 2026-05-25 — Dynamic ports + string-list field type
 
 ### Added

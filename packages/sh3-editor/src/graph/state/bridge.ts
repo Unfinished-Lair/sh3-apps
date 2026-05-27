@@ -24,6 +24,8 @@ function nodeFromAsset(
   const configFields = template
     ? buildConfigFields(template, n.config, connectedInputs)
     : [];
+  const defaultW = visuals.defaultWidth  ?? domain.defaultNodeWidth;
+  const defaultH = visuals.defaultHeight ?? domain.defaultNodeHeight;
   return {
     id: n.id,
     type: n.type,
@@ -32,8 +34,9 @@ function nodeFromAsset(
     config: { ...n.config },
     configFields,
     position: { ...n.position },
-    width: visuals.defaultWidth ?? domain.defaultNodeWidth,
-    height: visuals.defaultHeight ?? domain.defaultNodeHeight,
+    width:  n.width  ?? defaultW,
+    height: n.height ?? defaultH,
+    defaultsForSerialization: { width: defaultW, height: defaultH },
   };
 }
 
@@ -158,6 +161,8 @@ function fullPortId(nodeId: string, shortId: string): string {
 export function graphStateToAsset(state: GraphState): GraphAsset {
   const nodes: GraphAsset['nodes'] = [];
   for (const n of state.nodes.values()) {
+    const includeW = n.width  !== n.defaultsForSerialization.width;
+    const includeH = n.height !== n.defaultsForSerialization.height;
     nodes.push({
       id: n.id,
       type: n.type,
@@ -169,6 +174,8 @@ export function graphStateToAsset(state: GraphState): GraphAsset {
         direction: p.direction,
         ...(p.dataType !== undefined ? { dataType: p.dataType } : {}),
       })),
+      ...(includeW ? { width:  n.width  } : {}),
+      ...(includeH ? { height: n.height } : {}),
     });
   }
   const edges: GraphAsset['edges'] = [];

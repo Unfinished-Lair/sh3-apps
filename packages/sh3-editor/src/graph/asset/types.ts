@@ -24,6 +24,12 @@ export interface GraphAssetNode {
   ports: GraphAssetPort[];
   config: Record<string, unknown>;
   position: { x: number; y: number };
+  /** Persisted explicit width. When absent, bridge fills from
+   *  visuals.defaultWidth (or domain.defaultNodeWidth). */
+  width?: number;
+  /** Persisted explicit height. When absent, the node uses
+   *  visuals.defaultHeight as min-height and grows intrinsically. */
+  height?: number;
 }
 
 export interface GraphAssetPort {

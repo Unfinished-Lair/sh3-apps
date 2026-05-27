@@ -358,6 +358,29 @@ Both `addTemplate` and `addVisuals` upsert by `type`. A future contribution-surf
 
 `getNodeVisuals(type)` returns a value, never throws — missing visuals fall back to a default with the type as label, so unknown node types still render.
 
+### 6.8 Inline body content (`bodySchema`)
+
+A template's visuals can declare a list of widget entries that render inside the node's body slot — between the input and output port columns. Each entry dispatches through `INSPECTOR_RENDERER_POINT` in a "bare" context (no labels, no group chrome).
+
+```ts
+visuals['math.expression'] = {
+  ...base,
+  bodySchema: [
+    { key: 'expr', meta: { type: 'text', widget: { type: 'text', rows: 1 } } },
+  ],
+};
+```
+
+Each `BodyFieldDef`:
+
+| Field | Meaning |
+|---|---|
+| `key` | Config path to bind. String (`'a.b'`) or `(string \| number)[]`. Omit for whole-panel renderers that don't bind to a single config field. |
+| `meta` | Same shape inspector widgets receive. `meta.type` selects the renderer; `meta.widget` carries per-widget options. |
+| `show(config)` | Visibility predicate. Re-evaluated on every `state.revision++`. |
+
+**Event isolation.** The body slot stops `pointerdown` / `pointerup` / `click` / `dblclick` propagation. Node selection and drag remain header-only. Keyboard shortcuts registered at scope `focus:sh3-editor:graph` skip when an editable inside the canvas (`<input>`, `<textarea>`, `<select>`, `[contenteditable]`) holds focus.
+
 ---
 
 ## 7. Standalone view
@@ -594,6 +617,24 @@ A single absolutely-positioned `<svg>` overlay. Each edge is a `<path>` whose `d
 - `Ctrl/Cmd+A` selects all visible nodes (not edges).
 - `Delete` removes selected nodes (with their incident edges) and edges as a single `remove-selection` history command.
 - Click on background clears selection.
+
+### 12.6 Resizable nodes
+
+Templates opt in via `visuals.resize`. Presence enables three handles:
+- right edge (`ew-resize`, axis-only)
+- bottom edge (`ns-resize`, axis-only)
+- bottom-right corner (`nwse-resize`, both axes)
+
+```ts
+visuals['comment'] = {
+  ...base,
+  resize: { axes: 'both', minW: 80, minH: 40 },
+};
+```
+
+**Persistence.** `GraphAssetNode.width` / `height` are optional. When absent, the bridge fills from `visuals.defaultWidth` / `defaultHeight`. `graphStateToAsset` serializes them **only** when they diverge from those defaults, so unmodified nodes don't bloat the asset.
+
+**History.** One `resize-node` command per drag, pushed on pointerup (zero-delta drags are no-ops, matching `move-node` semantics).
 
 ---
 

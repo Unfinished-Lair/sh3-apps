@@ -1,6 +1,27 @@
 import type { GraphAssetPort } from '../asset/types';
+import type { InspectorMeta } from '../../types';
 
 export type EdgeSemantics = 'oriented' | 'adjacency';
+
+export interface ResizeOptions {
+  /** Default 'both'. */
+  axes?: 'both' | 'width' | 'height';
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+}
+
+export interface BodyFieldDef {
+  /** Config path the widget binds to. Omit for whole-panel renderers
+   *  that don't bind to a specific config field. */
+  key?: string | (string | number)[];
+  /** Same shape inspector widgets receive — type + per-widget options. */
+  meta: InspectorMeta;
+  /** Visibility predicate. Pure function of config; re-evaluated on every
+   *  state revision++. Omit to always show. */
+  show?: (config: Record<string, unknown>) => boolean;
+}
 
 export interface NodeVisuals {
   label: string | ((config: Record<string, unknown>) => string);
@@ -11,6 +32,11 @@ export interface NodeVisuals {
   icon?: string;
   /** Per-dataType stroke colors for edges originating at this node's outputs. */
   portColors?: Record<string, string>;
+  /** Declarative inline body. Each entry dispatches through
+   *  INSPECTOR_RENDERER_POINT in a bare context (no labels, no group). */
+  bodySchema?: BodyFieldDef[];
+  /** Enables resize handles. Presence is opt-in; constraints clamp drags. */
+  resize?: ResizeOptions;
 }
 
 export interface NodeTemplate {

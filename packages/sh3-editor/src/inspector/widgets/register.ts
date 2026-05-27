@@ -20,6 +20,7 @@ import JsonWidget        from './JsonWidget.svelte';
 import DocWidget         from './DocWidget.svelte';
 import DocFolderWidget   from './DocFolderWidget.svelte';
 import StringListWidget  from './StringListWidget.svelte';
+import BadgeWidget       from './BadgeWidget.svelte';
 import { setDocPickerLister } from './doc-picker-registry';
 
 const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
@@ -37,6 +38,7 @@ const BUILTINS: Array<Pick<InspectorRenderer, 'id' | 'type' | 'component'>> = [
   { id: 'sh3-editor:widget:doc',          type: 'doc',          component: DocWidget         as any },
   { id: 'sh3-editor:widget:doc-folder',   type: 'doc-folder',   component: DocFolderWidget   as any },
   { id: 'sh3-editor:widget:string-list',  type: 'string-list',  component: StringListWidget  as any },
+  { id: 'sh3-editor:widget:badge',        type: 'badge',        component: BadgeWidget       as any },
 ];
 
 /** Registers all built-in widget renderers at priority 10 and wires the

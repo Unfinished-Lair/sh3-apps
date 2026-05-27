@@ -81,6 +81,40 @@ export function buildControlGraphDomain(ctx: CtxLike, _host: GraphDomainHost): G
         const name = String((config as { name?: string }).name ?? labelText);
         return mode === 'prefetch' ? `⚡ ${name}` : name;
       },
+      bodySchema: [
+        { key: 'prefetch',
+          meta: { type: 'sh3-pipeline:prefetch-node-body' },
+          show: (cfg) => (cfg as { mode?: unknown }).mode === 'prefetch' },
+        { meta: { type: 'badge',
+                  widget: { type: 'badge', level: 'error' } },
+          show: (cfg) => {
+            const c = cfg as { mode?: unknown; prefetch?: { lastError?: unknown } };
+            return c.mode === 'prefetch' && !!c.prefetch?.lastError;
+          } },
+        { meta: { type: 'badge',
+                  widget: { type: 'badge', level: 'warn' } },
+          show: (cfg) => {
+            const c = cfg as {
+              mode?: unknown;
+              prefetch?: {
+                selectedRowKey?: string | null;
+                valueField?: string | null;
+                list?: { rows?: Record<string, unknown>[] } | null;
+              };
+            };
+            if (c.mode !== 'prefetch') return false;
+            const pf = c.prefetch;
+            if (!pf?.selectedRowKey || !Array.isArray(pf?.list?.rows)) return false;
+            const rows = pf.list!.rows!;
+            const valueField = pf.valueField ?? null;
+            const found = rows.some((r) => {
+              const k = valueField && r[valueField] != null
+                ? String(r[valueField]) : JSON.stringify(r);
+              return k === pf.selectedRowKey;
+            });
+            return !found;
+          } },
+      ],
     };
   }
 

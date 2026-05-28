@@ -7,11 +7,6 @@ function stubDomain(templates: NodeTemplate[]) {
   return { getTemplates: () => templates };
 }
 
-const tabCtx = {
-  surface: 'modal' as const,
-  snapshot: { activeAppId: null, focusedViewId: null, mountedViewIds: [], selection: null, capturedAt: 0 },
-};
-
 const tplA: NodeTemplate = {
   type: 'verb:ai:ai:ask',
   category: 'Verbs',
@@ -36,7 +31,7 @@ const tplB: NodeTemplate = {
 describe('PipelineNodesHelpTab', () => {
   it('renders a row for each template grouped by category', () => {
     const { container } = render(PipelineNodesHelpTab, {
-      props: { tabCtx, domain: stubDomain([tplA, tplB]) },
+      props: { domain: stubDomain([tplA, tplB]) },
     });
     expect(container.textContent).toContain('ai:ask');
     expect(container.textContent).toContain('Branch');
@@ -46,7 +41,7 @@ describe('PipelineNodesHelpTab', () => {
 
   it('search filters template list by label, type, and summary', async () => {
     const { container } = render(PipelineNodesHelpTab, {
-      props: { tabCtx, domain: stubDomain([tplA, tplB]) },
+      props: { domain: stubDomain([tplA, tplB]) },
     });
     const search = container.querySelector('input[type="search"]') as HTMLInputElement;
     await fireEvent.input(search, { target: { value: 'branch' } });
@@ -56,7 +51,7 @@ describe('PipelineNodesHelpTab', () => {
 
   it('renders ports table with direction and dataType per port', () => {
     const { container } = render(PipelineNodesHelpTab, {
-      props: { tabCtx, domain: stubDomain([tplA]) },
+      props: { domain: stubDomain([tplA]) },
     });
     const portRows = container.querySelectorAll('tr[data-port-row]');
     expect(portRows.length).toBe(4);

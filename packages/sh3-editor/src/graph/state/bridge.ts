@@ -1,9 +1,31 @@
-import type { GraphAsset, GraphAssetNode, GraphAssetPort } from '../asset/types';
+import type {
+  GraphAsset, GraphAssetBlock, GraphAssetNode, GraphAssetPort,
+} from '../asset/types';
+import { CURRENT_ASSET_VERSION } from '../asset/types';
+import { migrateAsset } from '../asset/migrate';
 import type { GraphDomain, NodeTemplate } from '../domain/types';
 import { effectivePorts } from '../domain/effective-ports';
 import type {
-  EdgeId, EdgeState, FieldDescriptor, GraphState, NodeId, NodeState, PortDefinition,
+  BlockId, BlockState, EdgeId, EdgeState, FieldDescriptor, GraphState,
+  NodeId, NodeState, PortDefinition,
 } from './types';
+
+function validAnchor(s: unknown): 'top' | 'above' | 'centered' {
+  return s === 'above' || s === 'centered' ? s : 'top';
+}
+
+function blockFromAsset(b: GraphAssetBlock): BlockState {
+  return {
+    id: b.id,
+    position: { ...b.position },
+    width: b.width,
+    height: b.height,
+    color: b.color,
+    alpha: b.alpha,
+    label: b.label,
+    labelAnchor: validAnchor(b.labelAnchor),
+  };
+}
 
 function shortPortId(nodeId: string, fullPortId: string): string {
   const prefix = `${nodeId}_`;
@@ -41,15 +63,16 @@ function nodeFromAsset(
 }
 
 export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): GraphState {
+  const a = migrateAsset(asset);
   // Build a lookup of port-id existence so we can drop dangling edges.
   const portIds = new Map<string, Set<string>>();
-  for (const n of asset.nodes) {
+  for (const n of a.nodes) {
     portIds.set(n.id, new Set(n.ports.map((p) => p.id)));
   }
 
   // Pre-compute connected-input port short-ids per node.
   const connectedByNode = new Map<string, Set<string>>();
-  for (const e of asset.edges) {
+  for (const e of a.edges) {
     const tgtPorts = portIds.get(e.targetNodeId);
     const srcPorts = portIds.get(e.sourceNodeId);
     if (!tgtPorts?.has(e.targetPortId) || !srcPorts?.has(e.sourcePortId)) continue;
@@ -59,13 +82,13 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
   }
 
   const nodes = new Map<string, NodeState>();
-  for (const n of asset.nodes) {
+  for (const n of a.nodes) {
     const conn = connectedByNode.get(n.id) ?? new Set<string>();
     nodes.set(n.id, nodeFromAsset(n, domain, conn));
   }
 
   const edges = new Map<string, EdgeState>();
-  for (const e of asset.edges) {
+  for (const e of a.edges) {
     const tgtPorts = portIds.get(e.targetNodeId);
     const srcPorts = portIds.get(e.sourceNodeId);
     if (!tgtPorts?.has(e.targetPortId) || !srcPorts?.has(e.sourcePortId)) {
@@ -82,16 +105,22 @@ export function graphAssetToState(asset: GraphAsset, domain: GraphDomain): Graph
     });
   }
 
+  const blocks = new Map<BlockId, BlockState>();
+  for (const b of a.blocks ?? []) {
+    blocks.set(b.id, blockFromAsset(b));
+  }
+
   return {
-    id: asset.id,
-    domainId: asset.domain,
-    name: asset.name,
-    version: asset.version,
+    id: a.id,
+    domainId: a.domain,
+    name: a.name,
+    version: a.version,
     nodes,
     edges,
-    metadata: { ...(asset.metadata ?? {}) },
+    blocks,
+    metadata: { ...(a.metadata ?? {}) },
     readonly: false,
-    selection: new Set<NodeId | EdgeId>(),
+    selection: new Set<NodeId | EdgeId | BlockId>(),
     revision: 0,
   };
 }
@@ -189,14 +218,28 @@ export function graphStateToAsset(state: GraphState): GraphAsset {
       ...(e.adapter !== undefined ? { adapter: e.adapter } : {}),
     });
   }
+  const blocks: GraphAssetBlock[] = [];
+  for (const b of state.blocks.values()) {
+    blocks.push({
+      id: b.id,
+      position: { ...b.position },
+      width: b.width,
+      height: b.height,
+      color: b.color,
+      alpha: b.alpha,
+      label: b.label,
+      labelAnchor: b.labelAnchor,
+    });
+  }
   const out: GraphAsset = {
     id: state.id,
     name: state.name,
     domain: state.domainId,
-    version: state.version,
+    version: CURRENT_ASSET_VERSION,
     nodes,
     edges,
   };
+  if (blocks.length > 0) out.blocks = blocks;
   if (Object.keys(state.metadata).length > 0) out.metadata = { ...state.metadata };
   return out;
 }

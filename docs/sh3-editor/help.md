@@ -1,75 +1,91 @@
 # Authoring Help Tabs
 
-The sh3-editor Help view is the F1-triggered reference surface for SH3 apps. It hosts tabs contributed by any shard — use it to ship integrated guides, cheatsheets, changelogs, and similar read-only reference content alongside the built-in Hotkeys tab.
+The sh3-editor Help hub is the F1-triggered reference surface for SH3 apps. As of 0.19, F1 opens a float wrapping a `TabsNode` populated from contributions. Each tab mounts a regular registered view — drag a tab out of the strip and it docks like any other view.
 
 ## What ships in the box
 
-- **Hotkeys tab** (`sh3-editor:help-tab:hotkeys`, priority 0) — lists actions currently active in the snapshot context, grouped by scope tier (Global / App / View / Focus / Selection).
+| Tab id                              | View id                          | Priority |
+|-------------------------------------|----------------------------------|----------|
+| `sh3-editor:help-tab:hotkeys`       | `sh3-editor:help-hotkeys`        | 0        |
+| `sh3-editor:help-tab:settings`      | `sh3-editor:help-settings`       | 50       |
+| `sh3-editor:help-tab:quick-access`  | `sh3-editor:help-quick-access`   | 60       |
 
-Everything else is opt-in via contributions.
+`sh3-editor:settings` (the standalone view id long pinned in App.initialLayout) is now an alias for `sh3-editor:help-settings` — the contract is unchanged.
+
+`help-quick-access` is visible only when at least one graph domain is registered.
 
 ## Authoring a tab
 
-### 1. Import the contribution types
+A help tab is a **view + a tab contribution**. The view lives in your shard's manifest and registers via `ctx.registerView`. The contribution names the view by id and configures label / priority / visibility.
+
+### 1. Register the view
 
 ```ts
-import type {
-  HelpTabContribution,
-  HelpTabContext,
-} from '@unfinished-lair/sh3-editor/help/contributions';
-import { HELP_TABS_CONTRIBUTION_POINT_ID } from '@unfinished-lair/sh3-editor/help/contributions';
-```
+// in your manifest:
+views: [
+  { id: 'my-shard:help-tab:guide', label: 'Guide' },
+],
 
-### 2. Write your tab component
-
-```svelte
-<!-- GuideTab.svelte -->
-<script lang="ts">
-  import type { HelpTabContext } from '@unfinished-lair/sh3-editor/help/contributions';
-  let { tabCtx }: { tabCtx: HelpTabContext } = $props();
-</script>
-
-<div class="guide">
-  <h2>My Shard — Quick Start</h2>
-  <p>Active app: {tabCtx.snapshot.activeAppId ?? '(home)'}</p>
-  <!-- …your content… -->
-</div>
-```
-
-### 3. Register the contribution in your shard's `activate`
-
-```ts
-import { mount as svelteMount, unmount as svelteUnmount } from 'svelte';
-import GuideTab from './GuideTab.svelte';
-
-ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
-  id: 'my-shard:help-tab:guide',
-  label: 'Guide',
-  priority: 50,
-  mount(container, tabCtx) {
-    const cmp = svelteMount(GuideTab, { target: container, props: { tabCtx } });
-    return { unmount: () => svelteUnmount(cmp) };
+// in activate():
+ctx.registerView('my-shard:help-tab:guide', {
+  mount(container) {
+    const cmp = mount(GuideTab, { target: container, props: {} });
+    return { closable: false, unmount() { unmount(cmp); } };
   },
 });
 ```
 
-That's it. Next time the user opens Help (F1), your tab appears in the strip.
+### 2. Register the contribution
+
+```ts
+import {
+  HELP_TABS_CONTRIBUTION_POINT_ID,
+  type HelpTabContribution,
+} from '@unfinished-lair/sh3-editor/help/contributions';
+
+ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
+  id: 'my-shard:help-tab:guide',
+  label: 'Guide',
+  priority: 100,
+  viewId: 'my-shard:help-tab:guide',
+  // Optional: hide unless the pipeline app is active.
+  visible: (ctx) => ctx.activeAppId === 'sh3-pipeline',
+});
+```
+
+That's it. Next time the user opens the hub (F1), your tab appears in the strip.
+
+### Reading the open snapshot
+
+When the user opens the hub, sh3-editor publishes a `HelpSnapshot` describing the activeAppId / focusedViewId / selection at open-time. Subscribe from any tab view:
+
+```ts
+import {
+  getHelpSnapshot,
+  onHelpSnapshotChange,
+} from '@unfinished-lair/sh3-editor/help/snapshot';
+
+let snap = getHelpSnapshot();
+onHelpSnapshotChange((s) => { snap = s; });
+```
+
+The snapshot is cleared when the float is closed.
 
 ## Contract & conventions
 
 ### Ids
 
-Format: `<shardId>:help-tab:<slug>`. Ids must be globally unique. If two contributors register the same id, the first wins and a warning is logged; the second is dropped.
+Format: `<shardId>:help-tab:<slug>`. Ids must be globally unique. If two contributors register the same id, the first wins and the second is silently dropped.
 
 ### Priority
 
 Lower priority = earlier tab.
 
-| Range     | Use                                        |
-|-----------|--------------------------------------------|
-| 0–9       | Reserved for built-in tabs (Hotkeys = 0).  |
-| 10–999    | Community contributions.                   |
-| 1000+     | Admin / emergency tabs.                    |
+| Range     | Use                                                                |
+|-----------|--------------------------------------------------------------------|
+| 0–9       | Reserved for built-in tabs (Hotkeys = 0).                          |
+| 10–999    | Community contributions; built-in non-hotkeys tabs occupy 50, 60.  |
+| 1000+     | Admin / emergency tabs.                                            |
 
 Default (when omitted) is 100. Ties are broken by registration order — first-registered appears first.
 
@@ -77,60 +93,50 @@ Default (when omitted) is 100. Ties are broken by registration order — first-r
 
 **Yes:**
 - Integrated guides and tutorials.
-- Changelogs and release notes for your shard.
+- Changelogs and release notes.
 - Cheatsheets, glossaries, quick-reference tables.
-- Troubleshooting flowcharts.
+- Editor surfaces that genuinely belong with Help (e.g. Quick-Access variant editor).
 
 **No:**
-- Interactive tools that modify app/document state. Those belong in their own registered view, not inside Help.
-- Long forms or wizards. Help is a read surface; wizards deserve dedicated views.
+- Document-mutating tools. Those belong in their own registered view, not in the Help hub. (If you really need to, register the view standalone and link it from your help tab.)
 
-### Snapshot semantics
+### Visibility predicate
 
-Your tab receives a `HelpSnapshot` captured at the moment Help opened. It does not update. If your tab needs live data (e.g. counts that change as the user works), subscribe inside your component — but remember Help is typically open only briefly.
+`visible(ctx)` is called whenever the contribution list changes. Keep it cheap — it runs once per registered tab per hub-open. The only field is `activeAppId`.
 
 ### Cleanup
 
-Your `mount` must return an `unmount` handle. The Help shell calls it when Help itself closes. Release any subscriptions, timers, or DOM listeners inside `unmount`. Make it idempotent — the shell may call it multiple times in edge cases.
+Your view's `unmount` fires when the user drags the tab out, closes it, or closes the hub float. Same lifecycle as any other registered view.
 
 ## Lifecycle
 
 ```
 User presses F1
    ↓
-shell.modal.open(Help, ...)
+sh3-editor publishes HelpSnapshot via setHelpSnapshot(...)
    ↓
-Help captures HelpSnapshot (activeApp, focusedView, mountedViews, selection)
+sh3-editor reads ctx.contributions.list('sh3-editor:help.tabs')
    ↓
-Help reads ctx.contributions.list('sh3-editor:help.tabs')
+buildTabsContent(contributions, { activeAppId }) → TabsNode
    ↓
-Help renders tab strip; no tab bodies mounted yet
+sh3.float.openWithContent({ content: <TabsNode>, title: 'Help', size })
    ↓
-User clicks tab (or Hotkeys is auto-selected as first tab)
+Each TabEntry's viewId mounts as a regular slot when its tab activates
    ↓
-tab.mount(container, { snapshot, surface, close? })  ← YOUR CODE RUNS
+User can drag any tab out — the slot survives and docks where dropped
    ↓
-Tab lives while Help is open (state preserved across tab switches)
-   ↓
-User presses Escape / clicks backdrop / clicks ×
-   ↓
-Help closes; tab.unmount() fires for every mounted tab
+Float closed → tab views unmount; clearHelpSnapshot() runs
 ```
 
 ## Troubleshooting
 
 ### "My tab never appears"
 
-Three common causes:
+1. **Contribution registered after the user pressed F1.** `buildTabsContent` is called at open-time. Late registrations appear next open.
+2. **Duplicate id.** First registration wins. Inspect `ctx.contributions.list('sh3-editor:help.tabs')` to confirm.
+3. **`visible(ctx)` returned false.** Add a console.log to confirm the predicate's return value.
+4. **viewId not declared in your shard manifest.** `ctx.registerView` will throw at activation time if the id is missing from `manifest.views`.
 
-1. **Registered too late.** Contributions must be registered during your shard's `activate`. Help reads the list at open-time; late registrations appear only on the next Help open.
-2. **Duplicate id.** Check the console for a `[sh3-editor] duplicate help tab id …` warning. Another contributor beat you to the id.
-3. **Shard not activated.** Your shard has to be running for its contributions to be visible.
+### "My tab is empty / errors on mount"
 
-### "My tab's state resets every time I click it"
-
-Tab bodies are mounted lazily (on first visibility) but then persist for the life of the Help modal. If state resets, you're destroying it inside your component on some effect — Help itself doesn't re-mount the tab across switches.
-
-### "My tab's snapshot is stale"
-
-By design. The snapshot is captured once per Help open. Reopen Help to get fresh context.
+The view factory ran but threw or returned nothing useful. Check your shard's mount path the same way you would for any other view — there is nothing help-specific about a tab's view lifecycle.

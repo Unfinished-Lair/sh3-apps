@@ -1,3 +1,6 @@
+/** Current persisted schema version. v1 → v2 introduced blocks. */
+export const CURRENT_ASSET_VERSION = 2;
+
 /**
  * Persisted, serializable definition of a graph. Source of truth on disk.
  * Consumers hand a GraphAsset to sh3-editor via GraphViewDescriptor.initial.
@@ -8,11 +11,23 @@ export interface GraphAsset {
   /** Domain identifier; required. Loading an asset whose domain is missing
    *  from the registry fails loudly — no silent fallback. */
   domain: string;
-  /** Schema version. v1 = 1. */
+  /** Schema version. v1 = 1, v2 introduces `blocks`. */
   version: number;
   nodes: GraphAssetNode[];
   edges: GraphAssetEdge[];
+  blocks?: GraphAssetBlock[];
   metadata?: Record<string, unknown>;
+}
+
+export interface GraphAssetBlock {
+  id: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  color: string;
+  alpha: number;
+  label: string;
+  labelAnchor: 'top' | 'above' | 'centered';
 }
 
 export interface GraphAssetNode {

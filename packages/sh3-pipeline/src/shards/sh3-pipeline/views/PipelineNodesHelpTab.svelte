@@ -1,10 +1,9 @@
 <script lang="ts">
-  import type { HelpTabContext } from '@unfinished-lair/sh3-editor/help/contributions';
   import type { NodeTemplate } from '@unfinished-lair/sh3-editor/graph/types';
 
   interface DomainLike { getTemplates(): NodeTemplate[]; }
 
-  let { tabCtx: _tabCtx, domain }: { tabCtx: HelpTabContext; domain: DomainLike } = $props();
+  let { domain }: { domain: DomainLike } = $props();
 
   let query = $state('');
 

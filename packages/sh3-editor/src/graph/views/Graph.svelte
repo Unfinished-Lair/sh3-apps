@@ -2,14 +2,19 @@
   import GraphNode from './GraphNode.svelte';
   import GraphEdge from './GraphEdge.svelte';
   import GraphToolbar from './GraphToolbar.svelte';
+  import GraphQuickAccessToolbar from './GraphQuickAccessToolbar.svelte';
+  import GraphBlock from './GraphBlock.svelte';
+  import { resolveActiveEntries } from './quick-access-resolution';
+  import { computeMembership, isContained, type BlockMembershipCache } from './block-membership';
   import { cubicEdgePath } from './edge-path';
-  import type { GraphState, NodeState, EdgeState, PortDefinition } from '../state/types';
+  import type { GraphState, NodeState, EdgeState, PortDefinition, BlockState, BlockId } from '../state/types';
   import type { GraphDomain, NodeVisuals } from '../domain/types';
   import type { HistoryController } from '../../types';
-  import type { GraphAssetNode, GraphAssetPort } from '../asset/types';
+  import type { GraphAssetNode, GraphAssetPort, GraphAssetBlock } from '../asset/types';
   import {
     makeMoveNodesCommand, makeAddEdgeCommand, makeAddNodeCommand,
     makeResizeNodeCommand,
+    makeAddBlockCommand, makeMoveBlockCommand, makeResizeBlockCommand,
   } from '../history/commands';
   import { effectivePorts } from '../domain/effective-ports';
   import { resolvePortColor } from './port-color';
@@ -18,8 +23,9 @@
   import { clampZoom, clientToGraph, fitToContent, type Viewport } from './viewport';
   import { normalizeRect, nodesInRect, type Rect } from './marquee';
   import {
-    getEditorPrefs, subscribeEditorPrefs, type GridStyle,
+    getEditorPrefs, subscribeEditorPrefs, setDomainQuickAccess, type GridStyle,
   } from '../../settings/editor-prefs';
+  import { openHelpHub } from '../../help/openHub';
   import { sh3 } from 'sh3-core';
 
   interface Props {
@@ -137,6 +143,163 @@
     props.onSelectionChange?.([]);
   }
 
+  // ---------- Blocks ----------
+  // Membership cache: recomputed on triggers (node insert/remove, node move,
+  // node resize, block add/remove, block resize). Block move preserves
+  // membership — members translate with the block — so no recompute on move.
+  let membershipCache = $state<BlockMembershipCache>(computeMembership(props.state));
+  function refreshMembership() {
+    membershipCache = computeMembership(props.state);
+  }
+
+  let blockDrag: {
+    pointerId: number;
+    blockId: BlockId;
+    anchor: { x: number; y: number };
+    blockOrigin: { x: number; y: number };
+    carriedOrigins: Map<string, { x: number; y: number }>;
+    active: boolean;
+    startClient: { x: number; y: number };
+  } | null = $state(null);
+
+  let blockResize: {
+    blockId: BlockId;
+    pointerId: number;
+    edge: 'e' | 's' | 'se';
+    anchor: { x: number; y: number };
+    origin: { w: number; h: number };
+  } | null = $state(null);
+
+  function onBlockPointerDown(block: BlockState, ev: PointerEvent) {
+    if (props.state.readonly) return;
+    ev.stopPropagation();
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+    const carried = new Map<string, { x: number; y: number }>();
+    const memberIds = membershipCache.members.get(block.id) ?? new Set<string>();
+    for (const id of memberIds) {
+      const n = props.state.nodes.get(id);
+      if (n) carried.set(id, { ...n.position });
+    }
+    // Include nested blocks' members (single recursion level — design §4.6).
+    for (const nestedBlock of props.state.blocks.values()) {
+      if (nestedBlock.id === block.id) continue;
+      if (isContained(
+        { x: block.position.x, y: block.position.y, w: block.width, h: block.height },
+        { x: nestedBlock.position.x, y: nestedBlock.position.y, w: nestedBlock.width, h: nestedBlock.height },
+      )) {
+        const nestedMembers = membershipCache.members.get(nestedBlock.id) ?? new Set<string>();
+        for (const id of nestedMembers) {
+          const n = props.state.nodes.get(id);
+          if (n && !carried.has(id)) carried.set(id, { ...n.position });
+        }
+      }
+    }
+    blockDrag = {
+      pointerId: ev.pointerId,
+      blockId: block.id,
+      anchor: { x: ev.clientX, y: ev.clientY },
+      blockOrigin: { ...block.position },
+      carriedOrigins: carried,
+      active: false,
+      startClient: { x: ev.clientX, y: ev.clientY },
+    };
+  }
+
+  function onBlockPointerMove(ev: PointerEvent) {
+    if (!blockDrag || blockDrag.pointerId !== ev.pointerId) return;
+    const dx = ev.clientX - blockDrag.startClient.x;
+    const dy = ev.clientY - blockDrag.startClient.y;
+    if (!blockDrag.active && Math.abs(dx) + Math.abs(dy) <= PAN_THRESHOLD_PX) return;
+    blockDrag.active = true;
+    const dxG = (ev.clientX - blockDrag.anchor.x) / viewport.zoom;
+    const dyG = (ev.clientY - blockDrag.anchor.y) / viewport.zoom;
+    const b = props.state.blocks.get(blockDrag.blockId);
+    if (b) {
+      props.state.blocks.set(blockDrag.blockId, {
+        ...b,
+        position: { x: blockDrag.blockOrigin.x + dxG, y: blockDrag.blockOrigin.y + dyG },
+      });
+    }
+    for (const [id, origin] of blockDrag.carriedOrigins) {
+      const n = props.state.nodes.get(id);
+      if (!n) continue;
+      props.state.nodes.set(id, { ...n, position: { x: origin.x + dxG, y: origin.y + dyG } });
+    }
+    props.state.revision++;
+  }
+
+  function onBlockPointerUp(ev: PointerEvent) {
+    if (!blockDrag) return;
+    if (blockDrag.pointerId !== ev.pointerId) return;
+    const wasActive = blockDrag.active;
+    const bd = blockDrag;
+    blockDrag = null;
+    if (wasActive) {
+      const b = props.state.blocks.get(bd.blockId);
+      if (!b) return;
+      const carriedNodes = Array.from(bd.carriedOrigins.entries()).map(([id, before]) => {
+        const n = props.state.nodes.get(id);
+        return { id, before, after: n ? { ...n.position } : before };
+      });
+      const cmd = makeMoveBlockCommand(props.state, {
+        blockId: bd.blockId,
+        before: bd.blockOrigin,
+        after: { ...b.position },
+        carriedNodes,
+      });
+      props.history.push(cmd);
+      props.onAssetChanged?.();
+      suppressNextNodeSelectClick = true;
+    }
+    // No-drag click: handled by GraphBlock's onclick which calls selectOne via onBlockLabelClick.
+  }
+
+  function onBlockLabelClick(block: BlockState, ev: MouseEvent) {
+    ev.stopPropagation();
+    if (suppressNextNodeSelectClick) { suppressNextNodeSelectClick = false; return; }
+    selectOne(block.id, ev.shiftKey);
+  }
+
+  function onBlockResizePointerDown(block: BlockState, edge: 'e' | 's' | 'se', ev: PointerEvent) {
+    if (props.state.readonly) return;
+    ev.stopPropagation();
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+    blockResize = {
+      blockId: block.id, pointerId: ev.pointerId, edge,
+      anchor: { x: ev.clientX, y: ev.clientY },
+      origin: { w: block.width, h: block.height },
+    };
+  }
+
+  function onBlockResizePointerMove(ev: PointerEvent) {
+    if (!blockResize || blockResize.pointerId !== ev.pointerId) return;
+    const b = props.state.blocks.get(blockResize.blockId);
+    if (!b) return;
+    const dx = (ev.clientX - blockResize.anchor.x) / viewport.zoom;
+    const dy = (ev.clientY - blockResize.anchor.y) / viewport.zoom;
+    const MIN_W = 80, MIN_H = 40;
+    const nextW = blockResize.edge === 's' ? b.width  : Math.max(MIN_W, blockResize.origin.w + dx);
+    const nextH = blockResize.edge === 'e' ? b.height : Math.max(MIN_H, blockResize.origin.h + dy);
+    props.state.blocks.set(blockResize.blockId, { ...b, width: nextW, height: nextH });
+    props.state.revision++;
+  }
+
+  function onBlockResizePointerUp(ev: PointerEvent) {
+    if (!blockResize || blockResize.pointerId !== ev.pointerId) return;
+    const b = props.state.blocks.get(blockResize.blockId);
+    if (b && (b.width !== blockResize.origin.w || b.height !== blockResize.origin.h)) {
+      const cmd = makeResizeBlockCommand(props.state, {
+        blockId: blockResize.blockId,
+        before: { w: blockResize.origin.w, h: blockResize.origin.h },
+        after:  { w: b.width, h: b.height },
+      });
+      props.history.push(cmd);
+      props.onAssetChanged?.();
+      refreshMembership();
+    }
+    blockResize = null;
+  }
+
   type NodeId = string;
   let dragState: {
     pointerId: number;
@@ -203,6 +366,7 @@
       props.history.push(cmd);
       props.onAssetChanged?.();
       suppressNextNodeSelectClick = true;
+      refreshMembership();
     }
     resizeState = null;
   }
@@ -274,6 +438,8 @@
       // GraphNode.onSelectClick and collapse a multi-selection to just the
       // grabbed node. Swallow it.
       suppressNextNodeSelectClick = true;
+      // Lone-node move can change which block contains it.
+      refreshMembership();
     }
     dragState = null;
   }
@@ -296,6 +462,8 @@
   function onCanvasPointerMove(ev: PointerEvent) {
     onHeaderPointerMove(ev);
     onResizePointerMove(ev);
+    onBlockPointerMove(ev);
+    onBlockResizePointerMove(ev);
     if (edgeDrag) {
       if (canvasEl) {
         const rect = canvasEl.getBoundingClientRect();
@@ -372,6 +540,8 @@
   function onCanvasPointerUp(ev: PointerEvent) {
     onHeaderPointerUp(ev);
     onResizePointerUp(ev);
+    onBlockPointerUp(ev);
+    onBlockResizePointerUp(ev);
     edgeDrag = null;
     if (panState && panState.pointerId === ev.pointerId) {
       const wasPanning = panState.panning;
@@ -393,8 +563,15 @@
           })),
           rect,
         );
+        const blockHits = nodesInRect(
+          Array.from(props.state.blocks.values()).map((b) => ({
+            id: b.id, position: b.position, width: b.width, height: b.height,
+          })),
+          rect,
+        );
         if (!shift) props.state.selection.clear();
         for (const id of hits) props.state.selection.add(id);
+        for (const id of blockHits) props.state.selection.add(id);
         props.state.revision++;
         props.onSelectionChange?.(Array.from(props.state.selection));
         // Marquee swallowed the click — don't let onCanvasEmptyClick fire.
@@ -406,12 +583,42 @@
   let viewport: Viewport = $state({ x: 0, y: 0, zoom: 1 });
   let canvasEl: HTMLDivElement | null = $state(null);
 
-  // Mirror grid-style pref reactively so every open graph re-renders on edit.
+  // Mirror grid-style + quickAccess prefs reactively so every open graph
+  // re-renders on edit.
   let gridStyle: GridStyle = $state(getEditorPrefs().gridStyle);
+  let editorPrefs = $state(getEditorPrefs());
   $effect(() => {
-    const off = subscribeEditorPrefs((p) => { gridStyle = p.gridStyle; });
+    const off = subscribeEditorPrefs((p) => {
+      gridStyle = p.gridStyle;
+      editorPrefs = p;
+    });
     return off;
   });
+
+  const quickAccessEntries = $derived.by(() =>
+    resolveActiveEntries(props.domain, editorPrefs),
+  );
+  const quickAccessVariantNames = $derived.by(() => {
+    const saved = editorPrefs.quickAccess.domains[props.domain.id];
+    if (!saved) return ['default'];
+    return Object.keys(saved.variants);
+  });
+  const quickAccessActiveVariant = $derived.by(() => {
+    const saved = editorPrefs.quickAccess.domains[props.domain.id];
+    return saved?.active ?? 'default';
+  });
+
+  function onQuickAccessInsert(templateType: string) {
+    insertNodeFromTemplate(templateType);
+  }
+  function onQuickAccessSwitchVariant(name: string) {
+    const saved = editorPrefs.quickAccess.domains[props.domain.id];
+    if (!saved) return;
+    setDomainQuickAccess(props.domain.id, { ...saved, active: name });
+  }
+  function onQuickAccessOpenEditor() {
+    openHelpHub({ focusTabId: 'sh3-editor:help-tab:quick-access' });
+  }
 
   const GRID_BASE_PX = 20;
   const gridBackgroundImage = $derived.by(() => {
@@ -580,6 +787,33 @@
     props.state.selection.add(id);
     props.state.revision++;
     props.onSelectionChange?.([id]);
+    refreshMembership();
+  }
+
+  function addBlockAt(graphPoint: { x: number; y: number }) {
+    if (props.state.readonly) return;
+    if (props.domain.allowBlocks === false) return;
+    const id = `b_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const block: GraphAssetBlock = {
+      id,
+      position: { x: graphPoint.x - 120, y: graphPoint.y - 80 },
+      width: 240, height: 160,
+      color: '#446688', alpha: 0.20,
+      label: 'Group', labelAnchor: 'top',
+    };
+    const cmd = makeAddBlockCommand(props.state, block);
+    cmd.apply();
+    props.history.push(cmd);
+    props.onAssetChanged?.();
+    props.state.selection.clear();
+    props.state.selection.add(id);
+    props.state.revision++;
+    props.onSelectionChange?.([id]);
+    refreshMembership();
+  }
+
+  function addBlockAtViewportCenter() {
+    addBlockAt(viewportGraphCenter());
   }
 
   // Reading state.revision (a tracked $state field bumped by every
@@ -592,6 +826,17 @@
   const edgesArr = $derived.by(() => {
     void props.state.revision;
     return Array.from(props.state.edges.values());
+  });
+  const blocksArr = $derived.by(() => {
+    void props.state.revision;
+    return Array.from(props.state.blocks.values());
+  });
+
+  // Set of node ids being carried by an active block drag — for visual
+  // preview on those nodes during the drag.
+  const blockDragPreviewIds = $derived.by(() => {
+    if (!blockDrag || !blockDrag.active) return new Set<string>();
+    return new Set(blockDrag.carriedOrigins.keys());
   });
   const oriented = $derived(props.domain.edgeSemantics === 'oriented');
 
@@ -714,12 +959,17 @@
   function onCanvasDrop(ev: DragEvent) {
     if (props.state.readonly) return;
     if (!ev.dataTransfer) return;
-    const templateType = ev.dataTransfer.getData(DRAG_MIME);
-    if (!templateType) return;
-    ev.preventDefault();
     if (!canvasEl) return;
     const rect = canvasEl.getBoundingClientRect();
     const g = clientToGraph({ x: ev.clientX, y: ev.clientY }, rect, viewport);
+    if (ev.dataTransfer.getData('application/sh3-editor.block')) {
+      ev.preventDefault();
+      addBlockAt(g);
+      return;
+    }
+    const templateType = ev.dataTransfer.getData(DRAG_MIME);
+    if (!templateType) return;
+    ev.preventDefault();
     insertNodeFromTemplate(templateType, g);
   }
 
@@ -813,6 +1063,15 @@
   <div class="viewport"
        style:transform="translate({viewport.x}px, {viewport.y}px) scale({viewport.zoom})"
        style:transform-origin="0 0">
+    {#each blocksArr as b (b.id)}
+      <GraphBlock
+        block={b}
+        selected={isSelected(b.id)}
+        onSelectClick={(ev) => onBlockLabelClick(b, ev)}
+        onPointerDown={(ev) => onBlockPointerDown(b, ev)}
+        onResizePointerDown={(edge, ev) => onBlockResizePointerDown(b, edge, ev)}
+      />
+    {/each}
     <svg class="edge-overlay">
       {#each edgesArr as e (e.id)}
         <GraphEdge
@@ -846,6 +1105,7 @@
         visuals={visualsFor(n)}
         selected={isSelected(n.id)}
         marqueePreview={marqueePreviewIds.has(n.id)}
+        blockDragPreview={blockDragPreviewIds.has(n.id)}
         portColor={(p) => portColorFor(n, p)}
         state={props.state}
         domain={props.domain}
@@ -876,6 +1136,19 @@
       </svg>
     {/if}
   </div>
+  {#if !props.state.readonly}
+    <GraphQuickAccessToolbar
+      domain={props.domain}
+      entries={quickAccessEntries}
+      variantNames={quickAccessVariantNames}
+      activeVariant={quickAccessActiveVariant}
+      showAddBlock={props.domain.allowBlocks !== false}
+      onInsert={onQuickAccessInsert}
+      onSwitchVariant={onQuickAccessSwitchVariant}
+      onOpenEditor={onQuickAccessOpenEditor}
+      onAddBlock={addBlockAtViewportCenter}
+    />
+  {/if}
   <GraphToolbar
     zoom={viewport.zoom}
     showNodePicker={props.showNodePicker ?? true}

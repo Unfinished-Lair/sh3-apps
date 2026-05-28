@@ -207,6 +207,7 @@ export const shard: SourceShard = {
     views: [
       { id: 'sh3-pipeline:toolbar', label: 'Pipeline Toolbar' },
       { id: 'sh3-pipeline:log',     label: 'Pipeline Log' },
+      { id: 'sh3-pipeline:help-tab:nodes', label: 'Pipeline Nodes' },
     ],
     // sh3-core 0.26: documents:read folded into documents:browse; documents:write implies browse.
     // Kept both for clarity — this shard reads & writes across boundIds (verb nodes
@@ -244,21 +245,25 @@ export const shard: SourceShard = {
     // Help tab "Pipeline Nodes". Registered at boot so users can open Help
     // (F1) from any app and find the pipeline node reference. Reads
     // domain.getTemplates() at each mount — always reflects the live catalog.
+    ctx.registerView('sh3-pipeline:help-tab:nodes', {
+      mount(container) {
+        if (!domainRef) {
+          container.textContent = 'Pipeline catalog not initialized.';
+          return { closable: true, unmount() { container.textContent = ''; } };
+        }
+        const cmp = mount(PipelineNodesHelpTab, {
+          target: container,
+          props: { domain: domainRef },
+        });
+        return { closable: true, unmount() { unmount(cmp); } };
+      },
+    });
+
     ctx.contributions.register<HelpTabContribution>(HELP_TABS_POINT, {
       id: 'sh3-pipeline:help-tab:nodes',
       label: 'Pipeline Nodes',
       priority: 100,
-      mount(container, tabCtx) {
-        if (!domainRef) {
-          container.textContent = 'Pipeline catalog not initialized.';
-          return { unmount() { container.textContent = ''; } };
-        }
-        const cmp = mount(PipelineNodesHelpTab, {
-          target: container,
-          props: { tabCtx, domain: domainRef },
-        });
-        return { unmount() { unmount(cmp); } };
-      },
+      viewId: 'sh3-pipeline:help-tab:nodes',
     });
 
     // (Slot-keyed graph + inspector contributions and toolbar actions are

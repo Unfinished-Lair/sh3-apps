@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { ActiveActionDescriptor } from 'sh3-core';
-  import type { HelpTabContext } from '../../help/contributions';
+  import { getHelpSnapshot, onHelpSnapshotChange } from '../../help/snapshot';
+  import type { HelpSnapshot } from '../../help/snapshot';
   import { prettifyShortcut, detectPlatform } from './prettifyShortcut';
 
-  let { tabCtx, actions }: { tabCtx: HelpTabContext; actions: ActiveActionDescriptor[] } = $props();
+  let { actions }: { actions: ActiveActionDescriptor[] } = $props();
 
   const platform = detectPlatform();
 
@@ -49,12 +50,15 @@
       .filter((g) => g.items.length > 0);
   });
 
-  const { snapshot } = tabCtx;
-  const showContextHeader = snapshot.activeAppId !== null || snapshot.focusedViewId !== null;
+  let snapshot: HelpSnapshot | null = $state(getHelpSnapshot());
+  $effect(() => onHelpSnapshotChange((s) => { snapshot = s; }));
+  const showContextHeader = $derived(
+    snapshot !== null && (snapshot.activeAppId !== null || snapshot.focusedViewId !== null),
+  );
 </script>
 
 <div class="hotkeys-tab">
-  {#if showContextHeader}
+  {#if showContextHeader && snapshot}
     <header class="ctx">
       {#if snapshot.activeAppId}<span>App: <code>{snapshot.activeAppId}</code></span>{/if}
       {#if snapshot.activeAppId && snapshot.focusedViewId} · {/if}

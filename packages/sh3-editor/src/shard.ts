@@ -1,5 +1,5 @@
 import type { SourceShard, ShardContext, FileHandlerDescriptor } from 'sh3-core';
-import { PERMISSION_DOCUMENTS_WRITE, sh3 } from 'sh3-core';
+import { PERMISSION_DOCUMENTS_WRITE, sh3, getActiveApp } from 'sh3-core';
 import { openInFloat } from './handlers/openInFloat';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry.svelte';
@@ -17,13 +17,18 @@ import {
   HELP_TABS_CONTRIBUTION_POINT_ID,
   type HelpTabContribution,
 } from './help/contributions';
+import { buildTabsContent } from './help/buildTabsContent';
+import { setHelpSnapshot, clearHelpSnapshot, type HelpSnapshot } from './help/snapshot';
+import { setHelpHubOpener, type OpenHubOptions } from './help/openHub';
 import Editor from './views/Editor.svelte';
 import Reader from './views/Reader.svelte';
 import Inspector from './views/Inspector.svelte';
 import ColorPicker from './views/ColorPicker.svelte';
 import ColorRenderer from './inspector/color-renderer.svelte';
 import Settings from './settings/Settings.svelte';
-import Help from './views/Help.svelte';
+import HelpHotkeys from './views/HelpHotkeys.svelte';
+import HelpSettings from './views/HelpSettings.svelte';
+import HelpQuickAccess from './views/HelpQuickAccess.svelte';
 import GraphHost from './graph/views/GraphHost.svelte';
 import GraphNodePicker from './graph/views/GraphNodePicker.svelte';
 import PopupPickWrapper from './color-picker/PopupPickWrapper.svelte';
@@ -94,6 +99,9 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:color-pick',   label: 'Color Pick',   standalone: false },
       { id: 'sh3-editor:settings',     label: 'Settings',     standalone: true },
       { id: 'sh3-editor:help',         label: 'Help',         standalone: true },
+      { id: 'sh3-editor:help-hotkeys', label: 'Hotkeys',      standalone: true },
+      { id: 'sh3-editor:help-settings', label: 'Settings',    standalone: true },
+      { id: 'sh3-editor:help-quick-access', label: 'Quick Access', standalone: true },
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
       { id: 'sh3-editor:graph-node-picker', label: 'Graph Node Picker', standalone: true },
     ],
@@ -476,7 +484,20 @@ export const shard: SourceShard = {
 
     ctx.registerView('sh3-editor:settings', {
       mount(container, context) {
-        const component = mount(Settings, {
+        const component = mount(HelpSettings, {
+          target: container,
+          props: { ctx, slotId: context.slotId },
+        });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-editor:help-settings', {
+      mount(container, context) {
+        const component = mount(HelpSettings, {
           target: container,
           props: { ctx, slotId: context.slotId },
         });
@@ -489,10 +510,20 @@ export const shard: SourceShard = {
 
     ctx.registerView('sh3-editor:help', {
       mount(container) {
-        const component = mount(Help, {
-          target: container,
-          props: { surface: 'view', ctx },
-        });
+        // Legacy standalone surface. The primary Help experience is the F1
+        // TabsNode float; this placeholder remains so App.initialLayout
+        // pinned to 'sh3-editor:help' keeps rendering something useful.
+        container.textContent = 'Help (standalone view) — press F1 for the full hub.';
+        return {
+          closable: true,
+          unmount() { container.textContent = ''; },
+        };
+      },
+    });
+
+    ctx.registerView('sh3-editor:help-hotkeys', {
+      mount(container) {
+        const component = mount(HelpHotkeys, { target: container, props: {} });
         return {
           closable: true,
           unmount() { unmount(component); },
@@ -504,19 +535,82 @@ export const shard: SourceShard = {
       id: 'sh3-editor:help-tab:hotkeys',
       label: 'Hotkeys',
       priority: 0,
-      mount() {
-        // Help shell short-circuits this id and mounts HotkeysTab directly
-        // with the prebuilt actions list. This registration only makes the
-        // tab appear in the strip — the shell owns its lifecycle.
-        return { unmount() { /* no-op */ } };
-      },
+      viewId: 'sh3-editor:help-hotkeys',
     };
     ctx.contributions.register<HelpTabContribution>(
       HELP_TABS_CONTRIBUTION_POINT_ID,
       hotkeysTabContribution,
     );
 
-    let helpOpen = false;
+    ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
+      id: 'sh3-editor:help-tab:settings',
+      label: 'Settings',
+      priority: 50,
+      viewId: 'sh3-editor:help-settings',
+    });
+
+    ctx.registerView('sh3-editor:help-quick-access', {
+      mount(container) {
+        const component = mount(HelpQuickAccess, { target: container, props: { ctx } });
+        return {
+          closable: true,
+          unmount() { unmount(component); },
+        };
+      },
+    });
+
+    ctx.contributions.register<HelpTabContribution>(HELP_TABS_CONTRIBUTION_POINT_ID, {
+      id: 'sh3-editor:help-tab:quick-access',
+      label: 'Quick Access',
+      priority: 60,
+      viewId: 'sh3-editor:help-quick-access',
+      visible: () => ctx.contributions.list(GRAPH_DOMAIN_POINT).length > 0,
+    });
+
+    let helpFloatId: string | null = null;
+    function openHelpHubImpl(opts?: OpenHubOptions): void {
+      // Reconcile against the float list: if the tracked id is stale
+      // (user closed the float), treat it as not-open and re-open.
+      if (helpFloatId !== null) {
+        const stillThere = sh3.float.list().some((f) => f.id === helpFloatId);
+        if (stillThere) {
+          sh3.float.focus(helpFloatId);
+          return;
+        }
+        helpFloatId = null;
+        clearHelpSnapshot();
+      }
+
+      const app = getActiveApp();
+      const snap: HelpSnapshot = {
+        activeAppId: app?.id ?? null,
+        focusedViewId: null,
+        mountedViewIds: [],
+        selection: ctx.actions.selection.get(),
+        capturedAt: Date.now(),
+      };
+      setHelpSnapshot(snap);
+
+      const contributions = ctx.contributions.list<HelpTabContribution>(
+        HELP_TABS_CONTRIBUTION_POINT_ID,
+      );
+      const content = buildTabsContent(contributions, { activeAppId: snap.activeAppId });
+
+      // Respect focusTabId: jump the TabsNode's active tab to the requested
+      // contribution before opening. Missing/unknown id → first tab.
+      if (opts?.focusTabId && content.tabs.length > 0) {
+        const idx = content.tabs.findIndex((t) => t.slotId === `help-hub:${opts.focusTabId}`);
+        if (idx >= 0) content.activeTab = idx;
+      }
+
+      helpFloatId = sh3.float.openWithContent({
+        title: 'Help',
+        size: { w: 720, h: 520 },
+        content,
+      });
+    }
+    setHelpHubOpener(openHelpHubImpl);
+
     ctx.actions.register({
       id: 'sh3-editor:help.open',
       label: 'Open Help',
@@ -526,15 +620,7 @@ export const shard: SourceShard = {
       paletteItem: true,
       contextItem: false,
       group: 'Help',
-      run() {
-        if (helpOpen) return;
-        helpOpen = true;
-        sh3.modal.open(
-          Help,
-          { surface: 'modal', ctx, onClose: () => { helpOpen = false; } },
-          { dismissOnBackdrop: true },
-        );
-      },
+      run(args?: OpenHubOptions) { openHelpHubImpl(args); },
     });
 
     ctx.actions.register({
@@ -750,6 +836,8 @@ export const shard: SourceShard = {
   },
 
   deactivate() {
+    setHelpHubOpener(null);
+    clearHelpSnapshot();
     unregisterSettingsDescriptor?.();
     unregisterSettingsDescriptor = null;
     unsubscribeEditorPrefs?.();

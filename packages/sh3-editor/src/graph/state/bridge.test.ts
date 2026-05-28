@@ -38,7 +38,7 @@ describe('graphAssetToState', () => {
     expect(state.id).toBe('g1');
     expect(state.domainId).toBe('test');
     expect(state.name).toBe('Test');
-    expect(state.version).toBe(1);
+    expect(state.version).toBe(2);
     expect(state.nodes.size).toBe(0);
     expect(state.edges.size).toBe(0);
     expect(state.metadata).toEqual({ foo: 'bar' });
@@ -137,7 +137,8 @@ describe('graphStateToAsset', () => {
     };
     const state = graphAssetToState(asset, stubDomain());
     const back = graphStateToAsset(state);
-    expect(back).toEqual(asset);
+    // Round-trip auto-bumps version to current schema (v2).
+    expect(back).toEqual({ ...asset, version: 2 });
   });
 
   it('re-prefixes short port ids with their node id', () => {
@@ -312,5 +313,55 @@ describe('node width/height round-trip', () => {
     const out = graphStateToAsset(s);
     expect(out.nodes[0].width).toBe(333);
     expect(out.nodes[0].height).toBe(222);
+  });
+});
+
+
+import type { GraphAssetBlock } from '../asset/types';
+
+const blockA: GraphAssetBlock = {
+  id: 'b1', position: { x: 10, y: 20 }, width: 240, height: 160,
+  color: '#446688', alpha: 0.2, label: 'Group', labelAnchor: 'top',
+};
+
+describe('bridge — blocks', () => {
+  it('round-trips blocks through asset→state→asset', () => {
+    const a: GraphAsset = {
+      id: 'a', name: 'A', domain: 'd', version: 2,
+      nodes: [], edges: [], blocks: [blockA],
+    };
+    const dom = createGraphDomain({ id: 'd', label: 'D' });
+    const s = graphAssetToState(a, dom);
+    expect(s.blocks.size).toBe(1);
+    const back = graphStateToAsset(s);
+    expect(back.blocks).toEqual([blockA]);
+  });
+
+  it('coerces unknown labelAnchor to "top"', () => {
+    const a: GraphAsset = {
+      id: 'a', name: 'A', domain: 'd', version: 2,
+      nodes: [], edges: [],
+      blocks: [{ ...blockA, labelAnchor: 'wat' as 'top' }],
+    };
+    const dom = createGraphDomain({ id: 'd', label: 'D' });
+    const s = graphAssetToState(a, dom);
+    expect([...s.blocks.values()][0].labelAnchor).toBe('top');
+  });
+
+  it('omits blocks array from serialized asset when state has none', () => {
+    const a: GraphAsset = { id: 'a', name: 'A', domain: 'd', version: 2,
+                            nodes: [], edges: [] };
+    const dom = createGraphDomain({ id: 'd', label: 'D' });
+    const s = graphAssetToState(a, dom);
+    const back = graphStateToAsset(s);
+    expect(back.blocks).toBeUndefined();
+  });
+
+  it('migrates a v1 asset on mount', () => {
+    const a: GraphAsset = { id: 'a', name: 'A', domain: 'd', version: 1,
+                            nodes: [], edges: [] };
+    const dom = createGraphDomain({ id: 'd', label: 'D' });
+    const s = graphAssetToState(a, dom);
+    expect(s.version).toBe(2);
   });
 });

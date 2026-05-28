@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.19.0 — 2026-05-28 — Help hub + Quick-Access toolbar + block-nodes
+
+### Breaking
+
+- `HelpTabContribution.mount(container, ctx)` removed. Contributors register a
+  view and reference it via the new required `viewId` field. See
+  `docs/sh3-editor/help.md` for the migration recipe.
+
+### Added
+
+- F1 Help opens a `TabsNode`-wrapped float (via `sh3.float.openWithContent`);
+  tabs can be dragged out and docked like any other view.
+- New built-in views: `sh3-editor:help-hotkeys`, `sh3-editor:help-settings`,
+  `sh3-editor:help-quick-access`.
+- Snapshot pub/sub at `@unfinished-lair/sh3-editor/help/snapshot`:
+  `getHelpSnapshot`, `onHelpSnapshotChange`, set/clear helpers.
+- Per-domain Quick-Access toolbar (top-left of graph canvas). Multiple named
+  variants per domain; defaults provided by `GraphDomainSpec.defaultQuickAccess`.
+  Variant management lives in the Hub's Quick Access tab.
+- Bottom-layer block-nodes for visual graph organization. Properties: `color`,
+  `alpha`, `label`, `labelAnchor` (`'top' | 'above' | 'centered'`). Asset
+  schema bumps to v2; v1 assets auto-migrate on mount. Domains opt out via
+  `GraphDomainSpec.allowBlocks: false`.
+- Five new history commands: `add-block`, `remove-block`, `move-block`
+  (with carried-node deltas), `resize-block`, `set-block-config`.
+- Block selection routes through the inspector with a `{ color, alpha, label,
+  labelAnchor }` group schema; commits push `set-block-config` for atomic undo.
+- `GraphDomainSpec.defaultQuickAccess?: string[]` and `allowBlocks?: boolean`.
+- `GraphDomain.getDefaultQuickAccess()`, `GraphDomain.hasTemplate(type)`,
+  `GraphDomain.allowBlocks`.
+- New public types: `GraphAssetBlock`, `BlockState`, `BlockId`,
+  `CURRENT_ASSET_VERSION`.
+
+### Changed
+
+- `sh3-editor:settings` view aliases `sh3-editor:help-settings`. The
+  `SettingsDescriptor` contract is unchanged.
+- `graphStateToAsset` always emits the current schema version (2).
+- `EditorPrefs` extended with `quickAccess: { domains: Record<id, …> }`.
+  `hydrateEditorPrefs` sanitizes malformed blobs back to defaults.
+
 ## 0.18.0 — 2026-05-27 — Inline body slot + resizable graph nodes
 
 ### Added

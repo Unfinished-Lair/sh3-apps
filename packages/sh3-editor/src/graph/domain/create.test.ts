@@ -86,3 +86,38 @@ describe('createGraphDomain — new fields', () => {
     expect(d.resolveConnect).toBeUndefined();
   });
 });
+
+describe('createGraphDomain — quick access', () => {
+  it('returns defaultQuickAccess as configured', () => {
+    const d = createGraphDomain({
+      id: 'd', label: 'D',
+      templates: [{ type: 'a', category: 'X', label: 'A', ports: [], defaultConfig: {} }],
+      defaultQuickAccess: ['a'],
+    });
+    expect(d.getDefaultQuickAccess()).toEqual(['a']);
+  });
+
+  it('returns [] when defaultQuickAccess absent', () => {
+    const d = createGraphDomain({ id: 'd', label: 'D' });
+    expect(d.getDefaultQuickAccess()).toEqual([]);
+  });
+
+  it('hasTemplate returns true only for registered types', () => {
+    const d = createGraphDomain({
+      id: 'd', label: 'D',
+      templates: [{ type: 'a', category: 'X', label: 'A', ports: [], defaultConfig: {} }],
+    });
+    expect(d.hasTemplate('a')).toBe(true);
+    expect(d.hasTemplate('missing')).toBe(false);
+  });
+
+  it('allowBlocks defaults to true', () => {
+    const d = createGraphDomain({ id: 'd', label: 'D' });
+    expect(d.allowBlocks).toBe(true);
+  });
+
+  it('allowBlocks honors the spec opt-out', () => {
+    const d = createGraphDomain({ id: 'd', label: 'D', allowBlocks: false });
+    expect(d.allowBlocks).toBe(false);
+  });
+});

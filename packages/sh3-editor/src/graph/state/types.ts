@@ -3,8 +3,20 @@ import type { GraphAssetPort } from '../asset/types';
 export type GraphId = string;
 export type NodeId = string;
 export type EdgeId = string;
+export type BlockId = string;
 /** Short port id (no node-id prefix). */
 export type PortShortId = string;
+
+export interface BlockState {
+  id: BlockId;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  color: string;
+  alpha: number;
+  label: string;
+  labelAnchor: 'top' | 'above' | 'centered';
+}
 
 /** Editable in-memory mirror of a GraphAsset. Mutated via history commands. */
 export interface GraphState {
@@ -14,10 +26,11 @@ export interface GraphState {
   version: number;
   nodes: Map<NodeId, NodeState>;
   edges: Map<EdgeId, EdgeState>;
+  blocks: Map<BlockId, BlockState>;
   metadata: Record<string, unknown>;
   // editor-only
   readonly: boolean;
-  selection: Set<NodeId | EdgeId>;
+  selection: Set<NodeId | EdgeId | BlockId>;
   /**
    * Monotonic counter bumped by every mutation (commands.ts + in-place
    * mutations like node drag). The graph data layer uses plain Map/Set

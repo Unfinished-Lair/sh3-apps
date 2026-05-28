@@ -10,6 +10,8 @@
     selected: boolean;
     /** True while an in-progress marquee covers this node; shows a preview outline. */
     marqueePreview?: boolean;
+    /** True while a block-drag is carrying this node; shows a dashed accent outline. */
+    blockDragPreview?: boolean;
     /** Resolver injected by Graph.svelte. Returns hex, or null to inherit border. */
     portColor?: (port: PortDefinition) => string | null;
     /** Forwarded to BodyBridge for revision subscription + history dispatch. */
@@ -40,6 +42,7 @@
   class="graph-node"
   class:selected={props.selected}
   class:marquee-preview={props.marqueePreview && !props.selected}
+  class:block-drag-preview={props.blockDragPreview}
   class:resizable
   style:left="{props.node.position.x}px"
   style:top="{props.node.position.y}px"
@@ -166,4 +169,8 @@
     opacity: 0.7;
   }
   .resize-corner:hover { opacity: 1; }
+  .graph-node.block-drag-preview {
+    outline: 1px dashed var(--sh3-accent, #4a9eff);
+    outline-offset: 1px;
+  }
 </style>

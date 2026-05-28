@@ -18,6 +18,12 @@ export interface GraphDomainSpec {
   dataTypes?: Record<string, DataTypeDef>;
   conversions?: ReadonlyArray<ConversionDef>;
   resolveLabel?(type: string, config: Record<string, unknown>): string;
+  /** Default quick-access template types (in order). Used when the user has
+   *  not customized the quick-access toolbar for this domain. Unknown types
+   *  are filtered at toolbar-render time. */
+  defaultQuickAccess?: string[];
+  /** Default true. Set false to suppress blocks entirely in this domain. */
+  allowBlocks?: boolean;
 }
 
 const DEFAULT_VISUALS: NodeVisuals = {
@@ -31,6 +37,9 @@ export function createGraphDomain(spec: GraphDomainSpec): GraphDomain {
 
   const visuals = new Map<string, NodeVisuals>();
   for (const [k, v] of Object.entries(spec.visuals ?? {})) visuals.set(k, v);
+
+  const defaultQuickAccess = [...(spec.defaultQuickAccess ?? [])];
+  const allowBlocks = spec.allowBlocks ?? true;
 
   const dom: GraphDomain = {
     id: spec.id,
@@ -57,6 +66,10 @@ export function createGraphDomain(spec: GraphDomainSpec): GraphDomain {
     addVisuals: (type, v) => { visuals.set(type, v); },
 
     resolveLabel: spec.resolveLabel ?? ((type) => type),
+
+    getDefaultQuickAccess: () => [...defaultQuickAccess],
+    hasTemplate: (type: string) => templates.has(type),
+    allowBlocks,
 
     ...(spec.canConnect ? { canConnect: spec.canConnect } : {}),
     ...(spec.resolveConnect ? { resolveConnect: spec.resolveConnect } : {}),

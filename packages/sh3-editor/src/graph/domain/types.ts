@@ -144,4 +144,16 @@ export interface GraphDomain {
 
   /** Adapter table. Indexed by id at runtime by the consumer. */
   conversions?: ReadonlyArray<ConversionDef>;
+
+  /** Returns the snapshot of defaultQuickAccess (or []). Optional so domains
+   *  built against sh3-editor < 0.19 still satisfy the contract — consumers
+   *  must treat a missing method as no defaults. */
+  getDefaultQuickAccess?(): string[];
+
+  /** True iff a template with this type is registered. Optional for
+   *  backward compatibility. */
+  hasTemplate?(type: string): boolean;
+
+  /** Read-only opt-out flag; defaults to true when omitted. */
+  readonly allowBlocks?: boolean;
 }

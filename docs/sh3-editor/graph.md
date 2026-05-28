@@ -424,10 +424,22 @@ export interface GraphAsset {
   id: string;
   name: string;
   domain: string;                      // domain identifier; required
-  version: number;                     // schema version; v1 = 1
+  version: number;                     // schema version; v2 (current); v1 auto-migrates on mount
   nodes: GraphAssetNode[];
   edges: GraphAssetEdge[];
+  blocks?: GraphAssetBlock[];          // v2: optional container rectangles
   metadata?: Record<string, unknown>;
+}
+
+export interface GraphAssetBlock {
+  id: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  color: string;                       // any CSS color
+  alpha: number;                       // 0..1; renderer multiplies into fill opacity
+  label: string;
+  labelAnchor: 'top' | 'above' | 'centered';
 }
 
 export interface GraphAssetNode {
@@ -551,11 +563,18 @@ export type GraphCommandKind =
   | 'add-many'              // multi-node paste/duplicate
   | 'remove-node'
   | 'move-node'
+  | 'move-nodes'
   | 'set-node-config'
   | 'add-edge'
   | 'remove-edge'
-  | 'remove-selection'      // delete with mixed nodes + edges
-  | 'replace-asset';
+  | 'remove-selection'      // delete with mixed nodes + edges + blocks
+  | 'replace-asset'
+  | 'resize-node'
+  | 'add-block'
+  | 'remove-block'
+  | 'move-block'            // includes carried-node deltas
+  | 'resize-block'
+  | 'set-block-config';
 ```
 
 Each command's `apply` / `revert` mutate `GraphState` directly. After every applied command, the view fires `descriptor.onChange(graphStateToAsset(state))` so the consumer sees a new asset snapshot.
@@ -636,6 +655,25 @@ visuals['comment'] = {
 
 **History.** One `resize-node` command per drag, pushed on pointerup (zero-delta drags are no-ops, matching `move-node` semantics).
 
+### 12.7 Blocks (v2)
+
+Container rectangles rendered **below** the edges + nodes layer. Blocks are visual organization aids — they have no ports, no edges, no execution semantics. The renderer treats them as bottom-layer geometry and a label.
+
+- **Schema.** `GraphAssetBlock { id, position, width, height, color, alpha, label, labelAnchor }`. The asset stores the literal value of every field — there is no defaulting at write time.
+- **Label anchor.** `'top'` paints the label inside the block's top edge; `'above'` paints it just outside the top edge; `'centered'` paints it semi-transparent at block center (useful for thematic backdrops).
+- **Selection.** Click on the label or the resize handles; marquee-select also picks up blocks intersecting the rectangle. Inspector binds to `{ color, alpha, label, labelAnchor }` with a `set-block-config` command per commit.
+- **Drag.** A body-press initiates a translate. Nodes whose full bbox is **inside** the block at pointerdown time follow the drag (membership is bbox-containment, inclusive). One `move-block` command on pointerup, carrying the per-node deltas so undo restores them atomically.
+- **Membership cache.** Recomputed on node insert/remove, node move (lone-node), node resize, block add/remove, and block resize. Skipped on block move — members translate with the block so containment is preserved.
+- **Domain opt-out.** Set `GraphDomainSpec.allowBlocks: false` to hide the toolbar's Add Block button and never render blocks in graphs of that domain.
+
+### 12.8 Quick-Access toolbar (v2)
+
+Top-left toolbar inside the graph canvas. Each entry is a single template type the user can click (inserts at viewport center) or drag (drops at pointer release using the existing palette MIME contract).
+
+- **Default entries.** `GraphDomainSpec.defaultQuickAccess: string[]` (template types in order). Unknown types are filtered at render time with a single `console.warn` per resolution.
+- **Variants.** Per-domain named variants persist in `EditorPrefs.quickAccess.domains[domain.id]`. Customization UI lives in the F1 Hub's Quick Access tab.
+- **Visibility.** The toolbar is hidden in read-only graphs and when the resolved entry list is empty.
+
 ---
 
 ## 13. Cross-shard string-literal rule
@@ -663,7 +701,7 @@ The same rule governs `INSPECTOR_RENDERER_POINT`, `'sh3-editor.color-panel'`, et
 | Subpath | What it exports |
 |---|---|
 | `@unfinished-lair/sh3-editor/graph/contributions` | `GRAPH_DOMAIN_POINT`, `GRAPH_VIEW_POINT`, `GraphDomainContribution`, `GraphViewDescriptor`, `GraphController`, `GraphInspectorBinding`. |
-| `@unfinished-lair/sh3-editor/graph/types` | `GraphAsset`, `GraphAssetNode`, `GraphAssetPort`, `GraphAssetEdge`, `GraphState`, `NodeState`, `EdgeState`, `PortDefinition`, `FieldDescriptor`, `NodeId`, `EdgeId`, `PortShortId`, `GraphId`, `GraphDomain`, `GraphDomainHost`, `NodeTemplate`, `ConfigFieldDef`, `NodeVisuals`, `EdgeSemantics`, `PortRef`, `createGraphDomain`, `GraphDomainSpec`. |
+| `@unfinished-lair/sh3-editor/graph/types` | `GraphAsset`, `GraphAssetNode`, `GraphAssetPort`, `GraphAssetEdge`, `GraphAssetBlock`, `GraphState`, `NodeState`, `EdgeState`, `BlockState`, `PortDefinition`, `FieldDescriptor`, `NodeId`, `EdgeId`, `BlockId`, `PortShortId`, `GraphId`, `GraphDomain`, `GraphDomainHost`, `NodeTemplate`, `ConfigFieldDef`, `NodeVisuals`, `EdgeSemantics`, `PortRef`, `createGraphDomain`, `GraphDomainSpec`. |
 | `@unfinished-lair/sh3-editor/graph/history` | `GraphCommand`, `GraphCommandKind` (read-only — commands are constructed by the view, not by consumers). |
 
 ---

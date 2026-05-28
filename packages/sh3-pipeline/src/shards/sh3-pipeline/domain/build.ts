@@ -27,10 +27,13 @@ function makeDomain(opts: {
   resolveConnect: (src: PortRef, tgt: PortRef) => ConnectResolution;
   dataTypes: Record<string, DataTypeDef>;
   conversions: ReadonlyArray<ConversionDef>;
+  defaultQuickAccess?: string[];
+  allowBlocks?: boolean;
 }): GraphDomain {
   const templates = new Map<string, NodeTemplate>();
   for (const t of opts.templates) templates.set(t.type, t);
   const visuals = new Map<string, NodeVisuals>(Object.entries(opts.visuals));
+  const defaultQuickAccess = [...(opts.defaultQuickAccess ?? [])];
 
   return {
     id: opts.id,
@@ -60,6 +63,10 @@ function makeDomain(opts: {
     resolveConnect: opts.resolveConnect,
     dataTypes: opts.dataTypes,
     conversions: opts.conversions,
+    // sh3-editor 0.19+ surface — see graph.md §12.7-12.8.
+    getDefaultQuickAccess: () => [...defaultQuickAccess],
+    hasTemplate: (type: string) => templates.has(type),
+    allowBlocks: opts.allowBlocks ?? true,
   };
 }
 

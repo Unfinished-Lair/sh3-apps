@@ -3,7 +3,7 @@ import type { GraphDomain } from '../domain/types';
 import type { GraphState, NodeId, EdgeId } from '../state/types';
 import type { GraphController, GraphInspectorBinding, GraphViewDescriptor } from '../contributions';
 import { graphAssetToState, graphStateToAsset } from '../state/bridge';
-import { makeReplaceAssetCommand } from '../history/commands';
+import { makeReplaceAssetCommand, makeSetBlockConfigCommand } from '../history/commands';
 import { fieldsToInspectorMeta, makeNodeConfigOverride } from '../inspector/bridge';
 import type { HistoryController, HistoryCommand } from '../../types';
 
@@ -100,8 +100,48 @@ export function createGraphController(
       if (!alive) return null;
       const sel = Array.from(state.selection);
       if (sel.length !== 1) return null;
-      const id = sel[0];
-      const node = state.nodes.get(id);
+      const only = sel[0];
+
+      if (state.blocks.has(only)) {
+        const b = state.blocks.get(only)!;
+        const value = { color: b.color, alpha: b.alpha, label: b.label, labelAnchor: b.labelAnchor };
+        return {
+          value,
+          meta: {
+            fields: {
+              label:       { label: 'Label',        type: 'string' },
+              labelAnchor: {
+                label: 'Anchor',
+                type:  'segmented',
+                widget: { type: 'segmented', options: [
+                  { value: 'top',      label: 'Top' },
+                  { value: 'above',    label: 'Above' },
+                  { value: 'centered', label: 'Center' },
+                ] },
+              },
+              color:       { label: 'Color',        type: 'color' },
+              alpha:       { label: 'Opacity',      type: 'number' },
+            },
+          },
+          onCommit: (path, next) => {
+            const key = String(path[0]);
+            if (key !== 'color' && key !== 'alpha' && key !== 'label' && key !== 'labelAnchor') return false;
+            const cur = state.blocks.get(only);
+            if (!cur) return false;
+            const beforeVal = (cur as Record<string, unknown>)[key];
+            if (beforeVal === next) return true;
+            const before = { [key]: beforeVal } as Parameters<typeof makeSetBlockConfigCommand>[1]['before'];
+            const after  = { [key]: next }     as Parameters<typeof makeSetBlockConfigCommand>[1]['after'];
+            const cmd = makeSetBlockConfigCommand(state, { blockId: only, before, after });
+            cmd.apply();
+            history.push(cmd);
+            onAssetChanged();
+            return true;
+          },
+        };
+      }
+
+      const node = state.nodes.get(only);
       if (!node) return null;       // an edge id, not a node
       return {
         value: node.config,

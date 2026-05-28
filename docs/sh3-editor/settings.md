@@ -5,6 +5,10 @@
 **View id:** `sh3-editor:settings`
 **Contribution point:** `sh3-editor.settings`
 
+> **As of sh3-editor 0.19:** the standalone view id `sh3-editor:settings` aliases
+> `sh3-editor:help-settings`. The `SettingsDescriptor` contract is unchanged.
+> Either view id can be referenced in `App.initialLayout`.
+
 ---
 
 ## 1. What it is

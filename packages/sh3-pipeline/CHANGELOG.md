@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.1 — 2026-05-28 — Help hub viewId migration
+
+### Changed
+
+- Rebuilt the Pipeline Nodes help tab against sh3-editor 0.19's `viewId`-based
+  `HelpTabContribution`. Registered as a real view (`sh3-pipeline:help-tab:nodes`)
+  declared in the shard manifest; the prior `mount(container, tabCtx)` form is
+  gone.
+- `PipelineNodesHelpTab.svelte` no longer accepts a `tabCtx` prop (was unused
+  beyond ceremony).
+
+Requires `@unfinished-lair/sh3-editor` ≥ 0.19.0.
+
 ## 0.5.0 — 2026-05-27 — Comment node body + prefetch in-node select
 
 ### Added

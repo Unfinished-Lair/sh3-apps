@@ -398,3 +398,85 @@ describe('replace-asset', () => {
     expect(graphStateToAsset(s).nodes[0].id).toBe('n1');
   });
 });
+
+
+import {
+  makeAddBlockCommand, makeRemoveBlockCommand, makeMoveBlockCommand,
+  makeResizeBlockCommand, makeSetBlockConfigCommand,
+} from './commands';
+import type { GraphAssetBlock } from '../asset/types';
+
+const sampleBlock: GraphAssetBlock = {
+  id: 'b1', position: { x: 0, y: 0 }, width: 100, height: 80,
+  color: '#446688', alpha: 0.2, label: 'G', labelAnchor: 'top',
+};
+
+describe('block commands', () => {
+  it('add-block apply/revert', () => {
+    const s = emptyState();
+    const cmd = makeAddBlockCommand(s, sampleBlock);
+    cmd.apply();
+    expect(s.blocks.has('b1')).toBe(true);
+    cmd.revert();
+    expect(s.blocks.has('b1')).toBe(false);
+  });
+
+  it('remove-block snapshot/revert', () => {
+    const s = emptyState();
+    s.blocks.set('b1', {
+      id: 'b1', position: { x: 0, y: 0 }, width: 100, height: 80,
+      color: '#446688', alpha: 0.2, label: 'G', labelAnchor: 'top',
+    });
+    const cmd = makeRemoveBlockCommand(s, 'b1');
+    cmd.apply();
+    expect(s.blocks.has('b1')).toBe(false);
+    cmd.revert();
+    expect(s.blocks.has('b1')).toBe(true);
+  });
+
+  it('move-block translates block + carried nodes; revert restores positions', () => {
+    const s = emptyState();
+    s.blocks.set('b1', { ...sampleBlock, position: { x: 0, y: 0 } });
+    s.nodes.set('n1', { id: 'n1', type: 'x', label: 'x',
+                            ports: [], config: {}, configFields: [],
+                            position: { x: 10, y: 10 }, width: 20, height: 20,
+                            defaultsForSerialization: { width: 20, height: 20 } } as any);
+    const cmd = makeMoveBlockCommand(s, {
+      blockId: 'b1',
+      before: { x: 0, y: 0 },
+      after:  { x: 100, y: 50 },
+      carriedNodes: [{ id: 'n1', before: { x: 10, y: 10 }, after: { x: 110, y: 60 } }],
+    });
+    cmd.apply();
+    expect(s.blocks.get('b1')!.position).toEqual({ x: 100, y: 50 });
+    expect(s.nodes.get('n1')!.position).toEqual({ x: 110, y: 60 });
+    cmd.revert();
+    expect(s.blocks.get('b1')!.position).toEqual({ x: 0, y: 0 });
+    expect(s.nodes.get('n1')!.position).toEqual({ x: 10, y: 10 });
+  });
+
+  it('resize-block apply/revert', () => {
+    const s = emptyState();
+    s.blocks.set('b1', { ...sampleBlock, width: 100, height: 80 });
+    const cmd = makeResizeBlockCommand(s, {
+      blockId: 'b1', before: { w: 100, h: 80 }, after: { w: 200, h: 160 },
+    });
+    cmd.apply();
+    expect(s.blocks.get('b1')!.width).toBe(200);
+    expect(s.blocks.get('b1')!.height).toBe(160);
+    cmd.revert();
+    expect(s.blocks.get('b1')!.width).toBe(100);
+  });
+
+  it('set-block-config apply/revert', () => {
+    const s = emptyState();
+    s.blocks.set('b1', { ...sampleBlock, label: 'Old' });
+    const cmd = makeSetBlockConfigCommand(s, {
+      blockId: 'b1', before: { label: 'Old' }, after: { label: 'New' },
+    });
+    cmd.apply();
+    expect(s.blocks.get('b1')!.label).toBe('New');
+    cmd.revert();
+    expect(s.blocks.get('b1')!.label).toBe('Old');
+  });
+});

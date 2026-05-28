@@ -55,3 +55,44 @@ describe('GraphController', () => {
     expect(b!.value).toEqual({ x: 1 });
   });
 });
+
+describe('controller.getSelectedInspectorBinding — blocks', () => {
+  it('returns block schema when one block is selected', () => {
+    const state = makeState();
+    state.blocks.set('b1', {
+      id: 'b1', position: { x: 0, y: 0 }, width: 100, height: 80,
+      color: '#000', alpha: 0.3, label: 'G', labelAnchor: 'top',
+    });
+    const ctrl = createGraphController(state, dom, undefined, () => {});
+    ctrl.select(['b1']);
+    const b = ctrl.getSelectedInspectorBinding();
+    expect(b).not.toBeNull();
+    expect(b!.value).toEqual({ color: '#000', alpha: 0.3, label: 'G', labelAnchor: 'top' });
+  });
+
+  it('returns null when block + something else are selected', () => {
+    const state = makeState();
+    state.blocks.set('b1', {
+      id: 'b1', position: { x: 0, y: 0 }, width: 100, height: 80,
+      color: '#000', alpha: 0.3, label: '', labelAnchor: 'top',
+    });
+    const ctrl = createGraphController(state, dom, undefined, () => {});
+    ctrl.select(['b1', 'n1']);
+    expect(ctrl.getSelectedInspectorBinding()).toBeNull();
+  });
+
+  it('onCommit writes the new value into state.blocks (walker 2-arg signature)', () => {
+    const state = makeState();
+    state.blocks.set('b1', {
+      id: 'b1', position: { x: 0, y: 0 }, width: 100, height: 80,
+      color: '#000', alpha: 0.3, label: 'G', labelAnchor: 'top',
+    });
+    const ctrl = createGraphController(state, dom, undefined, () => {});
+    ctrl.select(['b1']);
+    const b = ctrl.getSelectedInspectorBinding();
+    expect(b).not.toBeNull();
+    const consumed = b!.onCommit(['color'], '#ff0000');
+    expect(consumed).toBe(true);
+    expect(state.blocks.get('b1')!.color).toBe('#ff0000');
+  });
+});

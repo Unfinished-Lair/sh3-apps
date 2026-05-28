@@ -1,7 +1,11 @@
-import type { GraphAsset, GraphAssetEdge, GraphAssetNode, GraphAssetPort } from '../asset/types';
+import type {
+  GraphAsset, GraphAssetBlock, GraphAssetEdge, GraphAssetNode, GraphAssetPort,
+} from '../asset/types';
 import type { GraphDomain, NodeTemplate } from '../domain/types';
 import { effectivePorts } from '../domain/effective-ports';
-import type { EdgeState, GraphState, NodeId, NodeState, PortDefinition } from '../state/types';
+import type {
+  BlockId, BlockState, EdgeState, GraphState, NodeId, NodeState, PortDefinition,
+} from '../state/types';
 import { graphAssetToState, graphStateToAsset, buildConfigFields } from '../state/bridge';
 
 export type GraphCommandKind =
@@ -15,7 +19,12 @@ export type GraphCommandKind =
   | 'remove-edge'
   | 'remove-selection'
   | 'replace-asset'
-  | 'resize-node';
+  | 'resize-node'
+  | 'add-block'
+  | 'remove-block'
+  | 'move-block'
+  | 'resize-block'
+  | 'set-block-config';
 
 export interface GraphCommand {
   apply(): void;
@@ -315,11 +324,13 @@ export function makeRemoveSelectionCommand(
 ): GraphCommand {
   let removedNodes: NodeState[] = [];
   let removedEdges: EdgeState[] = [];
+  let removedBlocks: BlockState[] = [];
   return {
     meta: { kind: 'remove-selection' },
     apply() {
       removedNodes = [];
       removedEdges = [];
+      removedBlocks = [];
       const idSet = new Set(ids);
       // First pass: edges named directly in the selection.
       for (const id of idSet) {
@@ -339,6 +350,12 @@ export function makeRemoveSelectionCommand(
         removedNodes.push(n);
         state.nodes.delete(id);
       }
+      // Third pass: blocks. Blocks are container-only — removing one does
+      // not implicitly remove its members.
+      for (const id of idSet) {
+        const b = state.blocks.get(id);
+        if (b) { removedBlocks.push(b); state.blocks.delete(id); }
+      }
       state.selection.clear();
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
       state.revision++;
@@ -346,6 +363,7 @@ export function makeRemoveSelectionCommand(
     revert() {
       for (const n of removedNodes) state.nodes.set(n.id, n);
       for (const e of removedEdges) state.edges.set(e.id, e);
+      for (const b of removedBlocks) state.blocks.set(b.id, b);
       for (const e of removedEdges) recomputeNodeFields(state, dom, e.targetNodeId);
       state.revision++;
     },
@@ -402,7 +420,131 @@ export function makeReplaceAssetCommand(
       state.metadata = fresh.metadata;
       state.nodes.clear(); for (const [k, v] of fresh.nodes) state.nodes.set(k, v);
       state.edges.clear(); for (const [k, v] of fresh.edges) state.edges.set(k, v);
+      state.blocks.clear(); for (const [k, v] of fresh.blocks) state.blocks.set(k, v);
       state.selection.clear();
+      state.revision++;
+    },
+  };
+}
+
+// ---------- Block commands ----------
+
+function blockFromAsset(b: GraphAssetBlock): BlockState {
+  return {
+    id: b.id,
+    position: { ...b.position },
+    width: b.width, height: b.height,
+    color: b.color, alpha: b.alpha,
+    label: b.label, labelAnchor: b.labelAnchor,
+  };
+}
+
+export function makeAddBlockCommand(state: GraphState, b: GraphAssetBlock): GraphCommand {
+  const snap = blockFromAsset(b);
+  return {
+    meta: { kind: 'add-block' },
+    apply() {
+      state.blocks.set(snap.id, { ...snap, position: { ...snap.position } });
+      state.revision++;
+    },
+    revert() {
+      state.blocks.delete(snap.id);
+      state.selection.delete(snap.id);
+      state.revision++;
+    },
+  };
+}
+
+export function makeRemoveBlockCommand(state: GraphState, id: BlockId): GraphCommand {
+  let snap: BlockState | null = null;
+  return {
+    meta: { kind: 'remove-block' },
+    apply() {
+      const cur = state.blocks.get(id);
+      if (!cur) return;
+      snap = { ...cur, position: { ...cur.position } };
+      state.blocks.delete(id);
+      state.selection.delete(id);
+      state.revision++;
+    },
+    revert() {
+      if (!snap) return;
+      state.blocks.set(snap.id, { ...snap, position: { ...snap.position } });
+      state.revision++;
+    },
+  };
+}
+
+export interface MoveBlockSpec {
+  blockId: BlockId;
+  before: { x: number; y: number };
+  after:  { x: number; y: number };
+  carriedNodes: Array<{ id: string; before: { x: number; y: number }; after: { x: number; y: number } }>;
+}
+
+export function makeMoveBlockCommand(state: GraphState, spec: MoveBlockSpec): GraphCommand {
+  return {
+    meta: { kind: 'move-block' },
+    apply() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, position: { ...spec.after } });
+      for (const m of spec.carriedNodes) {
+        const n = state.nodes.get(m.id);
+        if (n) state.nodes.set(m.id, { ...n, position: { ...m.after } });
+      }
+      state.revision++;
+    },
+    revert() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, position: { ...spec.before } });
+      for (const m of spec.carriedNodes) {
+        const n = state.nodes.get(m.id);
+        if (n) state.nodes.set(m.id, { ...n, position: { ...m.before } });
+      }
+      state.revision++;
+    },
+  };
+}
+
+export interface ResizeBlockSpec {
+  blockId: BlockId;
+  before: { w: number; h: number };
+  after:  { w: number; h: number };
+}
+
+export function makeResizeBlockCommand(state: GraphState, spec: ResizeBlockSpec): GraphCommand {
+  return {
+    meta: { kind: 'resize-block' },
+    apply() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, width: spec.after.w, height: spec.after.h });
+      state.revision++;
+    },
+    revert() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, width: spec.before.w, height: spec.before.h });
+      state.revision++;
+    },
+  };
+}
+
+export interface SetBlockConfigSpec {
+  blockId: BlockId;
+  before: Partial<Pick<BlockState, 'color' | 'alpha' | 'label' | 'labelAnchor'>>;
+  after:  Partial<Pick<BlockState, 'color' | 'alpha' | 'label' | 'labelAnchor'>>;
+}
+
+export function makeSetBlockConfigCommand(state: GraphState, spec: SetBlockConfigSpec): GraphCommand {
+  return {
+    meta: { kind: 'set-block-config' },
+    apply() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, ...spec.after });
+      state.revision++;
+    },
+    revert() {
+      const b = state.blocks.get(spec.blockId);
+      if (b) state.blocks.set(spec.blockId, { ...b, ...spec.before });
       state.revision++;
     },
   };

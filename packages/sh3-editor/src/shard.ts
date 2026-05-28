@@ -1,5 +1,5 @@
 import type { SourceShard, ShardContext, FileHandlerDescriptor } from 'sh3-core';
-import { sh3 } from 'sh3-core';
+import { PERMISSION_DOCUMENTS_WRITE, sh3 } from 'sh3-core';
 import { openInFloat } from './handlers/openInFloat';
 import { mount, unmount } from 'svelte';
 import { InstanceRegistry } from './model/instance-registry.svelte';
@@ -97,7 +97,9 @@ export const shard: SourceShard = {
       { id: 'sh3-editor:graph',        label: 'Graph',        standalone: true },
       { id: 'sh3-editor:graph-node-picker', label: 'Graph Node Picker', standalone: true },
     ],
-    permissions: [],
+    // @note: permission is added so contribution points invoking sh3-editor still give full access to the text editor.
+    // need to think of a more robust strategy for temporarly administering a document without having permissions.
+    permissions: [PERMISSION_DOCUMENTS_WRITE],
   },
 
   register(ctx: ShardContext) {

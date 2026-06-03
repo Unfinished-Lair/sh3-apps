@@ -74,10 +74,10 @@
       },
       "versions": [
         {
-          "version": "0.19.0+602",
+          "version": "0.20.0+1",
           "contractVersion": "1",
-          "archiveUrl": "bundles/sh3-editor-0.19.0+602.sh3pkg",
-          "integrity": "sha384-1h+l8Mkc9TPiBeNE03aLqMEqPIVSsqjNcfZkgCKqPfkseckrM6fj1H75KFwJQlde"
+          "archiveUrl": "bundles/sh3-editor-0.20.0+1.sh3pkg",
+          "integrity": "sha384-1lO/dLAQzmYD2v4ZUBb7bL2jgN/q8/tCLMQZ+uq+D3hfI9S6b/irewl5jjJvGJVp"
         }
       ]
     },

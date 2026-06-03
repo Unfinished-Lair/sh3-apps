@@ -218,7 +218,6 @@ export const shard: SourceShard = {
           props: {
             entry,
             internals: internalsRef!,
-            highlight: opts.highlight,
             matchingConfig: opts.matchingConfig,
             fontSize: opts.fontSize,
             toolbarActions: opts.toolbarActions,

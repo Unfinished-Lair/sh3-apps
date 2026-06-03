@@ -107,7 +107,7 @@ Behavior:
   and dirty. No-op in content mode and when the path matches the
   currently-bound path.
 - `setOptions({ language, filePath, matchingConfig, prefs, fontSize,
-  showSettings, toolbarActions, highlight, render, transform,
+  showSettings, toolbarActions, render, transform,
   startInPreview })` — updates view-level options without touching the
   buffer. Each field replaces (does not merge) except `prefs`, which
   shallow-merges into the current prefs.
@@ -132,13 +132,50 @@ Pick the right channel per concern:
 |---|---|---|---|
 | `content` | `string` | *(required)* | Initial buffer text. |
 | `filePath` | `string \| null` | `null` | Toolbar file chip; informational. |
-| `language` | `string \| null` | `null` | Forwarded to `highlight(text, language)`. |
-| `highlight` | `(text, language) => string` | `escapeHtml` | Syntax-highlight hook. Returns HTML rendered in the background layer. |
+| `language` | `string \| null` | `null` | Document language. Drives highlighter resolution (§2.3) and the default markdown preview. |
 | `matchingConfig` | `MatchingConfig` | `{ indentType: 'none' }` | Indent + brace auto-edit config (§3). |
 | `prefs` | `UserPrefs` | *(inherited from `matchingConfig`)* | User-owned overrides. Shallow-merged. |
 | `fontSize` | `number` | `13` | Editor font size in px. |
 | `showSettings` | `boolean` | auto | Hide the built-in settings gear when sub-options exist. |
 | `toolbarActions` | `ToolbarAction[]` | `[]` | Caller-supplied actions merged with the built-in gear. |
+
+### 2.3 Syntax highlighting (`EDITOR_HIGHLIGHTER_POINT`)
+
+Highlighting is a **one-time contribution**, not a per-slot seed field. There
+is no `highlight` hook on `EditorDocumentSeed`. Register a highlighter once and
+the editor resolves one per document by `language`:
+
+```typescript
+import {
+  EDITOR_HIGHLIGHTER_POINT,
+  type EditorHighlighterContribution,
+} from '@unfinished-lair/sh3-editor/contributions';
+
+ctx.contributions.register<EditorHighlighterContribution>(EDITOR_HIGHLIGHTER_POINT, {
+  id: 'my-shard:highlighter',
+  languages: ['guml', 'markdown'], // omit for a wildcard fallback
+  priority: 0,                     // higher wins among same-tier matches
+  highlight: (text, language) => toHtml(text, language),
+});
+```
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `id` | `string` | *(required)* | Stable id for dedup/debugging. |
+| `languages` | `string[]` | *(wildcard)* | Languages claimed. Omit to register a fallback used only when no language-specific highlighter matches. |
+| `priority` | `number` | `0` | Higher wins among matches of the same specificity tier. |
+| `highlight` | `(text, language) => string` | *(required)* | Returns HTML for the background highlight layer. `language` is never null. |
+
+Resolution order: a contribution whose `languages` includes the document
+language beats any wildcard fallback; within a tier the highest `priority`
+wins; ties keep the first registered. When nothing matches (or the document
+has no `language`), the editor escapes the buffer as plain text.
+
+Register in your shard's `register()` for a session-wide highlighter, or in
+`onAppActivate()` for one scoped to your app (auto-released on deactivate so
+its language flavor does not leak into other apps). The editor tracks the
+registry reactively — a highlighter registered after a slot mounts starts
+applying live.
 
 ---
 

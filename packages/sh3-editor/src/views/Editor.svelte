@@ -11,12 +11,16 @@
   import TextEditorSettings from './TextEditorSettings.svelte';
   import Preview from './Preview.svelte';
   import { resolveRender } from '../preview/render-resolve';
-  import type { PreviewLinkEvent } from '../contributions';
+  import { resolveHighlighter } from '../highlight-resolve';
+  import {
+    EDITOR_HIGHLIGHTER_POINT,
+    type EditorHighlighterContribution,
+    type PreviewLinkEvent,
+  } from '../contributions';
 
   interface Props {
     entry: RegistryEntry;
     internals: ApiInternals;
-    highlight?: (text: string, language: string) => string;
     matchingConfig?: MatchingConfig;
     fontSize?: number;
     toolbarActions?: ToolbarAction[];
@@ -32,7 +36,6 @@
   let {
     entry,
     internals,
-    highlight,
     matchingConfig,
     fontSize = 13,
     toolbarActions = [],
@@ -181,9 +184,24 @@
     setActiveEditor(activeRef);
   }
 
+  // Highlighters are a one-time contribution (EDITOR_HIGHLIGHTER_POINT), not a
+  // per-slot prop. Track the registered set reactively so a highlighter that
+  // registers after mount (e.g. on app activate) starts applying live.
+  let highlighters = $state<EditorHighlighterContribution[]>([]);
+  $effect(() => {
+    if (!ctx) return;
+    const refresh = () => {
+      highlighters = ctx.contributions.list<EditorHighlighterContribution>(EDITOR_HIGHLIGHTER_POINT);
+    };
+    refresh();
+    return ctx.contributions.onChange(EDITOR_HIGHLIGHTER_POINT, refresh);
+  });
+
+  let highlightFn = $derived(resolveHighlighter(highlighters, doc.language));
+
   let highlighted = $derived(
-    highlight && doc.language
-      ? highlight(local, doc.language)
+    highlightFn && doc.language
+      ? highlightFn(local, doc.language)
       : escapeHtml(local),
   );
 

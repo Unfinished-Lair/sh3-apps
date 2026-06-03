@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.20.0 — 2026-06-03 — Syntax highlighting as a contribution point
+
+### Breaking
+
+- The per-slot `highlight` hook is removed from `EditorDocumentSeed`
+  (`EditorDocumentSeedCommon`), `OpenDocumentOptions`, and
+  `EditorOptionsPatch`. Highlighting is now a one-time contribution, not a
+  per-document option. Migration: register an `EditorHighlighterContribution`
+  under `EDITOR_HIGHLIGHTER_POINT` once (from your shard's `register()` for a
+  session-wide highlighter, or `onAppActivate()` for an app-scoped one) instead
+  of passing `highlight` on each seed. See `docs/sh3-editor/editor.md` §2.3.
+
+### Added
+
+- `EDITOR_HIGHLIGHTER_POINT` + `EditorHighlighterContribution` (exported from
+  `@unfinished-lair/sh3-editor/contributions` and the package root). The editor
+  resolves a highlighter per document by `language`: a language-specific match
+  beats a wildcard fallback (no `languages`), and within a tier the highest
+  `priority` wins. Resolution is reactive — a highlighter registered after a
+  slot mounts starts applying live.
+
+### Changed
+
+- Editor mount now emits a diagnostic trace per slot (`[sh3-editor]` prefix):
+  the resolved seed kind, path/filePath, and language; a `warn` when no
+  `EditorDocumentContribution` matches the `slotId` (the "Hello, World"
+  placeholder case, listing the registered slotIds); and a `warn` when a
+  path-mode `readText` returns null (genuine file-not-found). This distinguishes
+  the no-contribution placeholder from a missing-on-disk file.
+
 ## 0.19.0 — 2026-05-28 — Help hub + Quick-Access toolbar + block-nodes
 
 ### Breaking

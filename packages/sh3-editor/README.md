@@ -17,7 +17,6 @@ editor.openDocument('my-file', {
   content: 'hello world',
   filePath: 'src/main.ts',
   language: 'typescript',
-  highlight: myHighlighter,
   matchingConfig: { brackets: [['(', ')'], ['{', '}']] },
   toolbarActions: [
     { id: 'run', label: 'Run', icon: '▶', onAction: () => run() },
@@ -27,6 +26,33 @@ editor.openDocument('my-file', {
 editor.onSave((id) => saveFile(id));
 editor.onContentChange((id, content) => handleChange(id, content));
 ```
+
+## Syntax highlighting
+
+Highlighting is **not** a per-document option. Register a highlighter once
+against `EDITOR_HIGHLIGHTER_POINT`; the editor resolves one per document by
+`language`. A contributor whose `languages` includes the document language
+wins over a wildcard fallback (one with no `languages`); within a tier the
+highest `priority` (default 0) wins.
+
+```typescript
+import {
+  EDITOR_HIGHLIGHTER_POINT,
+  type EditorHighlighterContribution,
+} from '@unfinished-lair/sh3-editor/contributions';
+
+// In your shard's register() (session-wide) or onAppActivate() (app-scoped):
+ctx.contributions.register<EditorHighlighterContribution>(EDITOR_HIGHLIGHTER_POINT, {
+  id: 'my-shard:highlighter',
+  languages: ['typescript', 'javascript'],
+  highlight: (text, language) => myHighlighter(text, language), // returns HTML
+});
+```
+
+Register in `register()` for a session-wide highlighter, or in
+`onAppActivate()` for one scoped to your app (auto-released on deactivate).
+The editor tracks the registry reactively, so a highlighter that registers
+after a slot mounts still starts applying live.
 
 ## Indent behavior
 

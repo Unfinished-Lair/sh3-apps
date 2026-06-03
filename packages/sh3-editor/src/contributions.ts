@@ -8,9 +8,41 @@ import type { MatchingConfig, ToolbarAction, UserPrefs } from './types';
  */
 export const EDITOR_DOCUMENT_POINT = 'sh3-editor.document';
 
+/**
+ * Contribution point id for syntax highlighters. Unlike the per-slot document
+ * binding, highlighters are registered ONCE (typically from a shard's
+ * `register`/`onAppActivate`) and apply to every editor/reader slot by
+ * language — there is no per-slot highlight hook. Contributors register one
+ * `EditorHighlighterContribution` per highlighter via
+ * `ctx.contributions.register<EditorHighlighterContribution>(EDITOR_HIGHLIGHTER_POINT, …)`.
+ */
+export const EDITOR_HIGHLIGHTER_POINT = 'sh3-editor.highlighter';
+
+/** A syntax highlighter registered under `EDITOR_HIGHLIGHTER_POINT`.
+ *
+ *  The editor resolves a highlighter per document by `language`: a contributor
+ *  whose `languages` array includes the document language wins over a wildcard
+ *  fallback (one with no `languages`); within a tier the highest `priority`
+ *  (default 0) wins. See `resolveHighlighter`. */
+export interface EditorHighlighterContribution {
+  /** Stable id for this highlighter (for dedup/debugging). */
+  id: string;
+  /** Languages this highlighter claims. Omit to register a wildcard fallback
+   *  that matches any language (used only when no language-specific
+   *  highlighter matches). */
+  languages?: string[];
+  /** Higher wins among matches of the same specificity tier. Default 0. */
+  priority?: number;
+  /** Returns HTML for the editor's background highlight layer. `language` is
+   *  the resolved document language (never null — the editor only calls a
+   *  highlighter when the document has a language). */
+  highlight(text: string, language: string): string;
+}
+
 /** Shared options carried by both seed variants. */
 export interface EditorDocumentSeedCommon {
-  /** Forwarded to `highlight(text, language)`. */
+  /** Document language. Drives highlighter resolution (see
+   *  `EDITOR_HIGHLIGHTER_POINT`) and the default markdown preview. */
   language?: string | null;
   /** Indent + brace auto-edit config. */
   matchingConfig?: MatchingConfig;
@@ -22,8 +54,6 @@ export interface EditorDocumentSeedCommon {
   showSettings?: boolean;
   /** Caller-supplied actions merged with the built-in settings gear. */
   toolbarActions?: ToolbarAction[];
-  /** Syntax-highlight hook returning HTML. Default escapes the buffer. */
-  highlight?: (text: string, language: string) => string;
   /** Preview/reader render hook. Receives buffer + language, returns HTML.
    *  When absent and language === 'markdown' (or filePath ends in .md and
    *  language is null), the bundled default markdown renderer is used.
@@ -86,7 +116,6 @@ export type EditorOptionsPatch = Partial<{
   fontSize: number;
   showSettings: boolean;
   toolbarActions: ToolbarAction[];
-  highlight: (text: string, language: string) => string;
   render: (text: string, language: string | null) => string;
   transform: (text: string, language: string | null) => string;
   startInPreview: boolean;

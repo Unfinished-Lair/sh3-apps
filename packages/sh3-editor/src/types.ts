@@ -81,7 +81,6 @@ export interface OpenDocumentOptions {
   content: string;
   filePath?: string;
   language?: string;
-  highlight?: (text: string, language: string) => string;
   matchingConfig?: MatchingConfig;
   toolbarActions?: ToolbarAction[];
   fontSize?: number;
@@ -379,6 +378,10 @@ export type {
 
 // --- Preview / Reader (≥ 0.11.0) ---
 export type { PreviewLinkEvent } from './contributions';
+
+// --- Syntax highlighter contribution (≥ 0.20.0) ---
+export type { EditorHighlighterContribution } from './contributions';
+export { EDITOR_HIGHLIGHTER_POINT } from './contributions';
 
 // --- Editor edit channel (≥ 0.15.0) ---
 export type {

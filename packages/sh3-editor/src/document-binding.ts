@@ -24,6 +24,9 @@ export interface BindDocumentOptions {
   documents?: DocumentHandle;
   /** Override the warn sink in tests. Defaults to console.warn. */
   warn?: (msg: string) => void;
+  /** Override the diagnostic info sink in tests. Defaults to console.info.
+   *  Used for the per-mount "which path / which language" trace. */
+  log?: (msg: string) => void;
 }
 
 export interface BindDocumentResult {
@@ -52,6 +55,7 @@ export function bindDocument(opts: BindDocumentOptions): BindDocumentResult {
     defaultOptions,
     documents,
     warn = console.warn,
+    log = console.info,
   } = opts;
 
   const all = contributions.list<EditorDocumentContribution>(EDITOR_DOCUMENT_POINT);
@@ -67,24 +71,47 @@ export function bindDocument(opts: BindDocumentOptions): BindDocumentResult {
 
   // --------------------------------------------------------------- no contribution
   if (!bound) {
+    // This is the "Hello, World" placeholder case. It does NOT mean a file was
+    // missing on disk — it means no EditorDocumentContribution was registered
+    // for this slotId by the time the view mounted. Surface the registered
+    // slotIds so a mismatch / registration-race is obvious in the console.
+    const known = all.map((c) => c.slotId);
+    warn(
+      `[sh3-editor] mount slotId="${slotId}": no EditorDocumentContribution matched ` +
+        `→ falling back to placeholder default (${JSON.stringify(defaultOptions.content)}). ` +
+        `Registered slotIds=[${known.join(', ')}]. ` +
+        `Likely a slotId mismatch or a contribution registered after mount.`,
+    );
     const entry = registry.get(slotId) ?? registry.open(slotId, defaultOptions);
     return { entry, cleanup() { /* no-op */ } };
   }
 
   // ---------------------------------------------------------------- content mode
   if (bound.seed.kind === 'content') {
+    log(
+      `[sh3-editor] mount slotId="${slotId}": content seed — ` +
+        `filePath=${JSON.stringify(bound.seed.filePath ?? null)}, ` +
+        `language=${JSON.stringify(bound.seed.language ?? null)}, ` +
+        `length=${bound.seed.content.length}`,
+    );
     const entry = bindContentMode(slotId, bound, bound.seed, registry, internals, offs);
     wireObservers(slotId, bound, internals, offs);
     return makeResult(entry, offs, bound.onLinkClick);
   }
 
   // ------------------------------------------------------------------- path mode
+  log(
+    `[sh3-editor] mount slotId="${slotId}": path seed — ` +
+      `path=${JSON.stringify(bound.seed.path)}, ` +
+      `language=${JSON.stringify(bound.seed.language ?? null)}, ` +
+      `initialContent=${bound.seed.initialContent !== undefined}`,
+  );
   if (!documents) {
     warn(
       `[sh3-editor] EditorDocumentContribution for slotId="${slotId}" requested path mode but no DocumentHandle was provided; falling back to empty buffer.`,
     );
   }
-  const entry = bindPathMode(slotId, bound, bound.seed, registry, internals, documents, warn, offs);
+  const entry = bindPathMode(slotId, bound, bound.seed, registry, internals, documents, warn, log, offs);
   wireObservers(slotId, bound, internals, offs);
   return makeResult(entry, offs, bound.onLinkClick);
 }
@@ -157,6 +184,7 @@ function bindPathMode(
   internals: ApiInternals,
   documents: DocumentHandle | undefined,
   warn: (msg: string) => void,
+  log: (msg: string) => void,
   offs: Array<() => void>,
 ): RegistryEntry {
   // Initial synchronous buffer = initialContent (or empty). Real disk
@@ -176,7 +204,7 @@ function bindPathMode(
   };
 
   if (documents) {
-    void initialReadFromDisk(slotId, entry, state, documents, internals, warn);
+    void initialReadFromDisk(slotId, entry, state, documents, internals, warn, log);
     offs.push(installSaveHandler(slotId, entry, bound, state, documents, internals, warn));
     const off = installWatcher(slotId, entry, state, documents, internals, warn);
     if (off) offs.push(off);
@@ -225,18 +253,35 @@ async function initialReadFromDisk(
   documents: DocumentHandle,
   internals: ApiInternals,
   warn: (msg: string) => void,
+  log: (msg: string) => void,
 ): Promise<void> {
   // Contribution registered path mode without a usable path (empty string or
   // unset). The contributor is expected to swap a real path in via
   // replace({ path }); skip the initial read so we don't fire readText(undefined).
-  if (!state.boundPath) return;
+  if (!state.boundPath) {
+    warn(
+      `[sh3-editor] slotId="${slotId}": path seed has an empty path; skipping initial read ` +
+        `(buffer stays empty until a path is swapped in).`,
+    );
+    return;
+  }
   try {
     const fromDisk = await documents.readText(state.boundPath);
     if (state.disposed) return;
     if (fromDisk === null) {
+      // File does not exist (or is empty) at the bound path. The buffer stays
+      // at initialContent/empty — this is the genuine "file not found" trace,
+      // distinct from the no-contribution "Hello, World" case above.
+      warn(
+        `[sh3-editor] slotId="${slotId}": readText(${JSON.stringify(state.boundPath)}) returned null ` +
+          `(file not found / empty) — buffer stays empty.`,
+      );
       state.lastPersisted = null;
       return;
     }
+    log(
+      `[sh3-editor] slotId="${slotId}": readText(${JSON.stringify(state.boundPath)}) → loaded ${fromDisk.length} chars.`,
+    );
     state.lastPersisted = fromDisk;
     // Don't overwrite the user's in-flight edits. If they've already typed
     // (dirty became true during the await window), drop the disk content
@@ -490,9 +535,6 @@ function applyOptionsPatch(entry: RegistryEntry, patch: EditorOptionsPatch): voi
   if (patch.toolbarActions !== undefined) {
     entry.options.toolbarActions = patch.toolbarActions;
   }
-  if (patch.highlight !== undefined) {
-    entry.options.highlight = patch.highlight;
-  }
   if (patch.render !== undefined) {
     entry.options.render = patch.render;
   }
@@ -511,7 +553,6 @@ function applyCommonToOpts(opts: OpenDocumentOptions, seed: EditorDocumentSeed):
   if (seed.fontSize !== undefined) opts.fontSize = seed.fontSize;
   if (seed.showSettings !== undefined) opts.showSettings = seed.showSettings;
   if (seed.toolbarActions !== undefined) opts.toolbarActions = seed.toolbarActions;
-  if (seed.highlight !== undefined) opts.highlight = seed.highlight;
   if (seed.render !== undefined) opts.render = seed.render;
   if (seed.transform !== undefined) opts.transform = seed.transform;
   if (seed.startInPreview !== undefined) opts.startInPreview = seed.startInPreview;

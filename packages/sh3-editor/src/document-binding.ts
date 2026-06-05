@@ -31,6 +31,11 @@ export interface BindDocumentOptions {
 
 export interface BindDocumentResult {
   entry: RegistryEntry;
+  /** True when a real EditorDocumentContribution was resolved for this slot;
+   *  false when the binding fell back to the placeholder default (no matching
+   *  contribution at mount time). `bindDocumentLive` uses this to decide
+   *  whether to watch for a late-arriving contribution. */
+  matched: boolean;
   /** Run on slot unmount. Releases bind disposer + edit-flow-back
    *  forwarders + watch subscription (path mode). Idempotent. */
   cleanup(): void;
@@ -83,7 +88,7 @@ export function bindDocument(opts: BindDocumentOptions): BindDocumentResult {
         `Likely a slotId mismatch or a contribution registered after mount.`,
     );
     const entry = registry.get(slotId) ?? registry.open(slotId, defaultOptions);
-    return { entry, cleanup() { /* no-op */ } };
+    return { entry, matched: false, cleanup() { /* no-op */ } };
   }
 
   // ---------------------------------------------------------------- content mode
@@ -114,6 +119,106 @@ export function bindDocument(opts: BindDocumentOptions): BindDocumentResult {
   const entry = bindPathMode(slotId, bound, bound.seed, registry, internals, documents, warn, log, offs);
   wireObservers(slotId, bound, internals, offs);
   return makeResult(entry, offs, bound.onLinkClick);
+}
+
+// ============================================================================
+// Live binding — survives a contribution that registers AFTER the view mounts
+// ============================================================================
+
+export interface BindDocumentLiveOptions extends BindDocumentOptions {
+  /** Build the view for a freshly-resolved binding and return a disposer that
+   *  tears down ONLY the view (e.g. the Svelte component). Called once for the
+   *  initial mount, and again after a late-arriving contribution replaces the
+   *  placeholder. Binding cleanup (forwarders, watchers) is handled by the
+   *  orchestrator — do not release it here. */
+  mountView(result: BindDocumentResult): () => void;
+}
+
+export interface BindDocumentLiveHandle {
+  /** Tear down the current view + binding and stop watching for late
+   *  contributions. Idempotent. */
+  cleanup(): void;
+}
+
+/** Mount a document-bound view that is resilient to registration races.
+ *
+ *  `bindDocument` resolves the contribution exactly once, at mount. When SH3
+ *  restores a persisted layout, the editor view can mount BEFORE the host
+ *  shard has registered its `EditorDocumentContribution` (e.g. the host only
+ *  registers on `openWorkspace`, which runs after layout restore). Without
+ *  late-binding the slot is stuck on the "Hello, World" placeholder forever.
+ *
+ *  This orchestrator does the initial bind+mount, and — only when the initial
+ *  bind fell back to the placeholder — subscribes to `EDITOR_DOCUMENT_POINT`.
+ *  When a contribution for THIS slot appears, it tears down the placeholder,
+ *  drops the placeholder registry entry, re-binds against the real descriptor,
+ *  and re-mounts. A placeholder the user has already edited (dirty) is left
+ *  alone so no edits are clobbered. */
+export function bindDocumentLive(opts: BindDocumentLiveOptions): BindDocumentLiveHandle {
+  const {
+    slotId,
+    contributions,
+    registry,
+    warn = console.warn,
+    log = console.info,
+    mountView,
+  } = opts;
+
+  let bindResult = bindDocument(opts);
+  let viewOff = mountView(bindResult);
+  let offChange: (() => void) | undefined;
+  let disposed = false;
+
+  const stopWatching = () => {
+    offChange?.();
+    offChange = undefined;
+  };
+
+  if (!bindResult.matched) {
+    offChange = contributions.onChange(EDITOR_DOCUMENT_POINT, () => {
+      if (disposed || bindResult.matched) {
+        stopWatching();
+        return;
+      }
+      const nowMatches = contributions
+        .list<EditorDocumentContribution>(EDITOR_DOCUMENT_POINT)
+        .some((c) => c.slotId === slotId);
+      if (!nowMatches) return;
+
+      if (bindResult.entry.document.dirty) {
+        warn(
+          `[sh3-editor] slotId="${slotId}": a late EditorDocumentContribution registered, ` +
+            `but the placeholder buffer has unsaved edits — keeping it, not re-binding.`,
+        );
+        return;
+      }
+
+      log(
+        `[sh3-editor] slotId="${slotId}": late EditorDocumentContribution registered — ` +
+          `re-binding the placeholder slot to the real document.`,
+      );
+      // Tear down the placeholder view + binding, then drop its registry entry
+      // so the rebind's registry.open() re-seeds from the real contribution
+      // (registry.open is a no-op when the entry already exists).
+      viewOff();
+      bindResult.cleanup();
+      registry.close(slotId);
+
+      bindResult = bindDocument(opts);
+      viewOff = mountView(bindResult);
+      if (bindResult.matched) stopWatching();
+    });
+  }
+
+  return {
+    cleanup() {
+      if (disposed) return;
+      disposed = true;
+      stopWatching();
+      viewOff();
+      bindResult.cleanup();
+    },
+  };
 }
 
 // ============================================================================
@@ -597,6 +702,7 @@ function makeResult(
 ): BindDocumentResult {
   return {
     entry,
+    matched: true,
     cleanup() {
       for (const off of offs) {
         try { off(); } catch (e) { console.warn('[sh3-editor] bindDocument cleanup error', e); }

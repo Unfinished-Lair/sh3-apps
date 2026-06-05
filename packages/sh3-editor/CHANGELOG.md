@@ -30,6 +30,20 @@
   path-mode `readText` returns null (genuine file-not-found). This distinguishes
   the no-contribution placeholder from a missing-on-disk file.
 
+### Fixed
+
+- **Late-registered document contributions now bind.** `sh3-editor:editor` and
+  `sh3-editor:reader` previously resolved their `EditorDocumentContribution`
+  exactly once, at mount. When SH3 restored a persisted layout, the editor view
+  could mount *before* the host shard registered its contribution (e.g. a host
+  that only registers on `openWorkspace`, which runs after layout restore) — the
+  slot was then stuck on the "Hello, World" placeholder permanently. The view
+  now watches `EDITOR_DOCUMENT_POINT` while unbound and re-mounts against the
+  real document as soon as a matching contribution appears. A placeholder the
+  user has already edited (dirty) is left untouched. Hosts no longer need to
+  register-before-mount to dodge this race. `bindDocument` gained a `matched`
+  flag and a new `bindDocumentLive` orchestrator backs both view factories.
+
 ## 0.19.0 — 2026-05-28 — Help hub + Quick-Access toolbar + block-nodes
 
 ### Breaking

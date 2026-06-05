@@ -42,7 +42,7 @@ import type { GraphAsset } from './graph/asset/types';
 import { getActiveGraph } from './graph/active';
 import { getActiveEditor } from './views/active';
 import { makeRemoveSelectionCommand } from './graph/history/commands';
-import { bindDocument } from './document-binding';
+import { bindDocumentLive } from './document-binding';
 import { bindEdits } from './edit/edit-binding';
 import { bindInspector } from './inspector-binding';
 import { bindTabDirty } from './tab-dirty';
@@ -196,14 +196,8 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:editor', {
       mount(container, context) {
         const slotId = context.slotId;
-        const bindResult = bindDocument({
-          slotId,
-          contributions: ctx.contributions,
-          registry: registry!,
-          internals: internalsRef!,
-          defaultOptions,
-          documents: ctx.documents,
-        });
+        // bindEdits / tab-dirty resolve the slot's entry lazily, so they survive
+        // a document rebind and are created once here.
         const editResult = bindEdits({
           slotId,
           contributions: ctx.contributions,
@@ -211,32 +205,45 @@ export const shard: SourceShard = {
           internals: internalsRef!,
         });
         const offTabDirty = bindTabDirty(slotId, internalsRef!, context);
-        const { entry, cleanup } = bindResult;
-        const opts = entry.options;
-        const component = mount(Editor, {
-          target: container,
-          props: {
-            entry,
-            internals: internalsRef!,
-            matchingConfig: opts.matchingConfig,
-            fontSize: opts.fontSize,
-            toolbarActions: opts.toolbarActions,
-            showSettings: opts.showSettings,
-            render: opts.render,
-            transform: opts.transform,
-            startInPreview: opts.startInPreview,
-            onLinkClick: bindResult.onLinkClick,
-            ctx,
-            slotId,
+        // bindDocumentLive re-mounts the Editor if an EditorDocumentContribution
+        // registers AFTER the view mounted (layout-restore vs. late openWorkspace
+        // race). mountView returns a Svelte-only disposer.
+        const live = bindDocumentLive({
+          slotId,
+          contributions: ctx.contributions,
+          registry: registry!,
+          internals: internalsRef!,
+          defaultOptions,
+          documents: ctx.documents,
+          mountView(bindResult) {
+            const { entry } = bindResult;
+            const opts = entry.options;
+            const component = mount(Editor, {
+              target: container,
+              props: {
+                entry,
+                internals: internalsRef!,
+                matchingConfig: opts.matchingConfig,
+                fontSize: opts.fontSize,
+                toolbarActions: opts.toolbarActions,
+                showSettings: opts.showSettings,
+                render: opts.render,
+                transform: opts.transform,
+                startInPreview: opts.startInPreview,
+                onLinkClick: bindResult.onLinkClick,
+                ctx,
+                slotId,
+              },
+            });
+            return () => unmount(component);
           },
         });
         return {
           closable: true,
           unmount() {
             offTabDirty();
-            cleanup();
+            live.cleanup();
             editResult.cleanup();
-            unmount(component);
           },
         };
       },
@@ -245,31 +252,33 @@ export const shard: SourceShard = {
     ctx.registerView('sh3-editor:reader', {
       mount(container, context) {
         const slotId = context.slotId;
-        const bindResult = bindDocument({
+        const live = bindDocumentLive({
           slotId,
           contributions: ctx.contributions,
           registry: registry!,
           internals: internalsRef!,
           defaultOptions,
           documents: ctx.documents,
-        });
-        const { entry, cleanup } = bindResult;
-        const opts = entry.options;
-        const component = mount(Reader, {
-          target: container,
-          props: {
-            entry,
-            toolbarActions: opts.toolbarActions,
-            render: opts.render,
-            transform: opts.transform,
-            onLinkClick: bindResult.onLinkClick,
+          mountView(bindResult) {
+            const { entry } = bindResult;
+            const opts = entry.options;
+            const component = mount(Reader, {
+              target: container,
+              props: {
+                entry,
+                toolbarActions: opts.toolbarActions,
+                render: opts.render,
+                transform: opts.transform,
+                onLinkClick: bindResult.onLinkClick,
+              },
+            });
+            return () => unmount(component);
           },
         });
         return {
           closable: true,
           unmount() {
-            cleanup();
-            unmount(component);
+            live.cleanup();
           },
         };
       },
